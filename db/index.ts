@@ -50,9 +50,10 @@ async function ensureSchema() {
 
     const now = new Date().toISOString();
     const seeds = Array.from({ length: 40 }, (_, index) =>
-      db.prepare("INSERT OR IGNORE INTO cubicles (id, updated_at) VALUES (?, ?)").bind(index + 1, now),
+      db.prepare("INSERT OR IGNORE INTO cubicles (id, brand_model, updated_at) VALUES (?, ?, ?)").bind(index + 1, "Lenovo IdeaCentre AIO 310-20IAP (Type F0CL)", now),
     );
     await db.batch(seeds);
+    await db.prepare("UPDATE cubicles SET brand_model = ? WHERE brand_model = '' AND status != 'no_computer'").bind("Lenovo IdeaCentre AIO 310-20IAP (Type F0CL)").run();
 
     const count = await db.prepare("SELECT COUNT(*) AS total FROM checklist_items").first<{ total: number }>();
     if (!count?.total) {

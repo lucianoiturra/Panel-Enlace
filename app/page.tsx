@@ -18,7 +18,7 @@ const statusInfo: Record<Status, { label: string; short: string }> = {
 
 const pinInfo: Record<PinStatus, string> = { unreviewed: "Sin revisar", configured: "Configurado", no_pin: "Sin PIN", not_applicable: "No aplica" };
 
-const emptyStations = Array.from({ length: 40 }, (_, i) => ({ id: i + 1, brandModel: "", serialNumber: "", inventoryCode: "", adminPinStatus: "unreviewed" as PinStatus, studentPinStatus: "unreviewed" as PinStatus, keyboard: "Sin registrar", mouse: "Sin registrar", ip: "", observations: "", status: "pending" as Status, updatedAt: "" }));
+const emptyStations = Array.from({ length: 40 }, (_, i) => ({ id: i + 1, brandModel: "Lenovo IdeaCentre AIO 310-20IAP (Type F0CL)", serialNumber: "", inventoryCode: "", adminPinStatus: "unreviewed" as PinStatus, studentPinStatus: "unreviewed" as PinStatus, keyboard: "Sin registrar", mouse: "Sin registrar", ip: "", observations: "", status: "pending" as Status, updatedAt: "" }));
 
 export default function Home() {
   const [stations, setStations] = useState<Station[]>(emptyStations);
