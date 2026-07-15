@@ -1,7 +1,5 @@
-import { env } from "cloudflare:workers";
-
 function getSecret() {
-  const secret = (env as unknown as { PIN_ENCRYPTION_KEY?: string }).PIN_ENCRYPTION_KEY;
+  const secret = process.env.PIN_ENCRYPTION_KEY;
   if (!secret) throw new Error("Falta configurar la clave segura para guardar PIN.");
   return secret;
 }

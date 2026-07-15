@@ -14,9 +14,15 @@ export const cubicles = sqliteTable("cubicles", {
   keyboard: text("keyboard").notNull().default("Sin registrar"),
   mouse: text("mouse").notNull().default("Sin registrar"),
   ip: text("ip").notNull().default(""),
+  mac: text("mac").notNull().default(""),
   observations: text("observations").notNull().default(""),
   status: text("status").notNull().default("pending"),
   updatedAt: text("updated_at").notNull(),
+});
+
+export const appMetadata = sqliteTable("app_metadata", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
 });
 
 export const checklistItems = sqliteTable("checklist_items", {

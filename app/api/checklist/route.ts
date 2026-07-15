@@ -7,6 +7,7 @@ export async function POST(request: Request) {
     const { label } = await request.json() as { label?: string };
     const clean = label?.trim();
     if (!clean) return Response.json({ error: "Escribe una verificación" }, { status: 400 });
+    if (clean.length > 120) return Response.json({ error: "La verificación no puede superar 120 caracteres." }, { status: 400 });
     const db = await getDb();
     const [item] = await db.insert(checklistItems).values({ label: clean, createdAt: new Date().toISOString() }).returning();
     return Response.json({ item }, { status: 201 });
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const id = Number(new URL(request.url).searchParams.get("id"));
-    if (!id) return Response.json({ error: "Verificación inválida" }, { status: 400 });
+    if (!Number.isInteger(id) || id < 1) return Response.json({ error: "Verificación inválida" }, { status: 400 });
     const db = await getDb();
     await db.delete(checklistResults).where(eq(checklistResults.itemId, id));
     await db.delete(checklistItems).where(eq(checklistItems.id, id));

@@ -43,3 +43,10 @@ next-env.d.ts
 /work/
 .devserver.log
 .devserver.err
+*.tsbuildinfo
+local.db*
+/.agents/
+/.claude/
+/.impeccable/
+/.superpowers/
+/DOC CAB Computadores Sala Enlace.md
