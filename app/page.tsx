@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 
 type Status = "operational" | "attention" | "offline" | "pending" | "no_computer";
 type PinStatus = "unreviewed" | "configured" | "no_pin" | "not_applicable";
-type Station = { id: number; brandModel: string; serialNumber: string; inventoryCode: string; adminPinStatus: PinStatus; studentPinStatus: PinStatus; keyboard: string; mouse: string; ip: string; observations: string; status: Status; updatedAt: string };
+type InternetType = "unreviewed" | "ethernet" | "wifi" | "none";
+type OutletStatus = "unreviewed" | "operational" | "repair";
+type Station = { id: number; brandModel: string; serialNumber: string; inventoryCode: string; adminPinStatus: PinStatus; studentPinStatus: PinStatus; adminPin: string; studentPin: string; internetType: InternetType; outletStatus: OutletStatus; keyboard: string; mouse: string; ip: string; observations: string; status: Status; updatedAt: string };
 type Item = { id: number; label: string; createdAt: string };
 type Result = { id: number; cubicleId: number; itemId: number; checked: boolean };
 
@@ -17,8 +19,10 @@ const statusInfo: Record<Status, { label: string; short: string }> = {
 };
 
 const pinInfo: Record<PinStatus, string> = { unreviewed: "Sin revisar", configured: "Configurado", no_pin: "Sin PIN", not_applicable: "No aplica" };
+const internetInfo: Record<InternetType, string> = { unreviewed: "Sin revisar", ethernet: "Internet por cable", wifi: "Internet por Wi‑Fi", none: "Sin conexión" };
+const outletInfo: Record<OutletStatus, string> = { unreviewed: "Sin revisar", operational: "Enchufe operativo", repair: "Necesita reparación" };
 
-const emptyStations = Array.from({ length: 40 }, (_, i) => ({ id: i + 1, brandModel: "Lenovo IdeaCentre AIO 310-20IAP (Type F0CL)", serialNumber: "", inventoryCode: "", adminPinStatus: "unreviewed" as PinStatus, studentPinStatus: "unreviewed" as PinStatus, keyboard: "Sin registrar", mouse: "Sin registrar", ip: "", observations: "", status: "pending" as Status, updatedAt: "" }));
+const emptyStations = Array.from({ length: 40 }, (_, i) => ({ id: i + 1, brandModel: "Lenovo IdeaCentre AIO 310-20IAP (Type F0CL)", serialNumber: "", inventoryCode: "", adminPinStatus: "unreviewed" as PinStatus, studentPinStatus: "unreviewed" as PinStatus, adminPin: "", studentPin: "", internetType: "unreviewed" as InternetType, outletStatus: "unreviewed" as OutletStatus, keyboard: "Sin registrar", mouse: "Sin registrar", ip: "", observations: "", status: "pending" as Status, updatedAt: "" }));
 
 export default function Home() {
   const [stations, setStations] = useState<Station[]>(emptyStations);
@@ -33,6 +37,8 @@ export default function Home() {
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
   const [newCheck, setNewCheck] = useState("");
+  const [showAdminPin, setShowAdminPin] = useState(false);
+  const [showStudentPin, setShowStudentPin] = useState(false);
 
   const load = async () => {
     try {
@@ -62,7 +68,7 @@ export default function Home() {
 
   const openStation = (id: number) => {
     const station = stations.find(s => s.id === id)!;
-    setSelected(id); setDraft({ ...station });
+    setSelected(id); setDraft({ ...station }); setShowAdminPin(false); setShowStudentPin(false);
     const next: Record<string, boolean> = {};
     items.forEach(item => { next[item.id] = !!results.find(r => r.cubicleId === id && r.itemId === item.id)?.checked; });
     setChecks(next); setNotice("");
@@ -132,7 +138,8 @@ export default function Home() {
           <label>Estado<select className={`status-select ${draft.status}`} value={draft.status} onChange={e => { const status = e.target.value as Status; setDraft({ ...draft, status, ...(status === "no_computer" ? { adminPinStatus: "not_applicable", studentPinStatus: "not_applicable" } : {}) }); }}>{Object.entries(statusInfo).map(([value, info]) => <option key={value} value={value}>{info.label}</option>)}</select></label>
           <div className="two-cols"><label>Marca y modelo<input value={draft.brandModel} onChange={e => setDraft({ ...draft, brandModel: e.target.value })} placeholder="Ej: Dell OptiPlex 7090" /></label><label>N.º de serie<input value={draft.serialNumber} onChange={e => setDraft({ ...draft, serialNumber: e.target.value })} placeholder="S/N del equipo" /></label></div>
           <label>Código de inventario fijo<input value={draft.inventoryCode} onChange={e => setDraft({ ...draft, inventoryCode: e.target.value })} placeholder="Ej: AF-2026-001" /></label>
-          <div className="two-cols pin-fields"><label>PIN administrador<select value={draft.adminPinStatus} onChange={e => setDraft({ ...draft, adminPinStatus: e.target.value as PinStatus })}>{Object.entries(pinInfo).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>PIN cuenta estudiante<select value={draft.studentPinStatus} onChange={e => setDraft({ ...draft, studentPinStatus: e.target.value as PinStatus })}>{Object.entries(pinInfo).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div>
+          <div className="two-cols"><label>Conexión a internet<select value={draft.internetType} onChange={e => setDraft({ ...draft, internetType: e.target.value as InternetType })}>{Object.entries(internetInfo).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>Estado del enchufe<select value={draft.outletStatus} onChange={e => setDraft({ ...draft, outletStatus: e.target.value as OutletStatus })}>{Object.entries(outletInfo).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div>
+          <div className="two-cols pin-fields"><div className="pin-control"><label>PIN administrador<select value={draft.adminPinStatus} onChange={e => { const value = e.target.value as PinStatus; setDraft({ ...draft, adminPinStatus: value, ...(value !== "configured" ? { adminPin: "" } : {}) }); }}>{Object.entries(pinInfo).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>{draft.adminPinStatus === "configured" && <label className="pin-entry">Ingresar PIN<div><input type={showAdminPin ? "text" : "password"} inputMode="numeric" autoComplete="off" value={draft.adminPin} onChange={e => setDraft({ ...draft, adminPin: e.target.value })} placeholder="PIN administrador" /><button type="button" onClick={() => setShowAdminPin(!showAdminPin)}>{showAdminPin ? "Ocultar" : "Ver"}</button></div></label>}</div><div className="pin-control"><label>PIN cuenta estudiante<select value={draft.studentPinStatus} onChange={e => { const value = e.target.value as PinStatus; setDraft({ ...draft, studentPinStatus: value, ...(value !== "configured" ? { studentPin: "" } : {}) }); }}>{Object.entries(pinInfo).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>{draft.studentPinStatus === "configured" && <label className="pin-entry">Ingresar PIN<div><input type={showStudentPin ? "text" : "password"} inputMode="numeric" autoComplete="off" value={draft.studentPin} onChange={e => setDraft({ ...draft, studentPin: e.target.value })} placeholder="PIN estudiante" /><button type="button" onClick={() => setShowStudentPin(!showStudentPin)}>{showStudentPin ? "Ocultar" : "Ver"}</button></div></label>}</div></div>
           <label>Dirección IP<input value={draft.ip} onChange={e => setDraft({ ...draft, ip: e.target.value })} placeholder="Ej: 192.168.1.101" /></label>
           <div className="two-cols"><label>Teclado<select value={draft.keyboard} onChange={e => setDraft({ ...draft, keyboard: e.target.value })}><option>Sin registrar</option><option>Operativo</option><option>Con fallas</option><option>No disponible</option></select></label><label>Mouse<select value={draft.mouse} onChange={e => setDraft({ ...draft, mouse: e.target.value })}><option>Sin registrar</option><option>Operativo</option><option>Con fallas</option><option>No disponible</option></select></label></div>
           <div className="check-section"><div><span>CHECKLIST</span><small>{Object.values(checks).filter(Boolean).length} de {items.length} completados</small></div>{items.map(item => <label className="check-row" key={item.id}><input type="checkbox" checked={!!checks[item.id]} onChange={e => setChecks({ ...checks, [item.id]: e.target.checked })} /><span>{item.label}</span></label>)}</div>

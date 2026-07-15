@@ -22,6 +22,13 @@
       "when": 1784135858581,
       "tag": "0002_grey_dark_phoenix",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1784136621675,
+      "tag": "0003_unique_red_wolf",
+      "breakpoints": true
     }
   ]
 }

@@ -16,6 +16,10 @@ async function ensureSchema() {
         inventory_code TEXT NOT NULL DEFAULT '',
         admin_pin_status TEXT NOT NULL DEFAULT 'unreviewed',
         student_pin_status TEXT NOT NULL DEFAULT 'unreviewed',
+        admin_pin_encrypted TEXT NOT NULL DEFAULT '',
+        student_pin_encrypted TEXT NOT NULL DEFAULT '',
+        internet_type TEXT NOT NULL DEFAULT 'unreviewed',
+        outlet_status TEXT NOT NULL DEFAULT 'unreviewed',
         keyboard TEXT NOT NULL DEFAULT 'Sin registrar',
         mouse TEXT NOT NULL DEFAULT 'Sin registrar',
         ip TEXT NOT NULL DEFAULT '',
@@ -46,6 +50,18 @@ async function ensureSchema() {
     }
     if (!columns.results.some((column) => column.name === "student_pin_status")) {
       await db.prepare("ALTER TABLE cubicles ADD COLUMN student_pin_status TEXT NOT NULL DEFAULT 'unreviewed'").run();
+    }
+    if (!columns.results.some((column) => column.name === "admin_pin_encrypted")) {
+      await db.prepare("ALTER TABLE cubicles ADD COLUMN admin_pin_encrypted TEXT NOT NULL DEFAULT ''").run();
+    }
+    if (!columns.results.some((column) => column.name === "student_pin_encrypted")) {
+      await db.prepare("ALTER TABLE cubicles ADD COLUMN student_pin_encrypted TEXT NOT NULL DEFAULT ''").run();
+    }
+    if (!columns.results.some((column) => column.name === "internet_type")) {
+      await db.prepare("ALTER TABLE cubicles ADD COLUMN internet_type TEXT NOT NULL DEFAULT 'unreviewed'").run();
+    }
+    if (!columns.results.some((column) => column.name === "outlet_status")) {
+      await db.prepare("ALTER TABLE cubicles ADD COLUMN outlet_status TEXT NOT NULL DEFAULT 'unreviewed'").run();
     }
 
     const now = new Date().toISOString();
