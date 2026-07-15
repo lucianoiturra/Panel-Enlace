@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type Status = "operational" | "attention" | "offline" | "pending";
-type Station = { id: number; brandModel: string; serialNumber: string; inventoryCode: string; keyboard: string; mouse: string; ip: string; observations: string; status: Status; updatedAt: string };
+type Status = "operational" | "attention" | "offline" | "pending" | "no_computer";
+type PinStatus = "unreviewed" | "configured" | "no_pin" | "not_applicable";
+type Station = { id: number; brandModel: string; serialNumber: string; inventoryCode: string; adminPinStatus: PinStatus; studentPinStatus: PinStatus; keyboard: string; mouse: string; ip: string; observations: string; status: Status; updatedAt: string };
 type Item = { id: number; label: string; createdAt: string };
 type Result = { id: number; cubicleId: number; itemId: number; checked: boolean };
 
@@ -12,9 +13,12 @@ const statusInfo: Record<Status, { label: string; short: string }> = {
   attention: { label: "Requiere atención", short: "!" },
   offline: { label: "Fuera de servicio", short: "×" },
   pending: { label: "Sin revisar", short: "—" },
+  no_computer: { label: "Sin computador", short: "∅" },
 };
 
-const emptyStations = Array.from({ length: 40 }, (_, i) => ({ id: i + 1, brandModel: "", serialNumber: "", inventoryCode: "", keyboard: "Sin registrar", mouse: "Sin registrar", ip: "", observations: "", status: "pending" as Status, updatedAt: "" }));
+const pinInfo: Record<PinStatus, string> = { unreviewed: "Sin revisar", configured: "Configurado", no_pin: "Sin PIN", not_applicable: "No aplica" };
+
+const emptyStations = Array.from({ length: 40 }, (_, i) => ({ id: i + 1, brandModel: "", serialNumber: "", inventoryCode: "", adminPinStatus: "unreviewed" as PinStatus, studentPinStatus: "unreviewed" as PinStatus, keyboard: "Sin registrar", mouse: "Sin registrar", ip: "", observations: "", status: "pending" as Status, updatedAt: "" }));
 
 export default function Home() {
   const [stations, setStations] = useState<Station[]>(emptyStations);
@@ -46,6 +50,7 @@ export default function Home() {
     attention: stations.filter(s => s.status === "attention").length,
     offline: stations.filter(s => s.status === "offline").length,
     pending: stations.filter(s => s.status === "pending").length,
+    no_computer: stations.filter(s => s.status === "no_computer").length,
   }), [stations]);
 
   const layoutStations = useMemo(() => [...stations].sort((a, b) => b.id - a.id), [stations]);
@@ -102,7 +107,7 @@ export default function Home() {
         <div className="hero-row"><div><p className="eyebrow">INVENTARIO EN TIEMPO REAL</p><h1>Estado de la sala</h1><p className="subtitle">40 cubículos · 4 filas · Selecciona un puesto para revisar su ficha</p></div><button className="primary" onClick={() => document.getElementById("checklist-admin")?.showModal()}>＋ Administrar checklist</button></div>
 
         <div className="stats">
-          {(["operational", "attention", "offline", "pending"] as Status[]).map(status => <button key={status} className={`stat-card ${status} ${filter === status ? "active" : ""}`} onClick={() => setFilter(filter === status ? "all" : status)}><span className="stat-icon">{statusInfo[status].short}</span><div><strong>{counts[status]}</strong><span>{statusInfo[status].label}</span></div></button>)}
+          {(["operational", "attention", "offline", "pending", "no_computer"] as Status[]).map(status => <button key={status} className={`stat-card ${status} ${filter === status ? "active" : ""}`} onClick={() => setFilter(filter === status ? "all" : status)}><span className="stat-icon">{statusInfo[status].short}</span><div><strong>{counts[status]}</strong><span>{statusInfo[status].label}</span></div></button>)}
         </div>
 
         <section className="room-card">
@@ -110,9 +115,9 @@ export default function Home() {
           <div className="orientation"><span>ENTRADA / MESÓN TÉCNICO</span><i></i><span>PANTALLA PRINCIPAL</span></div>
           <div className={`room-plan ${loading ? "is-loading" : ""}`}>
             <div className="wall-label left">MURO INTERIOR</div>
-            {[0, 1, 2, 3].map((row) => <section className={`computer-row row-${row + 1}`} key={row} aria-label={`Fila ${row + 1}`}>
-              <div className="row-title"><span>FILA {row + 1}</span><small>{row === 0 ? "Muro izquierdo" : row === 3 ? "Ventanas" : "Isla central"}</small></div>
-              <div className="row-stations">{layoutStations.slice(row * 10, row * 10 + 10).map(station => <button key={station.id} disabled={!visible(station)} className={`station ${station.status} ${selected === station.id ? "selected" : ""}`} onClick={() => openStation(station.id)} aria-label={`Cubículo ${station.id}, ${statusInfo[station.status].label}`}><span className="station-top"><b>{String(station.id).padStart(2, "0")}</b><i>{statusInfo[station.status].short}</i></span><span className="monitor"><i></i></span><small>{station.inventoryCode || station.brandModel || "Sin registrar"}</small></button>)}</div>
+            {[0, 1, 2, 3].map((row) => <section className={`computer-row row-${row + 1}`} key={row} aria-label={`Fila ${4 - row}`}>
+              <div className="row-title"><span>FILA {4 - row}</span><small>{row === 0 ? "Muro izquierdo" : row === 3 ? "Ventanas" : "Isla central"}</small></div>
+              <div className="row-stations">{layoutStations.slice(row * 10, row * 10 + 10).map(station => <button key={station.id} disabled={!visible(station)} className={`station ${station.status} ${selected === station.id ? "selected" : ""}`} onClick={() => openStation(station.id)} aria-label={`Cubículo ${station.id}, ${statusInfo[station.status].label}`}><span className="station-top"><b>{String(station.id).padStart(2, "0")}</b><i>{statusInfo[station.status].short}</i></span>{station.status !== "no_computer" && <span className="monitor"><i></i></span>}<small>{station.status === "no_computer" ? "Puesto vacío" : station.inventoryCode || station.brandModel || "Sin registrar"}</small></button>)}</div>
             </section>)}
             <div className="wall-label right">VENTANALES</div>
             <div className="access-door"><i></i><span>PUERTA DE ACCESO</span></div>
@@ -124,9 +129,10 @@ export default function Home() {
 
       <aside className={`drawer ${draft ? "open" : ""}`} aria-hidden={!draft}>
         {draft && <><div className="drawer-head"><div><span>FICHA DE EQUIPO</span><h2>Cubículo {String(draft.id).padStart(2, "0")}</h2></div><button onClick={() => { setDraft(null); setSelected(null); }} aria-label="Cerrar">×</button></div><div className="drawer-body">
-          <label>Estado<select className={`status-select ${draft.status}`} value={draft.status} onChange={e => setDraft({ ...draft, status: e.target.value as Status })}>{Object.entries(statusInfo).map(([value, info]) => <option key={value} value={value}>{info.label}</option>)}</select></label>
+          <label>Estado<select className={`status-select ${draft.status}`} value={draft.status} onChange={e => { const status = e.target.value as Status; setDraft({ ...draft, status, ...(status === "no_computer" ? { adminPinStatus: "not_applicable", studentPinStatus: "not_applicable" } : {}) }); }}>{Object.entries(statusInfo).map(([value, info]) => <option key={value} value={value}>{info.label}</option>)}</select></label>
           <div className="two-cols"><label>Marca y modelo<input value={draft.brandModel} onChange={e => setDraft({ ...draft, brandModel: e.target.value })} placeholder="Ej: Dell OptiPlex 7090" /></label><label>N.º de serie<input value={draft.serialNumber} onChange={e => setDraft({ ...draft, serialNumber: e.target.value })} placeholder="S/N del equipo" /></label></div>
           <label>Código de inventario fijo<input value={draft.inventoryCode} onChange={e => setDraft({ ...draft, inventoryCode: e.target.value })} placeholder="Ej: AF-2026-001" /></label>
+          <div className="two-cols pin-fields"><label>PIN administrador<select value={draft.adminPinStatus} onChange={e => setDraft({ ...draft, adminPinStatus: e.target.value as PinStatus })}>{Object.entries(pinInfo).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>PIN cuenta estudiante<select value={draft.studentPinStatus} onChange={e => setDraft({ ...draft, studentPinStatus: e.target.value as PinStatus })}>{Object.entries(pinInfo).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div>
           <label>Dirección IP<input value={draft.ip} onChange={e => setDraft({ ...draft, ip: e.target.value })} placeholder="Ej: 192.168.1.101" /></label>
           <div className="two-cols"><label>Teclado<select value={draft.keyboard} onChange={e => setDraft({ ...draft, keyboard: e.target.value })}><option>Sin registrar</option><option>Operativo</option><option>Con fallas</option><option>No disponible</option></select></label><label>Mouse<select value={draft.mouse} onChange={e => setDraft({ ...draft, mouse: e.target.value })}><option>Sin registrar</option><option>Operativo</option><option>Con fallas</option><option>No disponible</option></select></label></div>
           <div className="check-section"><div><span>CHECKLIST</span><small>{Object.values(checks).filter(Boolean).length} de {items.length} completados</small></div>{items.map(item => <label className="check-row" key={item.id}><input type="checkbox" checked={!!checks[item.id]} onChange={e => setChecks({ ...checks, [item.id]: e.target.checked })} /><span>{item.label}</span></label>)}</div>

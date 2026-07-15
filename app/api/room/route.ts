@@ -19,16 +19,19 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     const payload = await request.json() as {
-      id?: number; brandModel?: string; serialNumber?: string; inventoryCode?: string; keyboard?: string; mouse?: string;
+      id?: number; brandModel?: string; serialNumber?: string; inventoryCode?: string; adminPinStatus?: string; studentPinStatus?: string; keyboard?: string; mouse?: string;
       ip?: string; observations?: string; status?: string; checks?: Record<string, boolean>;
     };
     if (!payload.id || payload.id < 1 || payload.id > 40) return Response.json({ error: "Cubículo inválido" }, { status: 400 });
     const db = await getDb();
-    const status = ["operational", "attention", "offline", "pending"].includes(payload.status ?? "") ? payload.status! : "pending";
+    const status = ["operational", "attention", "offline", "pending", "no_computer"].includes(payload.status ?? "") ? payload.status! : "pending";
+    const pinStates = ["unreviewed", "configured", "no_pin", "not_applicable"];
     await db.update(cubicles).set({
       brandModel: payload.brandModel?.trim() ?? "",
       serialNumber: payload.serialNumber?.trim() ?? "",
       inventoryCode: payload.inventoryCode?.trim() ?? "",
+      adminPinStatus: pinStates.includes(payload.adminPinStatus ?? "") ? payload.adminPinStatus! : "unreviewed",
+      studentPinStatus: pinStates.includes(payload.studentPinStatus ?? "") ? payload.studentPinStatus! : "unreviewed",
       keyboard: payload.keyboard?.trim() || "Sin registrar",
       mouse: payload.mouse?.trim() || "Sin registrar",
       ip: payload.ip?.trim() ?? "",

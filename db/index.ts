@@ -14,6 +14,8 @@ async function ensureSchema() {
         brand_model TEXT NOT NULL DEFAULT '',
         serial_number TEXT NOT NULL DEFAULT '',
         inventory_code TEXT NOT NULL DEFAULT '',
+        admin_pin_status TEXT NOT NULL DEFAULT 'unreviewed',
+        student_pin_status TEXT NOT NULL DEFAULT 'unreviewed',
         keyboard TEXT NOT NULL DEFAULT 'Sin registrar',
         mouse TEXT NOT NULL DEFAULT 'Sin registrar',
         ip TEXT NOT NULL DEFAULT '',
@@ -38,6 +40,12 @@ async function ensureSchema() {
     const columns = await db.prepare("PRAGMA table_info(cubicles)").all<{ name: string }>();
     if (!columns.results.some((column) => column.name === "inventory_code")) {
       await db.prepare("ALTER TABLE cubicles ADD COLUMN inventory_code TEXT NOT NULL DEFAULT ''").run();
+    }
+    if (!columns.results.some((column) => column.name === "admin_pin_status")) {
+      await db.prepare("ALTER TABLE cubicles ADD COLUMN admin_pin_status TEXT NOT NULL DEFAULT 'unreviewed'").run();
+    }
+    if (!columns.results.some((column) => column.name === "student_pin_status")) {
+      await db.prepare("ALTER TABLE cubicles ADD COLUMN student_pin_status TEXT NOT NULL DEFAULT 'unreviewed'").run();
     }
 
     const now = new Date().toISOString();
