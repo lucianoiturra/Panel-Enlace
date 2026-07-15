@@ -13,6 +13,7 @@ async function ensureSchema() {
         id INTEGER PRIMARY KEY,
         brand_model TEXT NOT NULL DEFAULT '',
         serial_number TEXT NOT NULL DEFAULT '',
+        inventory_code TEXT NOT NULL DEFAULT '',
         keyboard TEXT NOT NULL DEFAULT 'Sin registrar',
         mouse TEXT NOT NULL DEFAULT 'Sin registrar',
         ip TEXT NOT NULL DEFAULT '',
@@ -33,6 +34,11 @@ async function ensureSchema() {
       )`),
       db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS result_cubicle_item_idx ON checklist_results (cubicle_id, item_id)"),
     ]);
+
+    const columns = await db.prepare("PRAGMA table_info(cubicles)").all<{ name: string }>();
+    if (!columns.results.some((column) => column.name === "inventory_code")) {
+      await db.prepare("ALTER TABLE cubicles ADD COLUMN inventory_code TEXT NOT NULL DEFAULT ''").run();
+    }
 
     const now = new Date().toISOString();
     const seeds = Array.from({ length: 40 }, (_, index) =>

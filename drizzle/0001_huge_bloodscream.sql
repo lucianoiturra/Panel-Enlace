@@ -1,0 +1,1 @@
+ALTER TABLE `cubicles` ADD `inventory_code` text DEFAULT '' NOT NULL;

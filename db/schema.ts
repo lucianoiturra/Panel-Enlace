@@ -4,6 +4,7 @@ export const cubicles = sqliteTable("cubicles", {
   id: integer("id").primaryKey(),
   brandModel: text("brand_model").notNull().default(""),
   serialNumber: text("serial_number").notNull().default(""),
+  inventoryCode: text("inventory_code").notNull().default(""),
   keyboard: text("keyboard").notNull().default("Sin registrar"),
   mouse: text("mouse").notNull().default("Sin registrar"),
   ip: text("ip").notNull().default(""),

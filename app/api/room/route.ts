@@ -19,7 +19,7 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     const payload = await request.json() as {
-      id?: number; brandModel?: string; serialNumber?: string; keyboard?: string; mouse?: string;
+      id?: number; brandModel?: string; serialNumber?: string; inventoryCode?: string; keyboard?: string; mouse?: string;
       ip?: string; observations?: string; status?: string; checks?: Record<string, boolean>;
     };
     if (!payload.id || payload.id < 1 || payload.id > 40) return Response.json({ error: "Cubículo inválido" }, { status: 400 });
@@ -28,6 +28,7 @@ export async function PUT(request: Request) {
     await db.update(cubicles).set({
       brandModel: payload.brandModel?.trim() ?? "",
       serialNumber: payload.serialNumber?.trim() ?? "",
+      inventoryCode: payload.inventoryCode?.trim() ?? "",
       keyboard: payload.keyboard?.trim() || "Sin registrar",
       mouse: payload.mouse?.trim() || "Sin registrar",
       ip: payload.ip?.trim() ?? "",
