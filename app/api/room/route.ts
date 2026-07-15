@@ -20,7 +20,7 @@ async function syncReferenceEquipment(db: RoomDb) {
   const { stations: referenceStations, version } = await loadReferenceStations();
   if (!referenceStations.length) return;
   const markerKey = "equipment_reference_version";
-  const marker = await db.select().from(appMetadata).where(eq(appMetadata.key, markerKey)).get();
+  const [marker] = await db.select().from(appMetadata).where(eq(appMetadata.key, markerKey)).limit(1);
   if (marker?.value === version) return;
 
   for (const station of referenceStations) {

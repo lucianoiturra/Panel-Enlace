@@ -1,6 +1,6 @@
-import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { boolean, index, integer, pgTable, serial, text, uniqueIndex } from "drizzle-orm/pg-core";
 
-export const cubicles = sqliteTable("cubicles", {
+export const cubicles = pgTable("cubicles", {
   id: integer("id").primaryKey(),
   brandModel: text("brand_model").notNull().default(""),
   serialNumber: text("serial_number").notNull().default(""),
@@ -20,36 +20,36 @@ export const cubicles = sqliteTable("cubicles", {
   updatedAt: text("updated_at").notNull(),
 });
 
-export const appMetadata = sqliteTable("app_metadata", {
+export const appMetadata = pgTable("app_metadata", {
   key: text("key").primaryKey(),
   value: text("value").notNull(),
 });
 
-export const checklistItems = sqliteTable("checklist_items", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const checklistItems = pgTable("checklist_items", {
+  id: serial("id").primaryKey(),
   label: text("label").notNull(),
   createdAt: text("created_at").notNull(),
 });
 
-export const stationTasks = sqliteTable(
+export const stationTasks = pgTable(
   "station_tasks",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     cubicleId: integer("cubicle_id").notNull(),
     description: text("description").notNull(),
-    completed: integer("completed", { mode: "boolean" }).notNull().default(false),
+    completed: boolean("completed").notNull().default(false),
     createdAt: text("created_at").notNull(),
   },
   (table) => [index("task_cubicle_idx").on(table.cubicleId)],
 );
 
-export const checklistResults = sqliteTable(
+export const checklistResults = pgTable(
   "checklist_results",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     cubicleId: integer("cubicle_id").notNull(),
     itemId: integer("item_id").notNull(),
-    checked: integer("checked", { mode: "boolean" }).notNull().default(false),
+    checked: boolean("checked").notNull().default(false),
   },
   (table) => [uniqueIndex("result_cubicle_item_idx").on(table.cubicleId, table.itemId)],
 );
