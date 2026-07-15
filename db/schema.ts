@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const cubicles = sqliteTable("cubicles", {
   id: integer("id").primaryKey(),
@@ -24,6 +24,18 @@ export const checklistItems = sqliteTable("checklist_items", {
   label: text("label").notNull(),
   createdAt: text("created_at").notNull(),
 });
+
+export const stationTasks = sqliteTable(
+  "station_tasks",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    cubicleId: integer("cubicle_id").notNull(),
+    description: text("description").notNull(),
+    completed: integer("completed", { mode: "boolean" }).notNull().default(false),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [index("task_cubicle_idx").on(table.cubicleId)],
+);
 
 export const checklistResults = sqliteTable(
   "checklist_results",

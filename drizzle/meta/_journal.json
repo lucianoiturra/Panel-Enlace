@@ -29,6 +29,13 @@
       "when": 1784136621675,
       "tag": "0003_unique_red_wolf",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1784136973480,
+      "tag": "0004_open_romulus",
+      "breakpoints": true
     }
   ]
 }

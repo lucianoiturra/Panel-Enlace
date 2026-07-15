@@ -1,21 +1,22 @@
 import { asc, eq } from "drizzle-orm";
 import { getDb } from "../../../db";
-import { checklistItems, checklistResults, cubicles } from "../../../db/schema";
+import { checklistItems, checklistResults, cubicles, stationTasks } from "../../../db/schema";
 import { decryptPin, encryptPin } from "../../../lib/pin-crypto";
 
 export async function GET() {
   try {
     const db = await getDb();
-    const [storedStations, items, results] = await Promise.all([
+    const [storedStations, items, results, tasks] = await Promise.all([
       db.select().from(cubicles).orderBy(asc(cubicles.id)),
       db.select().from(checklistItems).orderBy(asc(checklistItems.id)),
       db.select().from(checklistResults),
+      db.select().from(stationTasks).orderBy(asc(stationTasks.id)),
     ]);
     const stations = await Promise.all(storedStations.map(async (station) => {
       const { adminPinEncrypted, studentPinEncrypted, ...publicStation } = station;
       return { ...publicStation, adminPin: await decryptPin(adminPinEncrypted), studentPin: await decryptPin(studentPinEncrypted) };
     }));
-    return Response.json({ stations, items, results });
+    return Response.json({ stations, items, results, tasks });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "No fue posible cargar la sala" }, { status: 500 });
   }

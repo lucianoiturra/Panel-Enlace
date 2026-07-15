@@ -38,7 +38,15 @@ async function ensureSchema() {
         item_id INTEGER NOT NULL,
         checked INTEGER NOT NULL DEFAULT 0
       )`),
+      db.prepare(`CREATE TABLE IF NOT EXISTS station_tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        cubicle_id INTEGER NOT NULL,
+        description TEXT NOT NULL,
+        completed INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
+      )`),
       db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS result_cubicle_item_idx ON checklist_results (cubicle_id, item_id)"),
+      db.prepare("CREATE INDEX IF NOT EXISTS task_cubicle_idx ON station_tasks (cubicle_id)"),
     ]);
 
     const columns = await db.prepare("PRAGMA table_info(cubicles)").all<{ name: string }>();

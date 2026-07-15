@@ -9,6 +9,7 @@ type OutletStatus = "unreviewed" | "operational" | "repair";
 type Station = { id: number; brandModel: string; serialNumber: string; inventoryCode: string; adminPinStatus: PinStatus; studentPinStatus: PinStatus; adminPin: string; studentPin: string; internetType: InternetType; outletStatus: OutletStatus; keyboard: string; mouse: string; ip: string; observations: string; status: Status; updatedAt: string };
 type Item = { id: number; label: string; createdAt: string };
 type Result = { id: number; cubicleId: number; itemId: number; checked: boolean };
+type Task = { id: number; cubicleId: number; description: string; completed: boolean; createdAt: string };
 
 const statusInfo: Record<Status, { label: string; short: string }> = {
   operational: { label: "Operativo", short: "OK" },
@@ -28,6 +29,7 @@ export default function Home() {
   const [stations, setStations] = useState<Station[]>(emptyStations);
   const [items, setItems] = useState<Item[]>([]);
   const [results, setResults] = useState<Result[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
   const [draft, setDraft] = useState<Station | null>(null);
   const [checks, setChecks] = useState<Record<string, boolean>>({});
@@ -39,13 +41,14 @@ export default function Home() {
   const [newCheck, setNewCheck] = useState("");
   const [showAdminPin, setShowAdminPin] = useState(false);
   const [showStudentPin, setShowStudentPin] = useState(false);
+  const [newTask, setNewTask] = useState("");
 
   const load = async () => {
     try {
       const response = await fetch("/api/room");
       if (!response.ok) throw new Error();
-      const data = await response.json() as { stations: Station[]; items: Item[]; results: Result[] };
-      setStations(data.stations); setItems(data.items); setResults(data.results);
+      const data = await response.json() as { stations: Station[]; items: Item[]; results: Result[]; tasks: Task[] };
+      setStations(data.stations); setItems(data.items); setResults(data.results); setTasks(data.tasks);
     } catch { setNotice("No se pudo conectar con el almacenamiento. Intenta recargar."); }
     finally { setLoading(false); }
   };
@@ -60,6 +63,12 @@ export default function Home() {
   }), [stations]);
 
   const layoutStations = useMemo(() => [...stations].sort((a, b) => b.id - a.id), [stations]);
+
+  const pendingSummary = useMemo(() => {
+    const activeIds = new Set(stations.filter(station => station.status !== "no_computer").map(station => station.id));
+    const completedChecks = results.filter(result => activeIds.has(result.cubicleId) && result.checked).length;
+    return { checklist: Math.max(0, activeIds.size * items.length - completedChecks), tasks: tasks.filter(task => !task.completed).length };
+  }, [stations, items, results, tasks]);
 
   const visible = (station: Station) => {
     const text = `${station.id} ${station.ip} ${station.serialNumber} ${station.inventoryCode} ${station.brandModel}`.toLowerCase();
@@ -102,6 +111,23 @@ export default function Home() {
     if (response.ok) { setItems(current => current.filter(i => i.id !== id)); setResults(current => current.filter(r => r.itemId !== id)); }
   };
 
+  const addTask = async () => {
+    if (!draft || !newTask.trim()) return;
+    const response = await fetch("/api/tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cubicleId: draft.id, description: newTask }) });
+    if (response.ok) { const { task } = await response.json() as { task: Task }; setTasks(current => [...current, task]); setNewTask(""); }
+  };
+
+  const toggleTask = async (task: Task) => {
+    const completed = !task.completed;
+    const response = await fetch("/api/tasks", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: task.id, completed }) });
+    if (response.ok) setTasks(current => current.map(item => item.id === task.id ? { ...item, completed } : item));
+  };
+
+  const removeTask = async (id: number) => {
+    const response = await fetch(`/api/tasks?id=${id}`, { method: "DELETE" });
+    if (response.ok) setTasks(current => current.filter(task => task.id !== id));
+  };
+
   return (
     <main>
       <header className="topbar">
@@ -115,6 +141,7 @@ export default function Home() {
         <div className="stats">
           {(["operational", "attention", "offline", "pending", "no_computer"] as Status[]).map(status => <button key={status} className={`stat-card ${status} ${filter === status ? "active" : ""}`} onClick={() => setFilter(filter === status ? "all" : status)}><span className="stat-icon">{statusInfo[status].short}</span><div><strong>{counts[status]}</strong><span>{statusInfo[status].label}</span></div></button>)}
         </div>
+        <div className="pending-summary"><div><span className="summary-symbol">✓</span><p><strong>{pendingSummary.checklist}</strong><span>Checklist pendientes</span></p></div><div><span className="summary-symbol">↗</span><p><strong>{pendingSummary.tasks}</strong><span>Tareas pendientes</span></p></div></div>
 
         <section className="room-card">
           <div className="room-toolbar"><div><h2>Distribución de cubículos</h2></div><label className="search"><span>⌕</span><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar cubículo, IP o serie" /></label></div>
@@ -143,6 +170,7 @@ export default function Home() {
           <label>Dirección IP<input value={draft.ip} onChange={e => setDraft({ ...draft, ip: e.target.value })} placeholder="Ej: 192.168.1.101" /></label>
           <div className="two-cols"><label>Teclado<select value={draft.keyboard} onChange={e => setDraft({ ...draft, keyboard: e.target.value })}><option>Sin registrar</option><option>Operativo</option><option>Con fallas</option><option>No disponible</option></select></label><label>Mouse<select value={draft.mouse} onChange={e => setDraft({ ...draft, mouse: e.target.value })}><option>Sin registrar</option><option>Operativo</option><option>Con fallas</option><option>No disponible</option></select></label></div>
           <div className="check-section"><div><span>CHECKLIST</span><small>{Object.values(checks).filter(Boolean).length} de {items.length} completados</small></div>{items.map(item => <label className="check-row" key={item.id}><input type="checkbox" checked={!!checks[item.id]} onChange={e => setChecks({ ...checks, [item.id]: e.target.checked })} /><span>{item.label}</span></label>)}</div>
+          <div className="task-section"><div className="task-heading"><span>TAREAS ESPECÍFICAS</span><small>{tasks.filter(task => task.cubicleId === draft.id && !task.completed).length} pendientes</small></div><div className="task-list">{tasks.filter(task => task.cubicleId === draft.id).map(task => <div className={`task-row ${task.completed ? "completed" : ""}`} key={task.id}><button className="task-check" type="button" onClick={() => void toggleTask(task)} aria-label={task.completed ? "Marcar pendiente" : "Marcar completada"}>{task.completed ? "✓" : ""}</button><span>{task.description}</span><button className="task-delete" type="button" onClick={() => void removeTask(task.id)} aria-label="Eliminar tarea">×</button></div>)}</div><div className="task-add"><input value={newTask} onChange={e => setNewTask(e.target.value)} onKeyDown={e => e.key === "Enter" && void addTask()} placeholder="Ej: Actualizar tarjeta Wi‑Fi" /><button type="button" onClick={() => void addTask()}>Agregar</button></div></div>
           <label>Observaciones<textarea value={draft.observations} onChange={e => setDraft({ ...draft, observations: e.target.value })} placeholder="Registra fallas, cambios o información relevante…" rows={4} /></label>
         </div><div className="drawer-foot"><button className="secondary" onClick={() => { setDraft(null); setSelected(null); }}>Cancelar</button><button className="primary" onClick={save} disabled={saving}>{saving ? "Guardando…" : "Guardar cambios"}</button></div></>}
       </aside>
