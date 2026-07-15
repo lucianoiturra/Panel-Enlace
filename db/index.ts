@@ -1,0 +1,56 @@
+import { env } from "cloudflare:workers";
+import { drizzle } from "drizzle-orm/d1";
+import * as schema from "./schema";
+
+let initialized: Promise<void> | null = null;
+
+async function ensureSchema() {
+  if (initialized) return initialized;
+  initialized = (async () => {
+    const db = env.DB;
+    await db.batch([
+      db.prepare(`CREATE TABLE IF NOT EXISTS cubicles (
+        id INTEGER PRIMARY KEY,
+        brand_model TEXT NOT NULL DEFAULT '',
+        serial_number TEXT NOT NULL DEFAULT '',
+        keyboard TEXT NOT NULL DEFAULT 'Sin registrar',
+        mouse TEXT NOT NULL DEFAULT 'Sin registrar',
+        ip TEXT NOT NULL DEFAULT '',
+        observations TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'pending',
+        updated_at TEXT NOT NULL
+      )`),
+      db.prepare(`CREATE TABLE IF NOT EXISTS checklist_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        label TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )`),
+      db.prepare(`CREATE TABLE IF NOT EXISTS checklist_results (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        cubicle_id INTEGER NOT NULL,
+        item_id INTEGER NOT NULL,
+        checked INTEGER NOT NULL DEFAULT 0
+      )`),
+      db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS result_cubicle_item_idx ON checklist_results (cubicle_id, item_id)"),
+    ]);
+
+    const now = new Date().toISOString();
+    const seeds = Array.from({ length: 40 }, (_, index) =>
+      db.prepare("INSERT OR IGNORE INTO cubicles (id, updated_at) VALUES (?, ?)").bind(index + 1, now),
+    );
+    await db.batch(seeds);
+
+    const count = await db.prepare("SELECT COUNT(*) AS total FROM checklist_items").first<{ total: number }>();
+    if (!count?.total) {
+      const defaults = ["Enciende correctamente", "Acceso a internet", "Audio operativo", "Pantalla sin daños"];
+      await db.batch(defaults.map((label) => db.prepare("INSERT INTO checklist_items (label, created_at) VALUES (?, ?)").bind(label, now)));
+    }
+  })();
+  return initialized;
+}
+
+export async function getDb() {
+  if (!env.DB) throw new Error("El almacenamiento no está disponible.");
+  await ensureSchema();
+  return drizzle(env.DB, { schema });
+}
