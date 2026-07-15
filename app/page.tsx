@@ -111,12 +111,12 @@ export default function Home() {
         </div>
 
         <section className="room-card">
-          <div className="room-toolbar"><div><span className="section-kicker">PLANO DE LA SALA</span><h2>Distribución de cubículos</h2></div><label className="search"><span>⌕</span><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar cubículo, IP o serie" /></label></div>
-          <div className="orientation"><span>ENTRADA / MESÓN TÉCNICO</span><i></i><span>PANTALLA PRINCIPAL</span></div>
+          <div className="room-toolbar"><div><h2>Distribución de cubículos</h2></div><label className="search"><span>⌕</span><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar cubículo, IP o serie" /></label></div>
+          <div className="orientation"><i></i></div>
           <div className={`room-plan ${loading ? "is-loading" : ""}`}>
             <div className="wall-label left">MURO INTERIOR</div>
             {[0, 1, 2, 3].map((row) => <section className={`computer-row row-${row + 1}`} key={row} aria-label={`Fila ${4 - row}`}>
-              <div className="row-title"><span>FILA {4 - row}</span><small>{row === 0 ? "Muro izquierdo" : row === 3 ? "Ventanas" : "Isla central"}</small></div>
+              <div className="row-title"><span>FILA {4 - row}</span>{row !== 3 && <small>{row === 0 ? "Muro izquierdo" : "Isla central"}</small>}</div>
               <div className="row-stations">{layoutStations.slice(row * 10, row * 10 + 10).map(station => <button key={station.id} disabled={!visible(station)} className={`station ${station.status} ${selected === station.id ? "selected" : ""}`} onClick={() => openStation(station.id)} aria-label={`Cubículo ${station.id}, ${statusInfo[station.status].label}`}><span className="station-top"><b>{String(station.id).padStart(2, "0")}</b><i>{statusInfo[station.status].short}</i></span>{station.status !== "no_computer" && <span className="monitor"><i></i></span>}<small>{station.status === "no_computer" ? "Puesto vacío" : station.inventoryCode || station.brandModel || "Sin registrar"}</small></button>)}</div>
             </section>)}
             <div className="wall-label right">VENTANALES</div>
