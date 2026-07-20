@@ -46,12 +46,13 @@ export async function GET() {
   try {
     const db = await getDb();
     await syncReferenceEquipment(db);
-    const [storedStations, items, results, tasks] = await Promise.all([
-      db.select().from(cubicles).orderBy(asc(cubicles.id)),
-      db.select().from(checklistItems).orderBy(asc(checklistItems.id)),
-      db.select().from(checklistResults),
-      db.select().from(stationTasks).orderBy(asc(stationTasks.id)),
-    ]);
+    // The transaction pooler uses a single connection for this serverless
+    // client, so execute reads explicitly in sequence instead of queueing them
+    // concurrently during a cold start.
+    const storedStations = await db.select().from(cubicles).orderBy(asc(cubicles.id));
+    const items = await db.select().from(checklistItems).orderBy(asc(checklistItems.id));
+    const results = await db.select().from(checklistResults);
+    const tasks = await db.select().from(stationTasks).orderBy(asc(stationTasks.id));
     const stations = await Promise.all(storedStations.map(async (station) => {
       const { adminPinEncrypted, studentPinEncrypted, ...publicStation } = station;
       return { ...publicStation, adminPin: await decryptPin(adminPinEncrypted), studentPin: await decryptPin(studentPinEncrypted) };

@@ -105,6 +105,8 @@ async function ensureSchema() {
 }
 
 export async function getDb() {
-  await ensureSchema();
+  // Supabase is migrated separately in production. Running DDL during every
+  // serverless cold start can leave concurrent requests waiting on table locks.
+  if (!process.env.VERCEL) await ensureSchema();
   return drizzle(getClient(), { schema });
 }
