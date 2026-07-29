@@ -1,0 +1,236 @@
+<style>
+  .cab { --ink:#182334; --muted:#596474; --canvas:#f3f4f6; --surface:#fff; --green:#294f7c; --ok:#237a52; --warning:#986900; --line:#d7dce2; --red:#a33442; --gray:#68717e;
+    font-family:"Manrope",system-ui,sans-serif; color:var(--ink); background:var(--canvas); border:1px solid var(--line); border-radius:6px; overflow:hidden; position:relative; }
+  .cab * { box-sizing:border-box; }
+  .cab .top { height:46px; background:var(--surface); border-bottom:1px solid var(--line); display:flex; align-items:center; gap:16px; padding:0 14px; }
+  .cab .mark { width:26px; height:26px; display:grid; place-items:center; background:var(--green); color:#fff; border-radius:4px; font:700 9px "Space Mono",monospace; }
+  .cab .tabs { display:flex; gap:2px; }
+  .cab .tabs a { padding:5px 11px; font:700 9px "Space Mono",monospace; letter-spacing:.09em; color:var(--muted); border-bottom:2px solid transparent; }
+  .cab .tabs a.on { color:var(--ink); border-bottom-color:var(--ink); }
+  .cab .body { padding:14px; }
+  .cab h1 { font-size:20px; margin:0; letter-spacing:-.025em; }
+  .cab .sub { font-size:10px; color:var(--muted); margin:5px 0 0; }
+  .cab .rail { display:flex; align-items:center; justify-content:space-between; gap:16px; margin:12px 0 10px; padding:7px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+  .cab .stats { display:flex; gap:3px; }
+  .cab .stat { display:grid; grid-template-columns:15px auto; column-gap:6px; align-items:center; padding:3px 7px; border:1px solid transparent; border-radius:4px; }
+  .cab .stat.on { background:#fff; border-color:var(--line); }
+  .cab .stat i { grid-row:1/3; width:15px; height:15px; border-radius:3px; background:#e8ebef; display:grid; place-items:center; font:700 7px "Space Mono",monospace; font-style:normal; color:var(--gray); }
+  .cab .stat b { font:700 12px "Space Mono",monospace; line-height:1; }
+  .cab .stat span { font-size:8px; color:var(--muted); white-space:nowrap; }
+  .cab .ok i { color:var(--ok); background:#e1f2e9; } .cab .wa i { color:var(--warning); background:#fff1c2; } .cab .er i { color:var(--red); background:#f3dde0; }
+  .cab .pend { display:flex; gap:14px; font-size:9px; color:var(--muted); white-space:nowrap; }
+  .cab .pend b { font:700 12px "Space Mono",monospace; color:var(--ink); }
+  .cab .surface { background:#fff; border-top:2px solid var(--ink); padding:11px; }
+  .cab .stoolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding-bottom:10px; }
+  .cab .stoolbar h2 { font-size:14px; margin:0; }
+  .cab .seg { display:inline-flex; border:1px solid var(--line); border-radius:5px; overflow:hidden; }
+  .cab .seg a { padding:5px 10px; font:700 8px "Space Mono",monospace; letter-spacing:.07em; color:var(--muted); }
+  .cab .seg a.on { background:var(--ink); color:#fff; }
+  .cab .find { display:flex; align-items:center; gap:6px; border:1px solid var(--line); border-radius:5px; padding:5px 9px; width:190px; font-size:9px; color:var(--muted); }
+  .cab .lbl { font:700 8px "Space Mono",monospace; letter-spacing:.11em; color:var(--green); }
+
+  .esp { border:1px solid #cfd5dc; border-radius:3px; background:#fff; padding:6px 7px; display:grid; gap:3px; min-height:46px; }
+  .esp .en { font-size:9px; font-weight:800; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+  .esp .ep { font:700 8px "Space Mono",monospace; color:var(--green); }
+  .esp .ep.none { color:#a08a3c; }
+  .esp.g { border-color:#a8cbbb; } .esp.y { border-color:#d7b969; background:#fffaf0; } .esp.r { border-color:#d9a5ac; background:#fff7f8; } .esp.d { border-style:dashed; }
+  .grid8 { display:grid; grid-template-columns:repeat(6,1fr); gap:4px; }
+
+  .drw { position:absolute; right:0; top:46px; bottom:0; width:210px; background:#fff; border-left:1px solid var(--line); box-shadow:-8px 0 18px #1d2d2422; padding:12px; }
+  .drw h3 { margin:4px 0 0; font-size:15px; }
+  .chain { margin-top:10px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); padding:9px 0; display:grid; gap:5px; }
+  .hop { display:flex; gap:6px; align-items:center; font:700 8px "Space Mono",monospace; }
+  .hop i { width:5px; height:5px; border-radius:50%; background:var(--green); font-style:normal; flex:0 0 5px; }
+  .hop span { color:var(--ink); }
+  .hop small { color:var(--muted); font-family:"Manrope",sans-serif; font-size:8px; font-weight:600; }
+
+  .ports { display:grid; grid-template-columns:repeat(24,1fr); gap:2px; }
+  .pt { height:15px; border:1px solid #cfd5dc; border-radius:2px; background:#fff; display:grid; place-items:center; font:700 6px "Space Mono",monospace; color:var(--muted); }
+  .pt.o { background:#294f7c; border-color:#294f7c; color:#fff; }
+  .pt.u { background:#f1f3f5; border-style:dashed; color:#9aa3af; }
+  .pt.t { outline:2px solid var(--warning); outline-offset:1px; }
+  .eqrow { margin-bottom:7px; }
+  .eqrow .eqh { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:3px; }
+  .eqrow .eqh b { font:700 8px "Space Mono",monospace; }
+  .eqrow .eqh small { font-size:8px; color:var(--muted); }
+
+  .twocol { display:grid; grid-template-columns:190px 1fr; gap:11px; }
+  .pane { background:#fff; border:1px solid var(--line); border-radius:4px; padding:9px; }
+  .plist { display:grid; gap:3px; max-height:150px; overflow:hidden; }
+  .pill { display:flex; justify-content:space-between; align-items:center; padding:4px 6px; border:1px solid var(--line); border-radius:3px; font-size:9px; }
+  .pill.sel { background:#eaf0f7; border-color:var(--green); font-weight:800; }
+  .pill small { font:700 7px "Space Mono",monospace; color:var(--muted); }
+  .actionbar { margin-top:9px; background:var(--ink); color:#fff; border-radius:4px; padding:7px 9px; font-size:9px; display:flex; justify-content:space-between; align-items:center; }
+  .actionbar b { font-family:"Space Mono",monospace; font-size:9px; }
+  .kbd { display:inline-block; background:#ffffff26; border:1px solid #ffffff40; border-radius:3px; padding:1px 4px; font:700 7px "Space Mono",monospace; }
+
+  table.pp { width:100%; border-collapse:collapse; font-size:9px; }
+  table.pp th { text-align:left; font:700 7px "Space Mono",monospace; letter-spacing:.09em; color:var(--muted); border-bottom:1px solid var(--line); padding:5px 6px; }
+  table.pp td { padding:4px 6px; border-bottom:1px solid #edeff2; }
+  table.pp tr.grp td { background:#f4f6f8; font:700 8px "Space Mono",monospace; letter-spacing:.06em; }
+  table.pp .dest { border:1px solid var(--line); border-radius:3px; padding:2px 5px; display:inline-block; min-width:96px; color:var(--muted); }
+  table.pp .dest.has { color:var(--ink); font-weight:800; border-color:#a8cbbb; background:#f4faf7; }
+  table.pp .dest.edit { border-color:var(--green); box-shadow:0 0 0 2px #294f7c22; color:var(--ink); }
+  table.pp .ch { font:700 7px "Space Mono",monospace; color:var(--muted); }
+  .cardnote { font-size:12px; line-height:1.55; }
+  .cards.stacked { grid-template-columns:1fr !important; }
+</style>
+
+<h2>Interior de la pestaña Red</h2>
+<p class="subtitle">Mismos datos en las tres: 3 racks, 324 puertos, 61 espacios + 40 cubículos, 18 asignados. Lo que cambia es dónde ocurre el trabajo de asignar y qué se ve sin hacer clic.</p>
+
+<div class="section">
+  <div class="cards stacked">
+
+    <div class="card" data-choice="a" onclick="toggleSelect(this)">
+      <div class="card-image" style="padding:14px;background:#eef0f3">
+        <div class="cab">
+          <div class="top"><div class="mark">SE</div><div class="tabs"><a>SALA</a><a class="on">RED</a></div></div>
+          <div class="body" style="padding-right:220px">
+            <h1>Red del colegio</h1>
+            <p class="sub">3 racks · 324 puertos · 101 endpoints · levantamiento del 06 jun 2026</p>
+            <div class="rail">
+              <div class="stats">
+                <div class="stat ok on"><i>OK</i><b>20</b><span>Operativo</span></div>
+                <div class="stat wa"><i>≈</i><b>7</b><span>Solo WiFi</span></div>
+                <div class="stat er"><i>×</i><b>7</b><span>Sin internet</span></div>
+                <div class="stat"><i>?</i><b>27</b><span>Sin verificar</span></div>
+              </div>
+              <div class="pend"><span><b>43</b> sin puerto</span><span><b>20</b> puertos sin etiqueta</span></div>
+            </div>
+            <div class="surface">
+              <div class="stoolbar">
+                <h2>Espacios del colegio</h2>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <div class="seg"><a class="on">ESPACIOS</a><a>RACKS</a><a>COBERTURA</a><a>DIAGRAMA</a></div>
+                  <div class="find">⌕ 3 básico b</div>
+                </div>
+              </div>
+              <div class="grid8">
+                <div class="esp g"><span class="en">3° Básico A</span><span class="ep">R2/PP1 p12</span></div>
+                <div class="esp g"><span class="en">3° Básico B</span><span class="ep">R2/PP1 p14</span></div>
+                <div class="esp d"><span class="en">4° Básico A</span><span class="ep none">sin puerto</span></div>
+                <div class="esp r"><span class="en">7° Básico A</span><span class="ep none">sin puerto</span></div>
+                <div class="esp y"><span class="en">Kinder A</span><span class="ep">R2/PP2 p03</span></div>
+                <div class="esp g"><span class="en">Sala Computación</span><span class="ep">40 cubículos</span></div>
+                <div class="esp r"><span class="en">Comedor / Casino</span><span class="ep none">sin roseta</span></div>
+                <div class="esp g"><span class="en">UTP E. Básica</span><span class="ep">R2/PP1 p19</span></div>
+                <div class="esp g"><span class="en">PIE Administrativo</span><span class="ep">R2/PP1 p18</span></div>
+                <div class="esp d"><span class="en">Secretaría</span><span class="ep none">sin puerto</span></div>
+                <div class="esp y"><span class="en">Biblioteca / CRA</span><span class="ep">R3/PP1 p07</span></div>
+                <div class="esp d"><span class="en">Sala Música</span><span class="ep none">sin puerto</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="drw">
+            <span class="lbl">FICHA DE ESPACIO</span>
+            <h3>3° Básico B</h3>
+            <div class="chain">
+              <div class="hop"><i></i><span>3° Básico B</span><small>roseta 1</small></div>
+              <div class="hop"><i></i><span>R2/PP1 p14</span><small>patch panel</small></div>
+              <div class="hop"><i></i><span>R2/SW1 p11</span><small>TP-Link 24p</small></div>
+              <div class="hop"><i></i><span>R3/SW1 uplink</span><small>Cisco</small></div>
+              <div class="hop"><i></i><span>MikroTik → Fortinet → ISP</span></div>
+            </div>
+            <div style="margin-top:9px;display:flex;gap:5px"><span style="background:#e8ebef;border-radius:4px;padding:5px 8px;font-size:8px;font-weight:800">Copiar cadena</span><span style="background:var(--green);color:#fff;border-radius:4px;padding:5px 8px;font-size:8px;font-weight:800">Cambiar puerto</span></div>
+            <div style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px"><span class="lbl">BITÁCORA</span><p style="font-size:8px;color:var(--muted);margin:6px 0 0;line-height:1.5">29 jul · puerto asignado R2/PP1 p14 · LI<br>12 jul · estado → operativo · LI</p></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <h3>A · Espejo de la pestaña Sala</h3>
+        <p class="cardnote">La misma anatomía que ya usas: rail de estados que filtra, superficie blanca con buscador, y ficha en cajón lateral con el trazado completo y la bitácora. Las cuatro vistas (espacios, racks, cobertura, diagrama) se cambian con un segmentado dentro de la superficie. Aprender la pestaña Red cuesta cero. La asignación se hace desde la ficha o con el modo teclado (siguiente maqueta).</p>
+      </div>
+    </div>
+
+    <div class="card" data-choice="b" onclick="toggleSelect(this)">
+      <div class="card-image" style="padding:14px;background:#eef0f3">
+        <div class="cab">
+          <div class="top"><div class="mark">SE</div><div class="tabs"><a>SALA</a><a class="on">RED</a></div></div>
+          <div class="body">
+            <h1>Red del colegio</h1>
+            <p class="sub">Mesa de levantamiento · 18 de 101 endpoints asignados</p>
+            <div class="rail">
+              <div class="stats"><div class="stat ok on"><i>OK</i><b>18</b><span>Asignados</span></div><div class="stat wa"><i>—</i><b>83</b><span>Sin puerto</span></div><div class="stat"><i>?</i><b>20</b><span>Sin etiqueta</span></div></div>
+              <div class="pend"><span><b>8</b> puertos a destino desconocido</span></div>
+            </div>
+            <div class="twocol">
+              <div class="pane">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px"><span class="lbl">SIN ASIGNAR · 83</span><span style="font-size:8px;color:var(--muted)">A→Z</span></div>
+                <div class="find" style="width:100%;margin-bottom:7px">⌕ filtrar</div>
+                <div class="plist">
+                  <div class="pill sel">3° Básico B <small>SALA</small></div>
+                  <div class="pill">4° Básico A <small>SALA</small></div>
+                  <div class="pill">6° Básico A <small>SALA</small></div>
+                  <div class="pill">Secretaría <small>OFIC</small></div>
+                  <div class="pill">Sala Música <small>SALA</small></div>
+                  <div class="pill">Cubículo 12 <small>CUB</small></div>
+                  <div class="pill">Cubículo 13 <small>CUB</small></div>
+                </div>
+              </div>
+              <div class="pane">
+                <div class="stoolbar" style="padding-bottom:8px"><h2 style="font-size:12px">Rack 2 · Sala Enlace</h2><div class="seg"><a>R1</a><a class="on">R2</a><a>R3</a></div></div>
+                <div class="eqrow"><div class="eqh"><b>PP1 · Patch Panel 3Z Cat6</b><small>19 ocupados · 5 libres</small></div>
+                  <div class="ports"><span class="pt o">1</span><span class="pt o">2</span><span class="pt o">3</span><span class="pt o">4</span><span class="pt o">5</span><span class="pt o">6</span><span class="pt o">7</span><span class="pt o">8</span><span class="pt o">9</span><span class="pt o">10</span><span class="pt o">11</span><span class="pt o">12</span><span class="pt">13</span><span class="pt t">14</span><span class="pt">15</span><span class="pt u">16</span><span class="pt o">17</span><span class="pt o">18</span><span class="pt o">19</span><span class="pt">20</span><span class="pt u">21</span><span class="pt o">22</span><span class="pt o">23</span><span class="pt o">24</span></div>
+                </div>
+                <div class="eqrow"><div class="eqh"><b>SW1 · TP-Link TL-SG1024S</b><small>24 puertos</small></div>
+                  <div class="ports"><span class="pt o">1</span><span class="pt o">2</span><span class="pt o">3</span><span class="pt o">4</span><span class="pt o">5</span><span class="pt o">6</span><span class="pt o">7</span><span class="pt o">8</span><span class="pt o">9</span><span class="pt o">10</span><span class="pt o">11</span><span class="pt o">12</span><span class="pt o">13</span><span class="pt">14</span><span class="pt">15</span><span class="pt">16</span><span class="pt o">17</span><span class="pt o">18</span><span class="pt o">19</span><span class="pt">20</span><span class="pt">21</span><span class="pt o">22</span><span class="pt o">23</span><span class="pt o">24</span></div>
+                </div>
+                <div class="eqrow"><div class="eqh"><b>PP2 · Patch Panel 3Z Cat6</b><small>4 sin etiqueta</small></div>
+                  <div class="ports"><span class="pt o">1</span><span class="pt o">2</span><span class="pt o">3</span><span class="pt">4</span><span class="pt">5</span><span class="pt o">6</span><span class="pt o">7</span><span class="pt">8</span><span class="pt">9</span><span class="pt o">10</span><span class="pt o">11</span><span class="pt">12</span><span class="pt">13</span><span class="pt">14</span><span class="pt">15</span><span class="pt">16</span><span class="pt">17</span><span class="pt">18</span><span class="pt">19</span><span class="pt">20</span><span class="pt u">21</span><span class="pt u">22</span><span class="pt u">23</span><span class="pt u">24</span></div>
+                </div>
+                <div class="actionbar"><span><b>3° Básico B</b> seleccionado — haz clic en el puerto destino</span><span><span class="kbd">↵</span> asignar y siguiente <span class="kbd">esc</span> soltar</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <h3>B · Mesa de levantamiento en dos columnas</h3>
+        <p class="cardnote">Pensada para la sesión de carga: a la izquierda lo que falta (los 61 espacios y los 40 cubículos mezclados, etiquetados), a la derecha el rack con sus tiras de puertos reales. Seleccionas y haces clic, o solo teclado. Es la más rápida para vaciar los 83 pendientes, pero rompe el patrón de la pestaña Sala y las consultas del día a día quedan menos cómodas.</p>
+      </div>
+    </div>
+
+    <div class="card" data-choice="c" onclick="toggleSelect(this)">
+      <div class="card-image" style="padding:14px;background:#eef0f3">
+        <div class="cab">
+          <div class="top"><div class="mark">SE</div><div class="tabs"><a>SALA</a><a class="on">RED</a></div></div>
+          <div class="body">
+            <h1>Red del colegio</h1>
+            <p class="sub">324 puertos · filtrar, editar destino y ver la cadena en la misma fila</p>
+            <div class="rail">
+              <div class="stats"><div class="stat ok on"><i>OK</i><b>92</b><span>Enlazados</span></div><div class="stat"><i>—</i><b>204</b><span>Libres</span></div><div class="stat wa"><i>?</i><b>20</b><span>Sin etiqueta</span></div><div class="stat er"><i>×</i><b>8</b><span>Desconocido</span></div></div>
+              <div class="pend"><span><b>83</b> endpoints sin puerto</span></div>
+            </div>
+            <div class="surface">
+              <div class="stoolbar"><h2>Puertos</h2><div style="display:flex;gap:8px"><div class="seg"><a class="on">TODOS</a><a>R1</a><a>R2</a><a>R3</a></div><div class="find">⌕ puerto, sala o cubículo</div></div></div>
+              <table class="pp">
+                <tr><th style="width:74px">PUERTO</th><th style="width:66px">ESTADO</th><th style="width:150px">DESTINO</th><th>CADENA HASTA EL BORDE</th></tr>
+                <tr class="grp"><td colspan="4">RACK 2 · PATCH PANEL 3Z CAT6 (PP1) · 24 PUERTOS</td></tr>
+                <tr><td>R2/PP1 p12</td><td>ocupado</td><td><span class="dest has">3° Básico A</span></td><td class="ch">→ SW1 p09 → R3/SW1 → MikroTik → ISP</td></tr>
+                <tr><td>R2/PP1 p13</td><td>libre</td><td><span class="dest">sin asignar</span></td><td class="ch">—</td></tr>
+                <tr><td>R2/PP1 p14</td><td>ocupado</td><td><span class="dest edit">3° Básico B|</span></td><td class="ch">→ SW1 p11 → R3/SW1 → MikroTik → ISP</td></tr>
+                <tr><td>R2/PP1 p15</td><td>libre</td><td><span class="dest">sin asignar</span></td><td class="ch">—</td></tr>
+                <tr><td>R2/PP1 p16</td><td>sin etiqueta</td><td><span class="dest">sin asignar</span></td><td class="ch">sin etiquetar en el levantamiento</td></tr>
+                <tr><td>R2/PP1 p18</td><td>ocupado</td><td><span class="dest has">PIE Administrativo</span></td><td class="ch">→ SW1 p15 → R3/SW1 → MikroTik → ISP</td></tr>
+                <tr><td>R2/PP1 p19</td><td>ocupado</td><td><span class="dest has">UTP E. Básica</span></td><td class="ch">→ SW1 p16 → R3/SW1 → MikroTik → ISP</td></tr>
+                <tr class="grp"><td colspan="4">RACK 1 · PATCH PANEL 3Z CAT6 · 24 PUERTOS</td></tr>
+                <tr><td>R1/PP1 p07</td><td>ocupado</td><td><span class="dest has">Cubículo 12</span></td><td class="ch">→ SW1 p07 → MikroTik → Fortinet → ISP</td></tr>
+                <tr><td>R1/PP1 p08</td><td>desconocido</td><td><span class="dest">destino desconocido</span></td><td class="ch">→ SW1 p08 → MikroTik → Fortinet → ISP</td></tr>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <h3>C · Una tabla de puertos, edición en la fila</h3>
+        <p class="cardnote">Nada de dibujo: 324 filas agrupadas por rack y equipo, con el destino editable donde está y la cadena a la vista. Es lo más denso y lo más barato de construir, y contesta “qué hay en este puerto” de inmediato. A cambio, “qué le pasa a 3° Básico B” obliga a buscar, y la sala como unidad de trabajo desaparece.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="section">
+  <p class="subtitle" style="margin:0">Mi recomendación: <strong>A</strong> como la pestaña, con la vista <em>Racks</em> hecha con las tiras de puertos de <strong>B</strong> y el modo de captura por teclado encima. <strong>C</strong> no desaparece: es la vista <em>Racks</em> en formato lista cuando necesitas mirar 324 puertos seguidos.</p>
+</div>

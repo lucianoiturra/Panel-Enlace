@@ -1,0 +1,147 @@
+<style>
+  .cab { --ink:#182334; --muted:#596474; --canvas:#f3f4f6; --surface:#fff; --green:#294f7c; --ok:#237a52; --warning:#986900; --line:#d7dce2; --red:#a33442; --gray:#68717e;
+    font-family:"Manrope",system-ui,sans-serif; color:var(--ink); background:var(--canvas); border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+  .cab * { box-sizing:border-box; }
+  .cab .mono { font-family:"Space Mono",ui-monospace,monospace; }
+  .cab .top { height:52px; background:var(--surface); border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; padding:0 16px; gap:14px; }
+  .cab .brand { display:flex; align-items:center; gap:10px; min-width:0; }
+  .cab .mark { width:30px; height:30px; flex:0 0 30px; display:grid; place-items:center; background:var(--green); color:#fff; border-radius:5px; font:700 10px "Space Mono",monospace; }
+  .cab .bname { display:flex; flex-direction:column; line-height:1.2; }
+  .cab .bname strong { font-size:13px; }
+  .cab .bname span { font-size:8px; color:var(--muted); letter-spacing:.09em; text-transform:uppercase; }
+  .cab .chip { display:flex; flex-direction:column; line-height:1.25; text-align:right; }
+  .cab .chip span { font-size:7px; color:var(--muted); letter-spacing:.12em; }
+  .cab .chip b { font-size:10px; text-transform:uppercase; }
+  .cab .round { width:30px; height:30px; border:1px solid var(--line); border-radius:50%; background:#fff; display:grid; place-items:center; font-size:15px; color:var(--muted); }
+  .cab .body { padding:16px; }
+  .cab h1 { font-size:22px; margin:0; letter-spacing:-.025em; }
+  .cab .sub { font-size:11px; color:var(--muted); margin:6px 0 0; }
+  .cab .rail { display:flex; gap:4px; margin:14px 0 12px; padding:8px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+  .cab .stat { display:grid; grid-template-columns:16px auto; column-gap:6px; align-items:center; padding:4px 8px; border:1px solid transparent; border-radius:4px; }
+  .cab .stat.on { background:#fff; border-color:var(--line); }
+  .cab .stat i { grid-row:1/3; width:16px; height:16px; border-radius:3px; background:#e8ebef; display:grid; place-items:center; font:700 7px "Space Mono",monospace; font-style:normal; color:var(--gray); }
+  .cab .stat b { font:700 13px "Space Mono",monospace; line-height:1; }
+  .cab .stat span { font-size:8px; color:var(--muted); white-space:nowrap; }
+  .cab .ok i { color:var(--ok); background:#e1f2e9; } .cab .wa i { color:var(--warning); background:#fff1c2; } .cab .er i { color:var(--red); background:#f3dde0; }
+  .cab .surface { background:#fff; border-top:2px solid var(--ink); padding:12px; }
+  .cab .grid61 { display:grid; grid-template-columns:repeat(8,1fr); gap:4px; }
+  .cab .sp { height:26px; border:1px solid #cfd5dc; border-radius:2px; background:#fff; font-size:7px; color:var(--muted); padding:3px 4px; overflow:hidden; }
+  .cab .sp.g { border-color:#a8cbbb; } .cab .sp.y { border-color:#d7b969; background:#fffaf0; } .cab .sp.r { border-color:#d9a5ac; background:#fff7f8; } .cab .sp.d { border-style:dashed; }
+
+  /* A — tabs en la topbar */
+  .navA { display:flex; align-items:center; gap:2px; margin-left:20px; }
+  .navA a { padding:6px 12px; font:700 10px "Space Mono",monospace; letter-spacing:.08em; color:var(--muted); border-bottom:2px solid transparent; text-decoration:none; }
+  .navA a.on { color:var(--ink); border-bottom-color:var(--ink); }
+
+  /* B — segmentado dentro del shell */
+  .navB { display:inline-flex; border:1px solid var(--line); border-radius:6px; overflow:hidden; background:#fff; margin-bottom:14px; }
+  .navB a { padding:8px 16px; font:700 10px "Space Mono",monospace; letter-spacing:.07em; color:var(--muted); text-decoration:none; }
+  .navB a.on { background:var(--ink); color:#fff; }
+
+  /* C — barra de secciones bajo la marca */
+  .navC { background:#fff; border-bottom:1px solid var(--line); display:flex; padding:0 16px; }
+  .navC a { padding:9px 16px 8px; margin-bottom:-1px; border-bottom:2px solid transparent; text-decoration:none; display:flex; flex-direction:column; gap:2px; }
+  .navC a strong { font-size:12px; color:var(--muted); }
+  .navC a small { font:700 8px "Space Mono",monospace; letter-spacing:.1em; color:#93a0ae; }
+  .navC a.on { border-bottom-color:var(--green); }
+  .navC a.on strong { color:var(--ink); } .navC a.on small { color:var(--green); }
+
+  .cardnote { font-size:12px; color:var(--text-secondary,#666); line-height:1.5; }
+  .keyline { font-family:ui-monospace,monospace; font-size:11px; }
+</style>
+
+<h2>¿Cómo entra la pestaña Red al panel?</h2>
+<p class="subtitle">Las tres opciones son rutas reales (<span class="keyline">/</span> y <span class="keyline">/red</span>), no un toggle de cliente: cada vista se puede marcar como favorito y compartir por link. Lo que cambia es dónde vive el cambio de pestaña y cuánto peso visual tiene.</p>
+
+<div class="section">
+  <div class="cards">
+
+    <div class="card" data-choice="a" onclick="toggleSelect(this)">
+      <div class="card-image" style="padding:14px;background:#eef0f3">
+        <div class="cab">
+          <div class="top">
+            <div style="display:flex;align-items:center;min-width:0">
+              <div class="brand"><div class="mark">SE</div><div class="bname"><strong>Sala de Enlace</strong><span>Depto. Enlace CAB</span></div></div>
+              <div class="navA"><a class="on">SALA</a><a>RED</a></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px"><div class="round">↻</div><div class="chip"><span>ÚLT. SINC.</span><b>19:04 29 JUL</b></div></div>
+          </div>
+          <div class="body">
+            <h1>Estado de la sala</h1>
+            <p class="sub">40 puestos en 4 filas. Selecciona uno para revisar.</p>
+            <div class="rail">
+              <div class="stat ok on"><i>OK</i><b>24</b><span>Operativo</span></div>
+              <div class="stat wa"><i>!</i><b>6</b><span>Atención</span></div>
+              <div class="stat er"><i>×</i><b>2</b><span>Fuera</span></div>
+              <div class="stat"><i>—</i><b>8</b><span>Sin revisar</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <h3>A · Pestañas en la barra superior</h3>
+        <p class="cardnote">Dos palabras junto a la marca, con subrayado en la activa. Cambio de pestaña siempre visible y de peso mínimo: no roba espacio ni compite con el título de la vista. Con solo dos secciones, es lo que hace el resto de las herramientas internas.</p>
+      </div>
+    </div>
+
+    <div class="card" data-choice="b" onclick="toggleSelect(this)">
+      <div class="card-image" style="padding:14px;background:#eef0f3">
+        <div class="cab">
+          <div class="top">
+            <div class="brand"><div class="mark">SE</div><div class="bname"><strong>Sala de Enlace</strong><span>Depto. Enlace CAB</span></div></div>
+            <div style="display:flex;align-items:center;gap:10px"><div class="round">↻</div><div class="chip"><span>ÚLT. SINC.</span><b>19:04 29 JUL</b></div></div>
+          </div>
+          <div class="body">
+            <div class="navB"><a>SALA</a><a class="on">RED</a></div>
+            <h1>Red del colegio</h1>
+            <p class="sub">3 racks · 324 puertos · 61 espacios · 40 cubículos</p>
+            <div class="rail">
+              <div class="stat ok on"><i>OK</i><b>20</b><span>Operativo</span></div>
+              <div class="stat wa"><i>≈</i><b>7</b><span>Solo WiFi</span></div>
+              <div class="stat er"><i>×</i><b>7</b><span>Sin internet</span></div>
+              <div class="stat"><i>?</i><b>27</b><span>Sin verificar</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <h3>B · Control segmentado en el contenido</h3>
+        <p class="cardnote">La barra superior queda intacta — cero riesgo de tocar el header en producción. El cambio de sección vive junto al título, como un filtro más. Cuesta un poco de altura y se lee más como “dos modos” que como dos secciones de un mismo panel.</p>
+      </div>
+    </div>
+
+    <div class="card" data-choice="c" onclick="toggleSelect(this)">
+      <div class="card-image" style="padding:14px;background:#eef0f3">
+        <div class="cab">
+          <div class="top">
+            <div class="brand"><div class="mark">SE</div><div class="bname"><strong>Sala de Enlace</strong><span>Depto. Enlace CAB</span></div></div>
+            <div style="display:flex;align-items:center;gap:10px"><div class="round">↻</div><div class="chip"><span>ÚLT. SINC.</span><b>19:04 29 JUL</b></div></div>
+          </div>
+          <div class="navC">
+            <a><strong>Sala de computación</strong><small>40 CUBÍCULOS · 8 SIN REVISAR</small></a>
+            <a class="on"><strong>Red del colegio</strong><small>61 ESPACIOS · 43 SIN PUERTO</small></a>
+          </div>
+          <div class="body">
+            <h1>Red del colegio</h1>
+            <p class="sub">Levantamiento puerto ↔ espacio · 18 de 61 asignados</p>
+            <div class="surface">
+              <div class="grid61">
+                <div class="sp g">3°B A</div><div class="sp g">4°B A</div><div class="sp y">Kinder</div><div class="sp r">7°B A</div><div class="sp d">6°B A</div><div class="sp g">UTP Bás</div><div class="sp d">Secret.</div><div class="sp g">PIE</div>
+                <div class="sp d">S. Mús</div><div class="sp r">Casino</div><div class="sp g">Biblio</div><div class="sp d">Recep.</div><div class="sp g">Lab Cs</div><div class="sp y">Multic.</div><div class="sp d">III°M A</div><div class="sp g">Comp.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <h3>C · Barra de secciones con estado</h3>
+        <p class="cardnote">Cada sección muestra su pendiente sin entrar (“43 sin puerto”), así el levantamiento a medias no se puede ignorar — el riesgo declarado en el spec. Es la más ambiciosa: agrega una franja permanente de 40 px y dos números que hay que calcular en cada carga.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="section">
+  <p class="subtitle" style="margin:0">Mi recomendación: <strong>A</strong>, y que la advertencia de cobertura viva dentro de la pestaña Red (donde igual la vas a ver al trabajar) en vez de en una franja global. Si te importa que el pendiente se vea desde la pestaña Sala, entonces <strong>C</strong>.</p>
+</div>

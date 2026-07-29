@@ -1,0 +1,196 @@
+<style>
+  .cab { --ink:#182334; --muted:#596474; --canvas:#f3f4f6; --surface:#fff; --green:#294f7c; --ok:#237a52; --warning:#986900; --line:#d7dce2; --red:#a33442; --gray:#68717e;
+    font-family:"Manrope",system-ui,sans-serif; color:var(--ink); }
+  .cab * { box-sizing:border-box; }
+  .modalx { background:#fff; border:1px solid var(--line); border-radius:8px; box-shadow:0 14px 32px #14251d33; overflow:hidden; }
+  .mh { padding:14px 16px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+  .mh .lbl { font:700 8px "Space Mono",monospace; letter-spacing:.12em; color:var(--green); display:block; margin-bottom:5px; }
+  .mh h2 { margin:0; font-size:18px; letter-spacing:-.02em; }
+  .mh p { margin:5px 0 0; font-size:10px; color:var(--muted); line-height:1.5; }
+  .mh .x { width:26px; height:26px; flex:0 0 26px; border-radius:50%; background:#eef0eb; display:grid; place-items:center; font-size:16px; color:var(--muted); }
+  .dir { display:inline-flex; border:1px solid var(--line); border-radius:5px; overflow:hidden; margin-top:9px; }
+  .dir a { padding:5px 10px; font:700 8px "Space Mono",monospace; letter-spacing:.06em; color:var(--muted); }
+  .dir a.on { background:var(--ink); color:#fff; }
+  .mb { padding:14px 16px; }
+  .ports { display:grid; grid-template-columns:repeat(24,1fr); gap:2px; margin-bottom:12px; }
+  .pt { height:17px; border:1px solid #cfd5dc; border-radius:2px; background:#fff; display:grid; place-items:center; font:700 6px "Space Mono",monospace; color:var(--muted); }
+  .pt.o { background:#294f7c; border-color:#294f7c; color:#fff; }
+  .pt.done { background:#e1f2e9; border-color:#237a52; color:#1c6343; }
+  .pt.u { background:#f1f3f5; border-style:dashed; color:#9aa3af; }
+  .pt.cur { outline:2px solid var(--ink); outline-offset:1px; background:#fff; color:var(--ink); }
+  .target { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; border-top:1px solid var(--line); padding-top:12px; }
+  .target .big { font:700 26px "Space Mono",monospace; letter-spacing:-.02em; line-height:1; }
+  .target .where { font-size:10px; color:var(--muted); margin-top:5px; }
+  .target .prog { text-align:right; font-size:9px; color:var(--muted); line-height:1.6; }
+  .target .prog b { font:700 14px "Space Mono",monospace; color:var(--ink); }
+  .bar { height:5px; background:#e8ebef; border-radius:3px; overflow:hidden; margin-top:6px; width:130px; }
+  .bar i { display:block; height:100%; background:var(--green); }
+  .field { margin-top:12px; }
+  .field label { font:800 9px "Manrope",sans-serif; letter-spacing:.05em; text-transform:uppercase; color:var(--ink); display:block; margin-bottom:6px; }
+  .inp { border:1px solid var(--green); box-shadow:0 0 0 3px #294f7c1a; border-radius:6px; padding:10px 12px; font-size:13px; font-weight:700; background:#fff; }
+  .inp .cursor { display:inline-block; width:1px; height:14px; background:var(--ink); vertical-align:-2px; }
+  .ac { border:1px solid var(--line); border-top:0; border-radius:0 0 6px 6px; background:#fff; box-shadow:0 8px 18px #16223318; }
+  .ac div { padding:7px 12px; font-size:11px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f0f2f4; }
+  .ac div.hl { background:#eaf0f7; font-weight:800; }
+  .ac div small { font:700 7px "Space Mono",monospace; letter-spacing:.08em; color:var(--muted); }
+  .ac div em { font-style:normal; color:var(--warning); font-size:9px; font-weight:700; }
+  .done { margin-top:13px; border-top:1px solid var(--line); padding-top:10px; }
+  .done .lbl { font:700 8px "Space Mono",monospace; letter-spacing:.12em; color:var(--green); }
+  .done ul { list-style:none; margin:7px 0 0; padding:0; display:grid; gap:4px; }
+  .done li { display:flex; justify-content:space-between; align-items:center; font-size:10px; padding:4px 7px; background:#f7f8f9; border-radius:4px; }
+  .done li b { font-family:"Space Mono",monospace; font-size:9px; }
+  .done li a { font-size:9px; font-weight:800; color:var(--green); }
+  .mf { padding:11px 16px; background:#f4f5f6; border-top:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .hints { display:flex; gap:11px; font-size:9px; color:var(--muted); align-items:center; flex-wrap:wrap; }
+  .kbd { background:#fff; border:1px solid var(--line); border-bottom-width:2px; border-radius:3px; padding:2px 5px; font:700 8px "Space Mono",monospace; color:var(--ink); }
+  .btn { background:var(--green); color:#fff; border-radius:5px; padding:8px 13px; font-size:10px; font-weight:800; }
+  .btn.sec { background:#e8ebef; color:var(--ink); }
+
+  .cmd { background:#fff; border-top:2px solid var(--ink); padding:12px; }
+  .cmdrow { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:11px; }
+  .cmdrow h2 { font-size:14px; margin:0; }
+  .cmdbox { border:1px solid var(--green); box-shadow:0 0 0 3px #294f7c1a; border-radius:6px; padding:9px 12px; display:flex; align-items:center; gap:8px; font-size:12px; font-weight:700; }
+  .cmdbox span.pfx { color:var(--muted); font:700 11px "Space Mono",monospace; }
+  .syntax { display:grid; gap:4px; margin-top:9px; }
+  .syntax div { display:flex; gap:10px; align-items:baseline; font-size:10px; color:var(--muted); }
+  .syntax code { font:700 9px "Space Mono",monospace; color:var(--ink); background:#f1f3f5; border-radius:3px; padding:2px 5px; }
+  .chain2 { margin-top:11px; border-top:1px solid var(--line); padding-top:10px; display:flex; flex-wrap:wrap; gap:5px; align-items:center; font:700 9px "Space Mono",monospace; }
+  .chain2 span { background:#eaf0f7; border-radius:3px; padding:3px 6px; }
+  .chain2 i { font-style:normal; color:var(--muted); }
+  .cardnote { font-size:12px; line-height:1.55; }
+  .cards.stacked { grid-template-columns:1fr !important; }
+</style>
+
+<h2>¿Cómo se cargan las 83 asignaciones que faltan?</h2>
+<p class="subtitle">Las tres usan la misma función interna, así que la diferencia es de comodidad, no de arquitectura. La pregunta real: ¿en qué orden trabajas — parado en el rack probando puertos, o recorriendo salas?</p>
+
+<div class="section">
+  <div class="cards stacked">
+
+    <div class="card" data-choice="puerto" onclick="toggleSelect(this)">
+      <div class="card-image" style="padding:16px;background:#eef0f3">
+        <div class="cab">
+          <div class="modalx">
+            <div class="mh">
+              <div>
+                <span class="lbl">CAPTURA RÁPIDA</span>
+                <h2>Recorrer el panel puerto por puerto</h2>
+                <p>Estás en el rack con el tester: pruebas el puerto, ves dónde enciende, lo escribes y pasas al siguiente.</p>
+                <div class="dir"><a class="on">DESDE EL PUERTO</a><a>DESDE EL ESPACIO</a></div>
+              </div>
+              <div class="x">×</div>
+            </div>
+            <div class="mb">
+              <div class="ports"><span class="pt done">1</span><span class="pt done">2</span><span class="pt done">3</span><span class="pt o">4</span><span class="pt o">5</span><span class="pt o">6</span><span class="pt o">7</span><span class="pt o">8</span><span class="pt o">9</span><span class="pt o">10</span><span class="pt o">11</span><span class="pt done">12</span><span class="pt done">13</span><span class="pt cur">14</span><span class="pt">15</span><span class="pt u">16</span><span class="pt o">17</span><span class="pt o">18</span><span class="pt o">19</span><span class="pt">20</span><span class="pt u">21</span><span class="pt o">22</span><span class="pt o">23</span><span class="pt o">24</span></div>
+              <div class="target">
+                <div><div class="big">R2/PP1 p14</div><div class="where">Rack 2 · Sala Enlace · Patch Panel 3Z Cat6 · enlazado a SW1 p11</div></div>
+                <div class="prog"><b>6</b> asignados en esta sesión<div class="bar"><i style="width:26%"></i></div>24 de 61 espacios cubiertos</div>
+              </div>
+              <div class="field">
+                <label>¿Qué llega a este puerto?</label>
+                <div class="inp">3 bas<span class="cursor"></span></div>
+                <div class="ac">
+                  <div class="hl">3° Básico B <small>SALA · SIN PUERTO</small></div>
+                  <div>3° Básico A <small>SALA</small><em>ya en R2/PP1 p12</em></div>
+                  <div>Sala 3°A <small>OFICINA · SIN PUERTO</small></div>
+                  <div>13° … <small>—</small></div>
+                </div>
+              </div>
+              <div class="done">
+                <span class="lbl">EN ESTA SESIÓN</span>
+                <ul>
+                  <li><span><b>p13</b> → 4° Básico A</span><a>deshacer</a></li>
+                  <li><span><b>p12</b> → 3° Básico A</span><a>deshacer</a></li>
+                  <li><span><b>p03</b> → Cubículo 12</span><a>deshacer</a></li>
+                </ul>
+              </div>
+            </div>
+            <div class="mf">
+              <div class="hints"><span><span class="kbd">↵</span> asignar y siguiente</span><span><span class="kbd">tab</span> saltar puerto</span><span><span class="kbd">ctrl</span>+<span class="kbd">z</span> deshacer</span><span><span class="kbd">esc</span> salir</span></div>
+              <div style="display:flex;gap:7px"><span class="btn sec">Marcar sin uso</span><span class="btn">Asignar</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <h3>A · Captura desde el puerto (con toggle al otro sentido)</h3>
+        <p class="cardnote">El modal recorre un panel de 24 puertos en orden y solo pide el destino. El autocompletado busca sobre los 61 espacios <em>y</em> los 40 cubículos, y avisa si el espacio ya está en otro puerto. El toggle de arriba invierte el sentido: recorrer los 83 pendientes pidiendo el puerto, para cuando trabajas caminando salas. Dos modos, un solo formulario.</p>
+      </div>
+    </div>
+
+    <div class="card" data-choice="espacio" onclick="toggleSelect(this)">
+      <div class="card-image" style="padding:16px;background:#eef0f3">
+        <div class="cab">
+          <div class="modalx">
+            <div class="mh">
+              <div>
+                <span class="lbl">CAPTURA RÁPIDA</span>
+                <h2>Recorrer los pendientes espacio por espacio</h2>
+                <p>Un solo sentido: la lista de lo que falta manda, y tú escribes el puerto que le corresponde.</p>
+              </div>
+              <div class="x">×</div>
+            </div>
+            <div class="mb">
+              <div class="target" style="border-top:0;padding-top:0">
+                <div><div class="big" style="font-family:'Manrope',sans-serif;font-size:24px">4° Básico A</div><div class="where">Sala de clases · estado sin verificar · sin roseta registrada</div></div>
+                <div class="prog"><b>2</b> de 83 pendientes<div class="bar"><i style="width:2%"></i></div>quedan 81</div>
+              </div>
+              <div class="field">
+                <label>¿A qué puerto llega su roseta?</label>
+                <div class="inp">r2/pp1/1<span class="cursor"></span></div>
+                <div class="ac">
+                  <div class="hl">R2/PP1 p15 <small>LIBRE</small></div>
+                  <div>R2/PP1 p16 <small>SIN ETIQUETA</small></div>
+                  <div>R2/PP1 p17 <small>OCUPADO</small><em>Sala Multicopiado</em></div>
+                  <div>R2/PP1 p18 <small>OCUPADO</small><em>PIE Administrativo</em></div>
+                </div>
+              </div>
+              <div class="done">
+                <span class="lbl">EN ESTA SESIÓN</span>
+                <ul>
+                  <li><span>3° Básico B → <b>R2/PP1 p14</b></span><a>deshacer</a></li>
+                  <li><span>Cubículo 12 → <b>R1/PP1 p07</b></span><a>deshacer</a></li>
+                </ul>
+              </div>
+            </div>
+            <div class="mf">
+              <div class="hints"><span><span class="kbd">↵</span> asignar y siguiente</span><span><span class="kbd">tab</span> saltar espacio</span><span><span class="kbd">ctrl</span>+<span class="kbd">z</span> deshacer</span></div>
+              <div style="display:flex;gap:7px"><span class="btn sec">Sin roseta</span><span class="btn">Asignar</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <h3>B · Solo captura desde el espacio</h3>
+        <p class="cardnote">Un único sentido, sin toggle: la cola de pendientes se vacía sola y el contador siempre baja. Lo más simple de construir y de explicar. El costo: cuando estés en el rack probando un puerto suelto tendrás que buscar el espacio a mano en la vista Racks, fuera de este modo.</p>
+      </div>
+    </div>
+
+    <div class="card" data-choice="comando" onclick="toggleSelect(this)">
+      <div class="card-image" style="padding:16px;background:#eef0f3">
+        <div class="cab">
+          <div class="cmd">
+            <div class="cmdrow"><h2>Barra de comando</h2><span style="font:700 8px 'Space Mono',monospace;letter-spacing:.1em;color:#596474">SIEMPRE VISIBLE SOBRE LA VISTA</span></div>
+            <div class="cmdbox"><span class="pfx">›</span><span>3 basico b &gt; r2/pp1/14<span class="cursor"></span></span></div>
+            <div class="syntax">
+              <div><code>3 basico b</code> consultar: centra el espacio y traza su cadena</div>
+              <div><code>3 basico b &gt; r2/pp1/14</code> asignar espacio a puerto</div>
+              <div><code>cub 12 &gt; r1/pp1/7</code> asignar cubículo a puerto</div>
+              <div><code>r2/pp1/14 &gt; libre</code> soltar el puerto</div>
+            </div>
+            <div class="chain2"><span>3° Básico B</span><i>→</i><span>roseta</span><i>→</i><span>R2/PP1 p14</span><i>→</i><span>R2/SW1 p11</span><i>→</i><span>R3/SW1</span><i>→</i><span>MikroTik</span><i>→</i><span>Fortinet</span><i>→</i><span>ISP</span><span style="background:#e8ebef;color:#182334">copiar</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <h3>C · Una sola barra de comando con sintaxis</h3>
+        <p class="cardnote">Cero modales: un campo hace consulta y asignación según lo que escribas. Es lo más rápido cuando ya te sabes la sintaxis y lo más difícil de retomar en marzo del próximo año, o para quien tome el puesto después. También es la que más margen deja para escribir algo mal y no darte cuenta.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="section">
+  <p class="subtitle" style="margin:0">Mi recomendación: <strong>A</strong>. El sentido puerto → destino es el que ocurre cuando tienes el tester en la mano, y el toggle cubre el otro sin código nuevo. La barra de comando de <strong>C</strong> se queda, pero solo como <em>buscador</em> (escribes <code>3 básico b</code> y ves la cadena), sin sintaxis de escritura: eso es la parte útil y la que no se olvida.</p>
+</div>
