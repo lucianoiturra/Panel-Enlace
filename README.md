@@ -37,6 +37,22 @@ En `DATABASE_URL`, usa la conexión **Transaction pooler** de Supabase (puerto `
 
 No es necesario configurar comandos especiales en Vercel: el proyecto usa `npm run build` y las funciones de Next.js crean las tablas iniciales automáticamente en el primer acceso. La migración PostgreSQL inicial también está disponible en `drizzle-pg/`.
 
+### Pestaña Red
+
+Las tablas `net_*` de la pestaña Red no se crean automáticamente en producción: `getDb()`
+salta el DDL cuando corre en Vercel. Antes de publicar la pestaña, aplica la migración de
+`drizzle-pg/` en Supabase (SQL Editor o `psql`). En desarrollo local se crean solas.
+
+Los datos iniciales vienen de `lib/red/semilla.json`, generado desde el canvas con:
+
+```bash
+node herramientas/convertir-canvas.mjs
+```
+
+La siembra se aplica una sola vez, marcada en `app_metadata` con la clave
+`red_semilla_version`, e inserta solo lo que falta: volver a correrla no pisa asignaciones
+capturadas.
+
 ## Comandos
 
 ```bash

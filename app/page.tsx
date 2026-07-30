@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import NavSecciones from "./nav-secciones";
 
 type Status = "operational" | "attention" | "offline" | "pending" | "no_computer";
 type PinStatus = "unreviewed" | "configured" | "no_pin" | "not_applicable";
@@ -72,6 +73,7 @@ export default function Home() {
   const [showAdminPin, setShowAdminPin] = useState(false);
   const [showStudentPin, setShowStudentPin] = useState(false);
   const [newTask, setNewTask] = useState("");
+  const [redCadena, setRedCadena] = useState<{ texto: string; completa: boolean } | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const taskDeleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -120,6 +122,24 @@ export default function Home() {
   }, [selected]);
 
   useEffect(() => {
+    if (selected === null) return;
+    let vigente = true;
+    void (async () => {
+      try {
+        const response = await fetch(`/api/red/cadena?endpoint=cub:${selected}`);
+        if (!response.ok) return;
+        const cadena = await response.json() as { saltos: { etiqueta: string }[]; completa: boolean; motivo?: string };
+        if (!vigente) return;
+        const ruta = cadena.saltos.map(salto => salto.etiqueta).join(" → ");
+        setRedCadena({ texto: cadena.completa ? ruta : (cadena.motivo ?? "Sin puerto asignado"), completa: cadena.completa });
+      } catch {
+        if (vigente) setRedCadena(null);
+      }
+    })();
+    return () => { vigente = false; };
+  }, [selected]);
+
+  useEffect(() => {
     if (!draft) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -153,6 +173,7 @@ export default function Home() {
 
   const openStation = (id: number) => {
     const station = stations.find(s => s.id === id)!;
+    setRedCadena(null);
     setSelected(id); setDraft({ ...station }); setInitialDraft({ ...station }); setShowAdminPin(false); setShowStudentPin(false);
     const next: Record<string, boolean> = {};
     items.forEach(item => { next[item.id] = !!results.find(r => r.cubicleId === id && r.itemId === item.id)?.checked; });
@@ -307,7 +328,7 @@ export default function Home() {
   return (
     <main>
       <header className="topbar">
-        <div className="brand"><span className="brand-mark">SE</span><div><strong>Sala de Enlace</strong><span>Control de equipamiento</span></div></div>
+        <div className="brand"><span className="brand-mark">SE</span><div><strong>Sala de Enlace</strong><span>Control de equipamiento</span></div><NavSecciones activa="sala" /></div>
         <div className="header-actions"><button className="icon-button" onClick={() => void load()} aria-label={loading ? "Actualizando datos" : "Actualizar datos"} disabled={loading}>{loading ? "…" : "↻"}</button><div className="date-chip"><span>ÚLTIMA SINCRONIZACIÓN</span><b>{lastSyncAt ? new Intl.DateTimeFormat("es-CL", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" }).format(lastSyncAt) : "Sin sincronizar"}</b></div></div>
       </header>
 
@@ -346,6 +367,7 @@ export default function Home() {
           <div className="two-cols"><label>Conexión a internet<select value={draft.internetType} onChange={e => setDraft({ ...draft, internetType: e.target.value as InternetType })}>{Object.entries(internetInfo).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>Estado del enchufe<select value={draft.outletStatus} onChange={e => setDraft({ ...draft, outletStatus: e.target.value as OutletStatus })}>{Object.entries(outletInfo).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div>
           <div className="two-cols pin-fields"><div className="pin-control"><label>PIN administrador<select value={draft.adminPinStatus} onChange={e => { const value = e.target.value as PinStatus; setDraft({ ...draft, adminPinStatus: value, ...(value !== "configured" ? { adminPin: "" } : {}) }); setFieldErrors(current => ({ ...current, adminPin: undefined })); }}>{Object.entries(pinInfo).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>{draft.adminPinStatus === "configured" && <label className="pin-entry">Ingresar PIN<div><input type={showAdminPin ? "text" : "password"} autoComplete="off" maxLength={64} aria-invalid={!!fieldErrors.adminPin} aria-describedby={fieldErrors.adminPin ? "admin-pin-error" : undefined} value={draft.adminPin} onChange={e => { setDraft({ ...draft, adminPin: e.target.value.replace(/\s/g, "") }); setFieldErrors(current => ({ ...current, adminPin: undefined })); }} placeholder="4 a 64 caracteres" /><button type="button" onClick={() => setShowAdminPin(!showAdminPin)}>{showAdminPin ? "Ocultar" : "Ver"}</button></div>{fieldErrors.adminPin && <small id="admin-pin-error" className="field-error">{fieldErrors.adminPin}</small>}</label>}</div><div className="pin-control"><label>PIN cuenta estudiante<select value={draft.studentPinStatus} onChange={e => { const value = e.target.value as PinStatus; setDraft({ ...draft, studentPinStatus: value, ...(value !== "configured" ? { studentPin: "" } : {}) }); setFieldErrors(current => ({ ...current, studentPin: undefined })); }}>{Object.entries(pinInfo).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>{draft.studentPinStatus === "configured" && <label className="pin-entry">Ingresar PIN<div><input type={showStudentPin ? "text" : "password"} autoComplete="off" maxLength={64} aria-invalid={!!fieldErrors.studentPin} aria-describedby={fieldErrors.studentPin ? "student-pin-error" : undefined} value={draft.studentPin} onChange={e => { setDraft({ ...draft, studentPin: e.target.value.replace(/\s/g, "") }); setFieldErrors(current => ({ ...current, studentPin: undefined })); }} placeholder="4 a 64 caracteres" /><button type="button" onClick={() => setShowStudentPin(!showStudentPin)}>{showStudentPin ? "Ocultar" : "Ver"}</button></div>{fieldErrors.studentPin && <small id="student-pin-error" className="field-error">{fieldErrors.studentPin}</small>}</label>}</div></div>
           <div className="two-cols"><label>Dirección IP<input value={draft.ip} maxLength={15} inputMode="decimal" aria-invalid={!!fieldErrors.ip} aria-describedby={fieldErrors.ip ? "ip-error" : undefined} onChange={e => { setDraft({ ...draft, ip: e.target.value }); setFieldErrors(current => ({ ...current, ip: undefined })); }} placeholder="Ej: 192.168.1.101" />{fieldErrors.ip && <small id="ip-error" className="field-error">{fieldErrors.ip}</small>}</label><label>Dirección MAC<input value={draft.mac} maxLength={20} autoCapitalize="characters" aria-invalid={!!fieldErrors.mac} aria-describedby={fieldErrors.mac ? "mac-error" : undefined} onChange={e => { setDraft({ ...draft, mac: e.target.value.toUpperCase() }); setFieldErrors(current => ({ ...current, mac: undefined })); }} placeholder="Ej: 1C-83-41-1C-7D-A7" />{fieldErrors.mac && <small id="mac-error" className="field-error">{fieldErrors.mac}</small>}</label></div>
+          <div className="net-line"><span>RED</span>{redCadena ? <b className={redCadena.completa ? "" : "pending"}>{redCadena.texto}</b> : <b className="pending">Consultando…</b>}<a href={`/red?endpoint=cub:${draft.id}`}>Ver en la pestaña Red</a></div>
           <div className="two-cols"><label>Teclado<select value={draft.keyboard} onChange={e => setDraft({ ...draft, keyboard: e.target.value })}><option>Sin registrar</option><option>Operativo</option><option>Con fallas</option><option>No disponible</option></select></label><label>Mouse<select value={draft.mouse} onChange={e => setDraft({ ...draft, mouse: e.target.value })}><option>Sin registrar</option><option>Operativo</option><option>Con fallas</option><option>No disponible</option></select></label></div>
           <div className="check-section"><div><span>CHECKLIST</span><small>{Object.values(checks).filter(Boolean).length} de {items.length} completados</small></div>{items.map(item => <label className="check-row" key={item.id}><input type="checkbox" checked={!!checks[item.id]} onChange={e => setChecks({ ...checks, [item.id]: e.target.checked })} /><span>{item.label}</span></label>)}</div>
           <div className="task-section"><div className="task-heading"><span>TAREAS ESPECÍFICAS</span><small>{tasks.filter(task => task.cubicleId === draft.id && !task.completed && task.id !== pendingTaskDeletion?.id).length} pendientes</small></div>{taskError && <div className="field-error" role="alert">{taskError}</div>}<div className="task-list">{tasks.filter(task => task.cubicleId === draft.id && task.id !== pendingTaskDeletion?.id).map(task => <div className={`task-row ${task.completed ? "completed" : ""}`} key={task.id}><button className="task-check" type="button" disabled={!!busyAction} onClick={() => void toggleTask(task)} aria-label={task.completed ? "Marcar pendiente" : "Marcar completada"}>{task.completed ? "✓" : ""}</button><span>{task.description}</span><button className="task-delete" type="button" disabled={!!pendingTaskDeletion || !!busyAction} onClick={() => removeTask(task)} aria-label="Eliminar tarea">×</button></div>)}</div><div className="task-add"><input value={newTask} maxLength={160} aria-invalid={!!taskError} onChange={e => { setNewTask(e.target.value); setTaskError(""); }} onKeyDown={e => e.key === "Enter" && void addTask()} placeholder="Ej: Actualizar tarjeta Wi‑Fi" /><button type="button" disabled={!!busyAction} onClick={() => void addTask()}>{busyAction === "add-task" ? "Agregando…" : "Agregar"}</button></div></div>

@@ -9,7 +9,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "npm run build",
+    "test": "npm run build && node --experimental-strip-types --test tests/*.test.ts",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern .agents --ignore-pattern .claude --ignore-pattern .impeccable --ignore-pattern .superpowers",
     "db:generate": "drizzle-kit generate"
   },

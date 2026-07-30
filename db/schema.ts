@@ -53,3 +53,76 @@ export const checklistResults = pgTable(
   },
   (table) => [uniqueIndex("result_cubicle_item_idx").on(table.cubicleId, table.itemId)],
 );
+
+export const netRacks = pgTable("net_racks", {
+  id: text("id").primaryKey(),
+  nombre: text("nombre").notNull().default(""),
+  ubicacion: text("ubicacion").notNull().default(""),
+  x: integer("x").notNull().default(0),
+  y: integer("y").notNull().default(0),
+  w: integer("w").notNull().default(0),
+  h: integer("h").notNull().default(0),
+  notas: text("notas").notNull().default(""),
+});
+
+export const netEquipos = pgTable("net_equipos", {
+  id: text("id").primaryKey(),
+  rack: text("rack").notNull().default(""),
+  tipo: text("tipo").notNull().default("switch"),
+  etiqueta: text("etiqueta").notNull().default(""),
+  modelo: text("modelo").notNull().default(""),
+  puertos: integer("puertos").notNull().default(0),
+  color: text("color").notNull().default(""),
+  x: integer("x").notNull().default(0),
+  y: integer("y").notNull().default(0),
+  nota: text("nota").notNull().default(""),
+});
+
+export const netPuertos = pgTable(
+  "net_puertos",
+  {
+    id: text("id").primaryKey(),
+    equipo: text("equipo").notNull(),
+    n: integer("n").notNull(),
+    estado: text("estado").notNull().default("libre"),
+    nota: text("nota").notNull().default(""),
+  },
+  (table) => [index("net_puerto_equipo_idx").on(table.equipo)],
+);
+
+export const netEspacios = pgTable("net_espacios", {
+  id: text("id").primaryKey(),
+  nombre: text("nombre").notNull().default(""),
+  categoria: text("categoria").notNull().default("sala"),
+  estado: text("estado").notNull().default("sin-verificar"),
+  x: integer("x").notNull().default(0),
+  y: integer("y").notNull().default(0),
+  nota: text("nota").notNull().default(""),
+});
+
+export const netEnlaces = pgTable(
+  "net_enlaces",
+  {
+    id: serial("id").primaryKey(),
+    a: text("a").notNull(),
+    b: text("b").notNull(),
+    tipo: text("tipo").notNull().default("patch"),
+    nota: text("nota").notNull().default(""),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [uniqueIndex("net_enlace_par_idx").on(table.a, table.b), index("net_enlace_a_idx").on(table.a), index("net_enlace_b_idx").on(table.b)],
+);
+
+export const netBitacora = pgTable(
+  "net_bitacora",
+  {
+    id: serial("id").primaryKey(),
+    fecha: text("fecha").notNull(),
+    tipo: text("tipo").notNull(),
+    objetivo: text("objetivo").notNull().default(""),
+    antes: text("antes").notNull().default(""),
+    despues: text("despues").notNull().default(""),
+    nota: text("nota").notNull().default(""),
+  },
+  (table) => [index("net_bitacora_objetivo_idx").on(table.objetivo)],
+);

@@ -1,0 +1,3773 @@
+{
+  "version": "7141ab81fe3ea362cb4e64a05cc439e94df40a35a326023254c5856f2e03dfc0",
+  "origen": "Estructura Redes CAB.canvas (2026-06-06)",
+  "generado": "2026-07-30T00:53:47.384Z",
+  "racks": [
+    {
+      "id": "R1",
+      "nombre": "Rack 1 - Sala Enlace",
+      "ubicacion": "Sala Enlace",
+      "x": -1120,
+      "y": -320,
+      "w": 2320,
+      "h": 1180,
+      "notas": "Rack 1 — **Segmento IP:** por confirmar (detectados: 192.168.20/30/60.x)"
+    },
+    {
+      "id": "R2",
+      "nombre": "Rack 2 | Sala Enlace",
+      "ubicacion": "Sala Enlace",
+      "x": -1440,
+      "y": 1240,
+      "w": 2640,
+      "h": 1560,
+      "notas": "relación dibujada en el canvas hacia: Administrativo\nRack 2 — **Segmento IP:** por confirmar (detectados: 192.168.20/30/60.x) **Puertos identificados:** - UTP → R2/P1 D19 - PIE Básica → R2/P1 D18"
+    },
+    {
+      "id": "R3",
+      "nombre": "Rack 3 | Sala de Profesores",
+      "ubicacion": "Sala de Profesores",
+      "x": 2360,
+      "y": 920,
+      "w": 2880,
+      "h": 1480,
+      "notas": "relación dibujada en el canvas hacia: ## Salas de clases\nrelación dibujada en el canvas hacia: ## Rosetas\nrelación dibujada en el canvas hacia: ## Sala de clases\nRack 3 — **Segmento IP:** por confirmar (detectados: 192.168.20/30/60.x)"
+    }
+  ],
+  "equipos": [
+    {
+      "id": "R1-SW1",
+      "rack": "R1",
+      "tipo": "switch",
+      "etiqueta": "Switch Gigabit 24p Smart",
+      "modelo": "TP-Link TL-SG1024S",
+      "puertos": 24,
+      "color": "2",
+      "x": -580,
+      "y": 280,
+      "nota": ""
+    },
+    {
+      "id": "R1-PP1",
+      "rack": "R1",
+      "tipo": "patchpanel",
+      "etiqueta": "Patch Panel 3Z",
+      "modelo": "24 puertos UTP Cat6",
+      "puertos": 24,
+      "color": "",
+      "x": -1054,
+      "y": 600,
+      "nota": ""
+    },
+    {
+      "id": "R3-PP1",
+      "rack": "R3",
+      "tipo": "patchpanel",
+      "etiqueta": "Patch Panel 3Z",
+      "modelo": "24 puertos UTP Cat6",
+      "puertos": 24,
+      "color": "",
+      "x": 2440,
+      "y": 1113,
+      "nota": ""
+    },
+    {
+      "id": "R3-SW1",
+      "rack": "R3",
+      "tipo": "switch",
+      "etiqueta": "Switch 1 | Cisco",
+      "modelo": "",
+      "puertos": 28,
+      "color": "#c44a4a",
+      "x": 2894,
+      "y": 1300,
+      "nota": ""
+    },
+    {
+      "id": "R2-PP1",
+      "rack": "R2",
+      "tipo": "patchpanel",
+      "etiqueta": "Patch Panel 3Z",
+      "modelo": "24 puertos UTP Cat6",
+      "puertos": 24,
+      "color": "",
+      "x": -1034,
+      "y": 1400,
+      "nota": ""
+    },
+    {
+      "id": "R2-SW1",
+      "rack": "R2",
+      "tipo": "switch",
+      "etiqueta": "Switch 1 | Gigabit 24p Smart",
+      "modelo": "TP-Link TL-SG1024S",
+      "puertos": 24,
+      "color": "3",
+      "x": -580,
+      "y": 1600,
+      "nota": ""
+    },
+    {
+      "id": "R3-PP2",
+      "rack": "R3",
+      "tipo": "patchpanel",
+      "etiqueta": "Patch Panel 3Z",
+      "modelo": "24 puertos UTP Cat5e (Nada conectado)",
+      "puertos": 24,
+      "color": "",
+      "x": 2440,
+      "y": 1660,
+      "nota": ""
+    },
+    {
+      "id": "R2-PP2",
+      "rack": "R2",
+      "tipo": "patchpanel",
+      "etiqueta": "Patch Panel 3Z",
+      "modelo": "24 puertos UTP Cat6",
+      "puertos": 24,
+      "color": "",
+      "x": -1034,
+      "y": 1840,
+      "nota": ""
+    },
+    {
+      "id": "R3-SW2",
+      "rack": "R3",
+      "tipo": "switch",
+      "etiqueta": "Switch 2 | Cisco",
+      "modelo": "",
+      "puertos": 28,
+      "color": "#273fa0",
+      "x": 2894,
+      "y": 1840,
+      "nota": ""
+    },
+    {
+      "id": "R2-SW2",
+      "rack": "R2",
+      "tipo": "switch",
+      "etiqueta": "Switch 2 | Gigabit 24p Smart",
+      "modelo": "TP-Link TL-SG1024S",
+      "puertos": 24,
+      "color": "5",
+      "x": -580,
+      "y": 2020,
+      "nota": ""
+    },
+    {
+      "id": "R3-PP3",
+      "rack": "R3",
+      "tipo": "patchpanel",
+      "etiqueta": "Patch Panel 3Z",
+      "modelo": "24 puertos UTP Cat6",
+      "puertos": 24,
+      "color": "",
+      "x": 2440,
+      "y": 2145,
+      "nota": ""
+    },
+    {
+      "id": "R2-PP3",
+      "rack": "R2",
+      "tipo": "patchpanel",
+      "etiqueta": "Patch Panel 3Z",
+      "modelo": "24 puertos UTP Cat6",
+      "puertos": 24,
+      "color": "",
+      "x": -1034,
+      "y": 2240,
+      "nota": ""
+    },
+    {
+      "id": "R2-SW3",
+      "rack": "R2",
+      "tipo": "switch",
+      "etiqueta": "Switch 3 | Cisco",
+      "modelo": "",
+      "puertos": 28,
+      "color": "#273fa0",
+      "x": -688,
+      "y": 2500,
+      "nota": ""
+    },
+    {
+      "id": "FORTINET",
+      "rack": "",
+      "tipo": "firewall",
+      "etiqueta": "Fortinet FortiGate",
+      "modelo": "",
+      "puertos": 0,
+      "color": "4",
+      "x": -522,
+      "y": -93,
+      "nota": ""
+    },
+    {
+      "id": "MIKROTIK",
+      "rack": "",
+      "tipo": "router",
+      "etiqueta": "MikroTik",
+      "modelo": "",
+      "puertos": 0,
+      "color": "",
+      "x": -522,
+      "y": 21,
+      "nota": ""
+    },
+    {
+      "id": "ISP",
+      "rack": "",
+      "tipo": "isp",
+      "etiqueta": "Proveedores de Servicios de Internet",
+      "modelo": "",
+      "puertos": 0,
+      "color": "4",
+      "x": -115,
+      "y": -280,
+      "nota": ""
+    },
+    {
+      "id": "AP-wifi-area-financiera",
+      "rack": "",
+      "tipo": "ap",
+      "etiqueta": "Wifi Área Financiera",
+      "modelo": "",
+      "puertos": 0,
+      "color": "",
+      "x": 1460,
+      "y": 992,
+      "nota": ""
+    },
+    {
+      "id": "AP-wifi-direccion",
+      "rack": "",
+      "tipo": "ap",
+      "etiqueta": "Wifi Dirección",
+      "modelo": "",
+      "puertos": 0,
+      "color": "",
+      "x": 1460,
+      "y": 800,
+      "nota": ""
+    },
+    {
+      "id": "AP-sala-multicopiado",
+      "rack": "",
+      "tipo": "ap",
+      "etiqueta": "Sala Multicopiado",
+      "modelo": "",
+      "puertos": 0,
+      "color": "",
+      "x": 1720,
+      "y": 1920,
+      "nota": ""
+    },
+    {
+      "id": "AP-sala-de-profesores",
+      "rack": "",
+      "tipo": "ap",
+      "etiqueta": "Sala de Profesores",
+      "modelo": "",
+      "puertos": 0,
+      "color": "",
+      "x": 5400,
+      "y": 2000,
+      "nota": ""
+    }
+  ],
+  "puertos": [
+    {
+      "id": "pto:R1-SW1-p1",
+      "equipo": "R1-SW1",
+      "n": 1,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R1-SW1-p2",
+      "equipo": "R1-SW1",
+      "n": 2,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R1-SW1-p3",
+      "equipo": "R1-SW1",
+      "n": 3,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R1-SW1-p4",
+      "equipo": "R1-SW1",
+      "n": 4,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R1-SW1-p5",
+      "equipo": "R1-SW1",
+      "n": 5,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R1-SW1-p6",
+      "equipo": "R1-SW1",
+      "n": 6,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R1-SW1-p7",
+      "equipo": "R1-SW1",
+      "n": 7,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R1-SW1-p8",
+      "equipo": "R1-SW1",
+      "n": 8,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R1-SW1-p9",
+      "equipo": "R1-SW1",
+      "n": 9,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R1-SW1-p10",
+      "equipo": "R1-SW1",
+      "n": 10,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R1-SW1-p11",
+      "equipo": "R1-SW1",
+      "n": 11,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R1-SW1-p12",
+      "equipo": "R1-SW1",
+      "n": 12,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R1-SW1-p13",
+      "equipo": "R1-SW1",
+      "n": 13,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R1-SW1-p14",
+      "equipo": "R1-SW1",
+      "n": 14,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R1-SW1-p15",
+      "equipo": "R1-SW1",
+      "n": 15,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R1-SW1-p16",
+      "equipo": "R1-SW1",
+      "n": 16,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R1-SW1-p17",
+      "equipo": "R1-SW1",
+      "n": 17,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R1-SW1-p18",
+      "equipo": "R1-SW1",
+      "n": 18,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R1-SW1-p19",
+      "equipo": "R1-SW1",
+      "n": 19,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R1-SW1-p20",
+      "equipo": "R1-SW1",
+      "n": 20,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R1-SW1-p21",
+      "equipo": "R1-SW1",
+      "n": 21,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R1-SW1-p22",
+      "equipo": "R1-SW1",
+      "n": 22,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R1-SW1-p23",
+      "equipo": "R1-SW1",
+      "n": 23,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R1-SW1-p24",
+      "equipo": "R1-SW1",
+      "n": 24,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R1-PP1-p1",
+      "equipo": "R1-PP1",
+      "n": 1,
+      "estado": "desconocido",
+      "nota": "destino desconocido según canvas"
+    },
+    {
+      "id": "pto:R1-PP1-p2",
+      "equipo": "R1-PP1",
+      "n": 2,
+      "estado": "desconocido",
+      "nota": "destino desconocido según canvas"
+    },
+    {
+      "id": "pto:R1-PP1-p3",
+      "equipo": "R1-PP1",
+      "n": 3,
+      "estado": "desconocido",
+      "nota": "destino desconocido según canvas"
+    },
+    {
+      "id": "pto:R1-PP1-p4",
+      "equipo": "R1-PP1",
+      "n": 4,
+      "estado": "desconocido",
+      "nota": "destino desconocido según canvas"
+    },
+    {
+      "id": "pto:R1-PP1-p5",
+      "equipo": "R1-PP1",
+      "n": 5,
+      "estado": "desconocido",
+      "nota": "destino desconocido según canvas"
+    },
+    {
+      "id": "pto:R1-PP1-p6",
+      "equipo": "R1-PP1",
+      "n": 6,
+      "estado": "desconocido",
+      "nota": "destino desconocido según canvas"
+    },
+    {
+      "id": "pto:R1-PP1-p7",
+      "equipo": "R1-PP1",
+      "n": 7,
+      "estado": "desconocido",
+      "nota": "sin etiquetar en el levantamiento"
+    },
+    {
+      "id": "pto:R1-PP1-p8",
+      "equipo": "R1-PP1",
+      "n": 8,
+      "estado": "desconocido",
+      "nota": "sin etiquetar en el levantamiento"
+    },
+    {
+      "id": "pto:R1-PP1-p9",
+      "equipo": "R1-PP1",
+      "n": 9,
+      "estado": "desconocido",
+      "nota": "sin etiquetar en el levantamiento"
+    },
+    {
+      "id": "pto:R1-PP1-p10",
+      "equipo": "R1-PP1",
+      "n": 10,
+      "estado": "desconocido",
+      "nota": "sin etiquetar en el levantamiento"
+    },
+    {
+      "id": "pto:R1-PP1-p11",
+      "equipo": "R1-PP1",
+      "n": 11,
+      "estado": "desconocido",
+      "nota": "sin etiquetar en el levantamiento"
+    },
+    {
+      "id": "pto:R1-PP1-p12",
+      "equipo": "R1-PP1",
+      "n": 12,
+      "estado": "desconocido",
+      "nota": "sin etiquetar en el levantamiento"
+    },
+    {
+      "id": "pto:R1-PP1-p13",
+      "equipo": "R1-PP1",
+      "n": 13,
+      "estado": "desconocido",
+      "nota": "sin etiquetar en el levantamiento"
+    },
+    {
+      "id": "pto:R1-PP1-p14",
+      "equipo": "R1-PP1",
+      "n": 14,
+      "estado": "desconocido",
+      "nota": "sin etiquetar en el levantamiento"
+    },
+    {
+      "id": "pto:R1-PP1-p15",
+      "equipo": "R1-PP1",
+      "n": 15,
+      "estado": "desconocido",
+      "nota": "sin etiquetar en el levantamiento"
+    },
+    {
+      "id": "pto:R1-PP1-p16",
+      "equipo": "R1-PP1",
+      "n": 16,
+      "estado": "desconocido",
+      "nota": "sin etiquetar en el levantamiento"
+    },
+    {
+      "id": "pto:R1-PP1-p17",
+      "equipo": "R1-PP1",
+      "n": 17,
+      "estado": "desconocido",
+      "nota": "sin etiquetar en el levantamiento"
+    },
+    {
+      "id": "pto:R1-PP1-p18",
+      "equipo": "R1-PP1",
+      "n": 18,
+      "estado": "desconocido",
+      "nota": "sin etiquetar en el levantamiento"
+    },
+    {
+      "id": "pto:R1-PP1-p19",
+      "equipo": "R1-PP1",
+      "n": 19,
+      "estado": "desconocido",
+      "nota": "sin etiquetar en el levantamiento"
+    },
+    {
+      "id": "pto:R1-PP1-p20",
+      "equipo": "R1-PP1",
+      "n": 20,
+      "estado": "desconocido",
+      "nota": "sin etiquetar en el levantamiento"
+    },
+    {
+      "id": "pto:R1-PP1-p21",
+      "equipo": "R1-PP1",
+      "n": 21,
+      "estado": "desconocido",
+      "nota": "sin etiquetar en el levantamiento"
+    },
+    {
+      "id": "pto:R1-PP1-p22",
+      "equipo": "R1-PP1",
+      "n": 22,
+      "estado": "desconocido",
+      "nota": "sin etiquetar en el levantamiento"
+    },
+    {
+      "id": "pto:R1-PP1-p23",
+      "equipo": "R1-PP1",
+      "n": 23,
+      "estado": "desconocido",
+      "nota": "destino desconocido según canvas"
+    },
+    {
+      "id": "pto:R1-PP1-p24",
+      "equipo": "R1-PP1",
+      "n": 24,
+      "estado": "desconocido",
+      "nota": "destino desconocido según canvas"
+    },
+    {
+      "id": "pto:R3-PP1-p1",
+      "equipo": "R3-PP1",
+      "n": 1,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP1-p2",
+      "equipo": "R3-PP1",
+      "n": 2,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP1-p3",
+      "equipo": "R3-PP1",
+      "n": 3,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP1-p4",
+      "equipo": "R3-PP1",
+      "n": 4,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP1-p5",
+      "equipo": "R3-PP1",
+      "n": 5,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP1-p6",
+      "equipo": "R3-PP1",
+      "n": 6,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP1-p7",
+      "equipo": "R3-PP1",
+      "n": 7,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP1-p8",
+      "equipo": "R3-PP1",
+      "n": 8,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP1-p9",
+      "equipo": "R3-PP1",
+      "n": 9,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP1-p10",
+      "equipo": "R3-PP1",
+      "n": 10,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP1-p11",
+      "equipo": "R3-PP1",
+      "n": 11,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP1-p12",
+      "equipo": "R3-PP1",
+      "n": 12,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP1-p13",
+      "equipo": "R3-PP1",
+      "n": 13,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP1-p14",
+      "equipo": "R3-PP1",
+      "n": 14,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP1-p15",
+      "equipo": "R3-PP1",
+      "n": 15,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP1-p16",
+      "equipo": "R3-PP1",
+      "n": 16,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP1-p17",
+      "equipo": "R3-PP1",
+      "n": 17,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP1-p18",
+      "equipo": "R3-PP1",
+      "n": 18,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP1-p19",
+      "equipo": "R3-PP1",
+      "n": 19,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP1-p20",
+      "equipo": "R3-PP1",
+      "n": 20,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP1-p21",
+      "equipo": "R3-PP1",
+      "n": 21,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP1-p22",
+      "equipo": "R3-PP1",
+      "n": 22,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP1-p23",
+      "equipo": "R3-PP1",
+      "n": 23,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP1-p24",
+      "equipo": "R3-PP1",
+      "n": 24,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW1-p1",
+      "equipo": "R3-SW1",
+      "n": 1,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW1-p2",
+      "equipo": "R3-SW1",
+      "n": 2,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW1-p3",
+      "equipo": "R3-SW1",
+      "n": 3,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW1-p4",
+      "equipo": "R3-SW1",
+      "n": 4,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW1-p5",
+      "equipo": "R3-SW1",
+      "n": 5,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW1-p6",
+      "equipo": "R3-SW1",
+      "n": 6,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW1-p7",
+      "equipo": "R3-SW1",
+      "n": 7,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW1-p8",
+      "equipo": "R3-SW1",
+      "n": 8,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW1-p9",
+      "equipo": "R3-SW1",
+      "n": 9,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW1-p10",
+      "equipo": "R3-SW1",
+      "n": 10,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW1-p11",
+      "equipo": "R3-SW1",
+      "n": 11,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW1-p12",
+      "equipo": "R3-SW1",
+      "n": 12,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW1-p13",
+      "equipo": "R3-SW1",
+      "n": 13,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW1-p14",
+      "equipo": "R3-SW1",
+      "n": 14,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW1-p15",
+      "equipo": "R3-SW1",
+      "n": 15,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW1-p16",
+      "equipo": "R3-SW1",
+      "n": 16,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW1-p17",
+      "equipo": "R3-SW1",
+      "n": 17,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW1-p18",
+      "equipo": "R3-SW1",
+      "n": 18,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW1-p19",
+      "equipo": "R3-SW1",
+      "n": 19,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW1-p20",
+      "equipo": "R3-SW1",
+      "n": 20,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW1-p21",
+      "equipo": "R3-SW1",
+      "n": 21,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW1-p22",
+      "equipo": "R3-SW1",
+      "n": 22,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW1-p23",
+      "equipo": "R3-SW1",
+      "n": 23,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW1-p24",
+      "equipo": "R3-SW1",
+      "n": 24,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW1-p25",
+      "equipo": "R3-SW1",
+      "n": 25,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW1-p26",
+      "equipo": "R3-SW1",
+      "n": 26,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW1-p27",
+      "equipo": "R3-SW1",
+      "n": 27,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW1-p28",
+      "equipo": "R3-SW1",
+      "n": 28,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP1-p1",
+      "equipo": "R2-PP1",
+      "n": 1,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP1-p2",
+      "equipo": "R2-PP1",
+      "n": 2,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP1-p3",
+      "equipo": "R2-PP1",
+      "n": 3,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP1-p4",
+      "equipo": "R2-PP1",
+      "n": 4,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP1-p5",
+      "equipo": "R2-PP1",
+      "n": 5,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP1-p6",
+      "equipo": "R2-PP1",
+      "n": 6,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP1-p7",
+      "equipo": "R2-PP1",
+      "n": 7,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP1-p8",
+      "equipo": "R2-PP1",
+      "n": 8,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP1-p9",
+      "equipo": "R2-PP1",
+      "n": 9,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP1-p10",
+      "equipo": "R2-PP1",
+      "n": 10,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP1-p11",
+      "equipo": "R2-PP1",
+      "n": 11,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP1-p12",
+      "equipo": "R2-PP1",
+      "n": 12,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP1-p13",
+      "equipo": "R2-PP1",
+      "n": 13,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP1-p14",
+      "equipo": "R2-PP1",
+      "n": 14,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP1-p15",
+      "equipo": "R2-PP1",
+      "n": 15,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP1-p16",
+      "equipo": "R2-PP1",
+      "n": 16,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP1-p17",
+      "equipo": "R2-PP1",
+      "n": 17,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP1-p18",
+      "equipo": "R2-PP1",
+      "n": 18,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP1-p19",
+      "equipo": "R2-PP1",
+      "n": 19,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP1-p20",
+      "equipo": "R2-PP1",
+      "n": 20,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP1-p21",
+      "equipo": "R2-PP1",
+      "n": 21,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP1-p22",
+      "equipo": "R2-PP1",
+      "n": 22,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP1-p23",
+      "equipo": "R2-PP1",
+      "n": 23,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP1-p24",
+      "equipo": "R2-PP1",
+      "n": 24,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW1-p1",
+      "equipo": "R2-SW1",
+      "n": 1,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW1-p2",
+      "equipo": "R2-SW1",
+      "n": 2,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW1-p3",
+      "equipo": "R2-SW1",
+      "n": 3,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW1-p4",
+      "equipo": "R2-SW1",
+      "n": 4,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW1-p5",
+      "equipo": "R2-SW1",
+      "n": 5,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW1-p6",
+      "equipo": "R2-SW1",
+      "n": 6,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW1-p7",
+      "equipo": "R2-SW1",
+      "n": 7,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW1-p8",
+      "equipo": "R2-SW1",
+      "n": 8,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW1-p9",
+      "equipo": "R2-SW1",
+      "n": 9,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW1-p10",
+      "equipo": "R2-SW1",
+      "n": 10,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW1-p11",
+      "equipo": "R2-SW1",
+      "n": 11,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW1-p12",
+      "equipo": "R2-SW1",
+      "n": 12,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW1-p13",
+      "equipo": "R2-SW1",
+      "n": 13,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW1-p14",
+      "equipo": "R2-SW1",
+      "n": 14,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW1-p15",
+      "equipo": "R2-SW1",
+      "n": 15,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW1-p16",
+      "equipo": "R2-SW1",
+      "n": 16,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW1-p17",
+      "equipo": "R2-SW1",
+      "n": 17,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW1-p18",
+      "equipo": "R2-SW1",
+      "n": 18,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW1-p19",
+      "equipo": "R2-SW1",
+      "n": 19,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW1-p20",
+      "equipo": "R2-SW1",
+      "n": 20,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW1-p21",
+      "equipo": "R2-SW1",
+      "n": 21,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW1-p22",
+      "equipo": "R2-SW1",
+      "n": 22,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW1-p23",
+      "equipo": "R2-SW1",
+      "n": 23,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW1-p24",
+      "equipo": "R2-SW1",
+      "n": 24,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP2-p1",
+      "equipo": "R3-PP2",
+      "n": 1,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP2-p2",
+      "equipo": "R3-PP2",
+      "n": 2,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP2-p3",
+      "equipo": "R3-PP2",
+      "n": 3,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP2-p4",
+      "equipo": "R3-PP2",
+      "n": 4,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP2-p5",
+      "equipo": "R3-PP2",
+      "n": 5,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP2-p6",
+      "equipo": "R3-PP2",
+      "n": 6,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP2-p7",
+      "equipo": "R3-PP2",
+      "n": 7,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP2-p8",
+      "equipo": "R3-PP2",
+      "n": 8,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP2-p9",
+      "equipo": "R3-PP2",
+      "n": 9,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP2-p10",
+      "equipo": "R3-PP2",
+      "n": 10,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP2-p11",
+      "equipo": "R3-PP2",
+      "n": 11,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP2-p12",
+      "equipo": "R3-PP2",
+      "n": 12,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP2-p13",
+      "equipo": "R3-PP2",
+      "n": 13,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP2-p14",
+      "equipo": "R3-PP2",
+      "n": 14,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP2-p15",
+      "equipo": "R3-PP2",
+      "n": 15,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP2-p16",
+      "equipo": "R3-PP2",
+      "n": 16,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP2-p17",
+      "equipo": "R3-PP2",
+      "n": 17,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP2-p18",
+      "equipo": "R3-PP2",
+      "n": 18,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP2-p19",
+      "equipo": "R3-PP2",
+      "n": 19,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP2-p20",
+      "equipo": "R3-PP2",
+      "n": 20,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP2-p21",
+      "equipo": "R3-PP2",
+      "n": 21,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP2-p22",
+      "equipo": "R3-PP2",
+      "n": 22,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP2-p23",
+      "equipo": "R3-PP2",
+      "n": 23,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP2-p24",
+      "equipo": "R3-PP2",
+      "n": 24,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP2-p1",
+      "equipo": "R2-PP2",
+      "n": 1,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP2-p2",
+      "equipo": "R2-PP2",
+      "n": 2,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP2-p3",
+      "equipo": "R2-PP2",
+      "n": 3,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP2-p4",
+      "equipo": "R2-PP2",
+      "n": 4,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP2-p5",
+      "equipo": "R2-PP2",
+      "n": 5,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP2-p6",
+      "equipo": "R2-PP2",
+      "n": 6,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP2-p7",
+      "equipo": "R2-PP2",
+      "n": 7,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP2-p8",
+      "equipo": "R2-PP2",
+      "n": 8,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP2-p9",
+      "equipo": "R2-PP2",
+      "n": 9,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP2-p10",
+      "equipo": "R2-PP2",
+      "n": 10,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP2-p11",
+      "equipo": "R2-PP2",
+      "n": 11,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP2-p12",
+      "equipo": "R2-PP2",
+      "n": 12,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP2-p13",
+      "equipo": "R2-PP2",
+      "n": 13,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP2-p14",
+      "equipo": "R2-PP2",
+      "n": 14,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP2-p15",
+      "equipo": "R2-PP2",
+      "n": 15,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP2-p16",
+      "equipo": "R2-PP2",
+      "n": 16,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP2-p17",
+      "equipo": "R2-PP2",
+      "n": 17,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP2-p18",
+      "equipo": "R2-PP2",
+      "n": 18,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP2-p19",
+      "equipo": "R2-PP2",
+      "n": 19,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP2-p20",
+      "equipo": "R2-PP2",
+      "n": 20,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP2-p21",
+      "equipo": "R2-PP2",
+      "n": 21,
+      "estado": "desconocido",
+      "nota": "sin etiquetar en el levantamiento"
+    },
+    {
+      "id": "pto:R2-PP2-p22",
+      "equipo": "R2-PP2",
+      "n": 22,
+      "estado": "desconocido",
+      "nota": "sin etiquetar en el levantamiento"
+    },
+    {
+      "id": "pto:R2-PP2-p23",
+      "equipo": "R2-PP2",
+      "n": 23,
+      "estado": "desconocido",
+      "nota": "sin etiquetar en el levantamiento"
+    },
+    {
+      "id": "pto:R2-PP2-p24",
+      "equipo": "R2-PP2",
+      "n": 24,
+      "estado": "desconocido",
+      "nota": "sin etiquetar en el levantamiento"
+    },
+    {
+      "id": "pto:R3-SW2-p1",
+      "equipo": "R3-SW2",
+      "n": 1,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW2-p2",
+      "equipo": "R3-SW2",
+      "n": 2,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW2-p3",
+      "equipo": "R3-SW2",
+      "n": 3,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW2-p4",
+      "equipo": "R3-SW2",
+      "n": 4,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW2-p5",
+      "equipo": "R3-SW2",
+      "n": 5,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW2-p6",
+      "equipo": "R3-SW2",
+      "n": 6,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW2-p7",
+      "equipo": "R3-SW2",
+      "n": 7,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW2-p8",
+      "equipo": "R3-SW2",
+      "n": 8,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW2-p9",
+      "equipo": "R3-SW2",
+      "n": 9,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW2-p10",
+      "equipo": "R3-SW2",
+      "n": 10,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW2-p11",
+      "equipo": "R3-SW2",
+      "n": 11,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW2-p12",
+      "equipo": "R3-SW2",
+      "n": 12,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW2-p13",
+      "equipo": "R3-SW2",
+      "n": 13,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW2-p14",
+      "equipo": "R3-SW2",
+      "n": 14,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW2-p15",
+      "equipo": "R3-SW2",
+      "n": 15,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW2-p16",
+      "equipo": "R3-SW2",
+      "n": 16,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW2-p17",
+      "equipo": "R3-SW2",
+      "n": 17,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW2-p18",
+      "equipo": "R3-SW2",
+      "n": 18,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW2-p19",
+      "equipo": "R3-SW2",
+      "n": 19,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW2-p20",
+      "equipo": "R3-SW2",
+      "n": 20,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW2-p21",
+      "equipo": "R3-SW2",
+      "n": 21,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW2-p22",
+      "equipo": "R3-SW2",
+      "n": 22,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW2-p23",
+      "equipo": "R3-SW2",
+      "n": 23,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW2-p24",
+      "equipo": "R3-SW2",
+      "n": 24,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW2-p25",
+      "equipo": "R3-SW2",
+      "n": 25,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW2-p26",
+      "equipo": "R3-SW2",
+      "n": 26,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW2-p27",
+      "equipo": "R3-SW2",
+      "n": 27,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-SW2-p28",
+      "equipo": "R3-SW2",
+      "n": 28,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW2-p1",
+      "equipo": "R2-SW2",
+      "n": 1,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW2-p2",
+      "equipo": "R2-SW2",
+      "n": 2,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW2-p3",
+      "equipo": "R2-SW2",
+      "n": 3,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW2-p4",
+      "equipo": "R2-SW2",
+      "n": 4,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW2-p5",
+      "equipo": "R2-SW2",
+      "n": 5,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW2-p6",
+      "equipo": "R2-SW2",
+      "n": 6,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW2-p7",
+      "equipo": "R2-SW2",
+      "n": 7,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW2-p8",
+      "equipo": "R2-SW2",
+      "n": 8,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW2-p9",
+      "equipo": "R2-SW2",
+      "n": 9,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW2-p10",
+      "equipo": "R2-SW2",
+      "n": 10,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW2-p11",
+      "equipo": "R2-SW2",
+      "n": 11,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW2-p12",
+      "equipo": "R2-SW2",
+      "n": 12,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW2-p13",
+      "equipo": "R2-SW2",
+      "n": 13,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW2-p14",
+      "equipo": "R2-SW2",
+      "n": 14,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW2-p15",
+      "equipo": "R2-SW2",
+      "n": 15,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW2-p16",
+      "equipo": "R2-SW2",
+      "n": 16,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW2-p17",
+      "equipo": "R2-SW2",
+      "n": 17,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW2-p18",
+      "equipo": "R2-SW2",
+      "n": 18,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW2-p19",
+      "equipo": "R2-SW2",
+      "n": 19,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW2-p20",
+      "equipo": "R2-SW2",
+      "n": 20,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW2-p21",
+      "equipo": "R2-SW2",
+      "n": 21,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW2-p22",
+      "equipo": "R2-SW2",
+      "n": 22,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW2-p23",
+      "equipo": "R2-SW2",
+      "n": 23,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW2-p24",
+      "equipo": "R2-SW2",
+      "n": 24,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP3-p1",
+      "equipo": "R3-PP3",
+      "n": 1,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP3-p2",
+      "equipo": "R3-PP3",
+      "n": 2,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP3-p3",
+      "equipo": "R3-PP3",
+      "n": 3,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP3-p4",
+      "equipo": "R3-PP3",
+      "n": 4,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP3-p5",
+      "equipo": "R3-PP3",
+      "n": 5,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP3-p6",
+      "equipo": "R3-PP3",
+      "n": 6,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP3-p7",
+      "equipo": "R3-PP3",
+      "n": 7,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP3-p8",
+      "equipo": "R3-PP3",
+      "n": 8,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP3-p9",
+      "equipo": "R3-PP3",
+      "n": 9,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP3-p10",
+      "equipo": "R3-PP3",
+      "n": 10,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP3-p11",
+      "equipo": "R3-PP3",
+      "n": 11,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP3-p12",
+      "equipo": "R3-PP3",
+      "n": 12,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP3-p13",
+      "equipo": "R3-PP3",
+      "n": 13,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP3-p14",
+      "equipo": "R3-PP3",
+      "n": 14,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP3-p15",
+      "equipo": "R3-PP3",
+      "n": 15,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP3-p16",
+      "equipo": "R3-PP3",
+      "n": 16,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP3-p17",
+      "equipo": "R3-PP3",
+      "n": 17,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP3-p18",
+      "equipo": "R3-PP3",
+      "n": 18,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP3-p19",
+      "equipo": "R3-PP3",
+      "n": 19,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP3-p20",
+      "equipo": "R3-PP3",
+      "n": 20,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP3-p21",
+      "equipo": "R3-PP3",
+      "n": 21,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP3-p22",
+      "equipo": "R3-PP3",
+      "n": 22,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP3-p23",
+      "equipo": "R3-PP3",
+      "n": 23,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R3-PP3-p24",
+      "equipo": "R3-PP3",
+      "n": 24,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP3-p1",
+      "equipo": "R2-PP3",
+      "n": 1,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP3-p2",
+      "equipo": "R2-PP3",
+      "n": 2,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP3-p3",
+      "equipo": "R2-PP3",
+      "n": 3,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP3-p4",
+      "equipo": "R2-PP3",
+      "n": 4,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP3-p5",
+      "equipo": "R2-PP3",
+      "n": 5,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP3-p6",
+      "equipo": "R2-PP3",
+      "n": 6,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP3-p7",
+      "equipo": "R2-PP3",
+      "n": 7,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP3-p8",
+      "equipo": "R2-PP3",
+      "n": 8,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP3-p9",
+      "equipo": "R2-PP3",
+      "n": 9,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP3-p10",
+      "equipo": "R2-PP3",
+      "n": 10,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP3-p11",
+      "equipo": "R2-PP3",
+      "n": 11,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP3-p12",
+      "equipo": "R2-PP3",
+      "n": 12,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP3-p13",
+      "equipo": "R2-PP3",
+      "n": 13,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP3-p14",
+      "equipo": "R2-PP3",
+      "n": 14,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP3-p15",
+      "equipo": "R2-PP3",
+      "n": 15,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP3-p16",
+      "equipo": "R2-PP3",
+      "n": 16,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP3-p17",
+      "equipo": "R2-PP3",
+      "n": 17,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP3-p18",
+      "equipo": "R2-PP3",
+      "n": 18,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP3-p19",
+      "equipo": "R2-PP3",
+      "n": 19,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP3-p20",
+      "equipo": "R2-PP3",
+      "n": 20,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP3-p21",
+      "equipo": "R2-PP3",
+      "n": 21,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP3-p22",
+      "equipo": "R2-PP3",
+      "n": 22,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP3-p23",
+      "equipo": "R2-PP3",
+      "n": 23,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-PP3-p24",
+      "equipo": "R2-PP3",
+      "n": 24,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW3-p1",
+      "equipo": "R2-SW3",
+      "n": 1,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW3-p2",
+      "equipo": "R2-SW3",
+      "n": 2,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW3-p3",
+      "equipo": "R2-SW3",
+      "n": 3,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW3-p4",
+      "equipo": "R2-SW3",
+      "n": 4,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW3-p5",
+      "equipo": "R2-SW3",
+      "n": 5,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW3-p6",
+      "equipo": "R2-SW3",
+      "n": 6,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW3-p7",
+      "equipo": "R2-SW3",
+      "n": 7,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW3-p8",
+      "equipo": "R2-SW3",
+      "n": 8,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW3-p9",
+      "equipo": "R2-SW3",
+      "n": 9,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW3-p10",
+      "equipo": "R2-SW3",
+      "n": 10,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW3-p11",
+      "equipo": "R2-SW3",
+      "n": 11,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW3-p12",
+      "equipo": "R2-SW3",
+      "n": 12,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW3-p13",
+      "equipo": "R2-SW3",
+      "n": 13,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW3-p14",
+      "equipo": "R2-SW3",
+      "n": 14,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW3-p15",
+      "equipo": "R2-SW3",
+      "n": 15,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW3-p16",
+      "equipo": "R2-SW3",
+      "n": 16,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW3-p17",
+      "equipo": "R2-SW3",
+      "n": 17,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW3-p18",
+      "equipo": "R2-SW3",
+      "n": 18,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW3-p19",
+      "equipo": "R2-SW3",
+      "n": 19,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW3-p20",
+      "equipo": "R2-SW3",
+      "n": 20,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW3-p21",
+      "equipo": "R2-SW3",
+      "n": 21,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW3-p22",
+      "equipo": "R2-SW3",
+      "n": 22,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW3-p23",
+      "equipo": "R2-SW3",
+      "n": 23,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW3-p24",
+      "equipo": "R2-SW3",
+      "n": 24,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW3-p25",
+      "equipo": "R2-SW3",
+      "n": 25,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW3-p26",
+      "equipo": "R2-SW3",
+      "n": 26,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW3-p27",
+      "equipo": "R2-SW3",
+      "n": 27,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:R2-SW3-p28",
+      "equipo": "R2-SW3",
+      "n": 28,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:FORTINET-p0",
+      "equipo": "FORTINET",
+      "n": 0,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:MIKROTIK-p0",
+      "equipo": "MIKROTIK",
+      "n": 0,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:ISP-p0",
+      "equipo": "ISP",
+      "n": 0,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:AP-wifi-area-financiera-p0",
+      "equipo": "AP-wifi-area-financiera",
+      "n": 0,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:AP-wifi-direccion-p0",
+      "equipo": "AP-wifi-direccion",
+      "n": 0,
+      "estado": "libre",
+      "nota": ""
+    },
+    {
+      "id": "pto:AP-sala-multicopiado-p0",
+      "equipo": "AP-sala-multicopiado",
+      "n": 0,
+      "estado": "ocupado",
+      "nota": ""
+    },
+    {
+      "id": "pto:AP-sala-de-profesores-p0",
+      "equipo": "AP-sala-de-profesores",
+      "n": 0,
+      "estado": "ocupado",
+      "nota": ""
+    }
+  ],
+  "espacios": [
+    {
+      "id": "esp:kinder-a",
+      "nombre": "Kinder A",
+      "categoria": "sala",
+      "estado": "solo-wifi",
+      "x": -3120,
+      "y": 260,
+      "nota": ""
+    },
+    {
+      "id": "esp:2-basico-a",
+      "nombre": "2° Básico A",
+      "categoria": "sala",
+      "estado": "operativo",
+      "x": -3120,
+      "y": 346,
+      "nota": ""
+    },
+    {
+      "id": "esp:capellania",
+      "nombre": "Capellanía",
+      "categoria": "oficina",
+      "estado": "solo-wifi",
+      "x": -3120,
+      "y": -296,
+      "nota": ""
+    },
+    {
+      "id": "esp:comedor-casino",
+      "nombre": "Comedor / Casino",
+      "categoria": "oficina",
+      "estado": "sin-internet",
+      "x": -2900,
+      "y": -296,
+      "nota": ""
+    },
+    {
+      "id": "esp:salon-de-matematicas",
+      "nombre": "Salón de Matemáticas",
+      "categoria": "oficina",
+      "estado": "operativo",
+      "x": -3120,
+      "y": -210,
+      "nota": ""
+    },
+    {
+      "id": "esp:sala-de-arte",
+      "nombre": "Sala de Arte",
+      "categoria": "oficina",
+      "estado": "sin-internet",
+      "x": -2900,
+      "y": -210,
+      "nota": ""
+    },
+    {
+      "id": "esp:sala-de-multicopiado",
+      "nombre": "Sala de Multicopiado",
+      "categoria": "oficina",
+      "estado": "solo-wifi",
+      "x": -3340,
+      "y": -124,
+      "nota": ""
+    },
+    {
+      "id": "esp:sala-asistentes",
+      "nombre": "Sala Asistentes",
+      "categoria": "oficina",
+      "estado": "sin-verificar",
+      "x": -3120,
+      "y": -124,
+      "nota": ""
+    },
+    {
+      "id": "esp:sala-de-auxiliares",
+      "nombre": "Sala de Auxiliares",
+      "categoria": "oficina",
+      "estado": "sin-verificar",
+      "x": -2900,
+      "y": -124,
+      "nota": ""
+    },
+    {
+      "id": "esp:depto-enlace",
+      "nombre": "Depto. Enlace",
+      "categoria": "oficina",
+      "estado": "sin-verificar",
+      "x": -3340,
+      "y": -38,
+      "nota": ""
+    },
+    {
+      "id": "esp:kinder-b",
+      "nombre": "Kinder B",
+      "categoria": "sala",
+      "estado": "sin-verificar",
+      "x": -2900,
+      "y": 260,
+      "nota": ""
+    },
+    {
+      "id": "esp:4-basico-a",
+      "nombre": "4° Básico A",
+      "categoria": "sala",
+      "estado": "sin-verificar",
+      "x": -3120,
+      "y": 432,
+      "nota": ""
+    },
+    {
+      "id": "esp:2-basico-b",
+      "nombre": "2° Básico B",
+      "categoria": "sala",
+      "estado": "operativo",
+      "x": -2900,
+      "y": 346,
+      "nota": ""
+    },
+    {
+      "id": "esp:ii-medio-a",
+      "nombre": "II° Medio A",
+      "categoria": "sala",
+      "estado": "operativo",
+      "x": -3560,
+      "y": 690,
+      "nota": ""
+    },
+    {
+      "id": "esp:iv-medio",
+      "nombre": "IV° Medio",
+      "categoria": "sala",
+      "estado": "sin-internet",
+      "x": -3560,
+      "y": 776,
+      "nota": ""
+    },
+    {
+      "id": "esp:4-basico-b",
+      "nombre": "4° Básico B",
+      "categoria": "sala",
+      "estado": "operativo",
+      "x": -2900,
+      "y": 432,
+      "nota": ""
+    },
+    {
+      "id": "esp:pre-kinder-pm",
+      "nombre": "Pre Kinder PM",
+      "categoria": "sala",
+      "estado": "sin-verificar",
+      "x": -3340,
+      "y": 260,
+      "nota": ""
+    },
+    {
+      "id": "esp:3-basico-a",
+      "nombre": "3° Básico A",
+      "categoria": "sala",
+      "estado": "operativo",
+      "x": -3560,
+      "y": 432,
+      "nota": ""
+    },
+    {
+      "id": "esp:7-basico-a",
+      "nombre": "7° Básico A",
+      "categoria": "sala",
+      "estado": "sin-internet",
+      "x": -3560,
+      "y": 604,
+      "nota": ""
+    },
+    {
+      "id": "esp:5-basico-a",
+      "nombre": "5° Básico A",
+      "categoria": "sala",
+      "estado": "operativo",
+      "x": -3560,
+      "y": 518,
+      "nota": ""
+    },
+    {
+      "id": "esp:pre-kinder-a",
+      "nombre": "Pre Kinder A",
+      "categoria": "sala",
+      "estado": "operativo",
+      "x": -3560,
+      "y": 260,
+      "nota": ""
+    },
+    {
+      "id": "esp:1-basico-a",
+      "nombre": "1° Básico A",
+      "categoria": "sala",
+      "estado": "operativo",
+      "x": -3560,
+      "y": 346,
+      "nota": ""
+    },
+    {
+      "id": "esp:coordinador-sep",
+      "nombre": "Coordinador SEP",
+      "categoria": "oficina",
+      "estado": "operativo",
+      "x": -3560,
+      "y": -468,
+      "nota": ""
+    },
+    {
+      "id": "esp:depto-orientacion-e-basica",
+      "nombre": "Depto. Orientación E. Básica",
+      "categoria": "oficina",
+      "estado": "operativo",
+      "x": -3340,
+      "y": -468,
+      "nota": ""
+    },
+    {
+      "id": "esp:depto-orientacion-e-media",
+      "nombre": "Depto. Orientación E. Media",
+      "categoria": "oficina",
+      "estado": "sin-verificar",
+      "x": -3120,
+      "y": -468,
+      "nota": ""
+    },
+    {
+      "id": "esp:utp-e-basica",
+      "nombre": "UTP E. Básica",
+      "categoria": "oficina",
+      "estado": "operativo",
+      "x": -2900,
+      "y": -468,
+      "nota": ""
+    },
+    {
+      "id": "esp:utp-e-media",
+      "nombre": "UTP E. Media",
+      "categoria": "oficina",
+      "estado": "sin-verificar",
+      "x": -3560,
+      "y": -382,
+      "nota": ""
+    },
+    {
+      "id": "esp:pie-administrativo",
+      "nombre": "PIE Administrativo",
+      "categoria": "oficina",
+      "estado": "operativo",
+      "x": -3340,
+      "y": -382,
+      "nota": ""
+    },
+    {
+      "id": "esp:aula-de-recursos",
+      "nombre": "Aula de Recursos",
+      "categoria": "oficina",
+      "estado": "operativo",
+      "x": -3120,
+      "y": -382,
+      "nota": ""
+    },
+    {
+      "id": "esp:of-psicopedagogia",
+      "nombre": "Of. Psicopedagogía",
+      "categoria": "oficina",
+      "estado": "sin-verificar",
+      "x": -2900,
+      "y": -382,
+      "nota": ""
+    },
+    {
+      "id": "esp:secretaria",
+      "nombre": "Secretaría",
+      "categoria": "oficina",
+      "estado": "sin-verificar",
+      "x": -3340,
+      "y": -640,
+      "nota": ""
+    },
+    {
+      "id": "esp:secretaria-financiera",
+      "nombre": "Secretaría Financiera",
+      "categoria": "oficina",
+      "estado": "sin-verificar",
+      "x": -3120,
+      "y": -640,
+      "nota": ""
+    },
+    {
+      "id": "esp:sub-direccion",
+      "nombre": "Sub Dirección",
+      "categoria": "oficina",
+      "estado": "sin-verificar",
+      "x": -2900,
+      "y": -640,
+      "nota": ""
+    },
+    {
+      "id": "esp:inspectoria",
+      "nombre": "Inspectoría",
+      "categoria": "oficina",
+      "estado": "sin-verificar",
+      "x": -3340,
+      "y": -554,
+      "nota": ""
+    },
+    {
+      "id": "esp:inspectoria-general",
+      "nombre": "Inspectoría General",
+      "categoria": "oficina",
+      "estado": "sin-verificar",
+      "x": -3120,
+      "y": -554,
+      "nota": ""
+    },
+    {
+      "id": "esp:convivencia-escolar",
+      "nombre": "Convivencia Escolar",
+      "categoria": "oficina",
+      "estado": "sin-verificar",
+      "x": -2900,
+      "y": -554,
+      "nota": ""
+    },
+    {
+      "id": "esp:psicologia-basica",
+      "nombre": "Psicología Básica",
+      "categoria": "oficina",
+      "estado": "solo-wifi",
+      "x": -3560,
+      "y": -296,
+      "nota": ""
+    },
+    {
+      "id": "esp:comedor-junaeb",
+      "nombre": "Comedor JUNAEB",
+      "categoria": "oficina",
+      "estado": "sin-verificar",
+      "x": -3560,
+      "y": -210,
+      "nota": ""
+    },
+    {
+      "id": "esp:sala-fonoaudiologia",
+      "nombre": "Sala Fonoaudiología",
+      "categoria": "oficina",
+      "estado": "solo-wifi",
+      "x": -3560,
+      "y": -124,
+      "nota": ""
+    },
+    {
+      "id": "esp:sala-3a",
+      "nombre": "Sala 3°A",
+      "categoria": "oficina",
+      "estado": "sin-verificar",
+      "x": -3560,
+      "y": -38,
+      "nota": ""
+    },
+    {
+      "id": "esp:ii-medio-b",
+      "nombre": "II° Medio B",
+      "categoria": "sala",
+      "estado": "operativo",
+      "x": -3340,
+      "y": 690,
+      "nota": ""
+    },
+    {
+      "id": "esp:sala-computacion",
+      "nombre": "Sala Computación",
+      "categoria": "sala",
+      "estado": "sin-verificar",
+      "x": -3340,
+      "y": 776,
+      "nota": ""
+    },
+    {
+      "id": "esp:1-basico-b",
+      "nombre": "1° Básico B",
+      "categoria": "sala",
+      "estado": "operativo",
+      "x": -3340,
+      "y": 346,
+      "nota": ""
+    },
+    {
+      "id": "esp:3-basico-b",
+      "nombre": "3° Básico B",
+      "categoria": "sala",
+      "estado": "sin-verificar",
+      "x": -3340,
+      "y": 432,
+      "nota": ""
+    },
+    {
+      "id": "esp:recepcion",
+      "nombre": "Recepción",
+      "categoria": "oficina",
+      "estado": "sin-verificar",
+      "x": -3560,
+      "y": -640,
+      "nota": ""
+    },
+    {
+      "id": "esp:direccion-enfermeria",
+      "nombre": "Dirección / Enfermería",
+      "categoria": "oficina",
+      "estado": "solo-wifi",
+      "x": -3560,
+      "y": -554,
+      "nota": ""
+    },
+    {
+      "id": "esp:psicologia-media",
+      "nombre": "Psicología Media",
+      "categoria": "oficina",
+      "estado": "sin-internet",
+      "x": -3340,
+      "y": -296,
+      "nota": ""
+    },
+    {
+      "id": "esp:laboratorio-ciencias",
+      "nombre": "Laboratorio Ciencias",
+      "categoria": "oficina",
+      "estado": "operativo",
+      "x": -3340,
+      "y": -210,
+      "nota": ""
+    },
+    {
+      "id": "esp:8-basico-a",
+      "nombre": "8° Básico A",
+      "categoria": "sala",
+      "estado": "sin-verificar",
+      "x": -3120,
+      "y": 604,
+      "nota": ""
+    },
+    {
+      "id": "esp:i-medio-a",
+      "nombre": "I° Medio A",
+      "categoria": "sala",
+      "estado": "operativo",
+      "x": -2900,
+      "y": 604,
+      "nota": ""
+    },
+    {
+      "id": "esp:5-basico-b",
+      "nombre": "5° Básico B",
+      "categoria": "sala",
+      "estado": "sin-verificar",
+      "x": -3340,
+      "y": 518,
+      "nota": ""
+    },
+    {
+      "id": "esp:6-basico-a",
+      "nombre": "6° Básico A",
+      "categoria": "sala",
+      "estado": "sin-verificar",
+      "x": -3120,
+      "y": 518,
+      "nota": ""
+    },
+    {
+      "id": "esp:7-basico-b",
+      "nombre": "7° Básico B",
+      "categoria": "sala",
+      "estado": "operativo",
+      "x": -3340,
+      "y": 604,
+      "nota": ""
+    },
+    {
+      "id": "esp:6-basico-b",
+      "nombre": "6° Básico B",
+      "categoria": "sala",
+      "estado": "operativo",
+      "x": -2900,
+      "y": 518,
+      "nota": ""
+    },
+    {
+      "id": "esp:biblioteca-cra",
+      "nombre": "Biblioteca / CRA",
+      "categoria": "sala",
+      "estado": "solo-wifi",
+      "x": -3560,
+      "y": 862,
+      "nota": ""
+    },
+    {
+      "id": "esp:8-basico-b",
+      "nombre": "8° Básico B",
+      "categoria": "sala",
+      "estado": "sin-verificar",
+      "x": -3340,
+      "y": 862,
+      "nota": ""
+    },
+    {
+      "id": "esp:i-medio-b",
+      "nombre": "I° Medio B",
+      "categoria": "sala",
+      "estado": "sin-verificar",
+      "x": -3120,
+      "y": 862,
+      "nota": ""
+    },
+    {
+      "id": "esp:iii-medio-b",
+      "nombre": "III° Medio B",
+      "categoria": "sala",
+      "estado": "sin-internet",
+      "x": -2900,
+      "y": 690,
+      "nota": ""
+    },
+    {
+      "id": "esp:iii-medio-a",
+      "nombre": "III° Medio A",
+      "categoria": "sala",
+      "estado": "sin-internet",
+      "x": -3120,
+      "y": 690,
+      "nota": ""
+    },
+    {
+      "id": "esp:sala-musica",
+      "nombre": "Sala Música",
+      "categoria": "sala",
+      "estado": "sin-verificar",
+      "x": -3120,
+      "y": 776,
+      "nota": ""
+    },
+    {
+      "id": "esp:sala-ed-fisica",
+      "nombre": "Sala Ed. Física",
+      "categoria": "sala",
+      "estado": "sin-verificar",
+      "x": -2900,
+      "y": 776,
+      "nota": ""
+    }
+  ],
+  "enlaces": [
+    {
+      "a": "pto:FORTINET-p0",
+      "b": "pto:MIKROTIK-p0",
+      "tipo": "borde",
+      "nota": ""
+    },
+    {
+      "a": "pto:R1-SW1-p23",
+      "b": "pto:R2-SW1-p24",
+      "tipo": "uplink",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-SW1-p22",
+      "b": "pto:AP-sala-multicopiado-p0",
+      "tipo": "roseta",
+      "nota": ""
+    },
+    {
+      "a": "pto:R1-SW1-p24",
+      "b": "pto:R1-PP1-p24",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R1-SW1-p1",
+      "b": "pto:R1-PP1-p1",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R1-SW1-p2",
+      "b": "pto:R1-PP1-p2",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R1-SW1-p3",
+      "b": "pto:R1-PP1-p3",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R1-SW1-p4",
+      "b": "pto:R1-PP1-p4",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R1-SW1-p5",
+      "b": "pto:R1-PP1-p5",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R1-SW1-p6",
+      "b": "pto:R1-PP1-p6",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:ISP-p0",
+      "b": "pto:R1-PP1-p23",
+      "tipo": "borde",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-PP1-p1",
+      "b": "pto:R3-SW1-p1",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-PP1-p2",
+      "b": "pto:R3-SW1-p4",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-PP1-p3",
+      "b": "pto:R3-SW2-p9",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-PP1-p4",
+      "b": "pto:R3-SW2-p11",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-PP1-p6",
+      "b": "pto:R3-SW1-p3",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-PP1-p8",
+      "b": "pto:R3-SW1-p5",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-PP1-p12",
+      "b": "pto:R3-SW1-p12",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-PP1-p14",
+      "b": "pto:R3-SW1-p2",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-PP1-p16",
+      "b": "pto:R3-SW1-p13",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-PP1-p17",
+      "b": "pto:R3-SW1-p14",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-PP1-p18",
+      "b": "pto:R3-SW1-p19",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-PP1-p19",
+      "b": "pto:R3-SW1-p20",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-PP1-p21",
+      "b": "pto:R3-SW1-p24",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-PP1-p22",
+      "b": "pto:R3-SW1-p23",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-PP1-p23",
+      "b": "pto:R3-SW1-p22",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-SW1-p28",
+      "b": "pto:R3-SW2-p28",
+      "tipo": "uplink",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-PP1-p5",
+      "b": "pto:R3-SW2-p7",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-PP3-p7",
+      "b": "pto:R3-SW2-p12",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-PP3-p10",
+      "b": "pto:R3-SW2-p14",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-PP3-p9",
+      "b": "pto:R3-SW2-p15",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-PP3-p11",
+      "b": "pto:R3-SW2-p16",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-PP3-p17",
+      "b": "pto:R3-SW2-p17",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-PP3-p18",
+      "b": "pto:R3-SW2-p18",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-PP3-p19",
+      "b": "pto:R3-SW2-p20",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-PP3-p20",
+      "b": "pto:R3-SW2-p19",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-PP3-p21",
+      "b": "pto:R3-SW2-p21",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-PP3-p22",
+      "b": "pto:R3-SW2-p23",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-PP3-p23",
+      "b": "pto:R3-SW2-p22",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-PP3-p24",
+      "b": "pto:R3-SW2-p26",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R3-SW2-p24",
+      "b": "pto:AP-sala-de-profesores-p0",
+      "tipo": "roseta",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-SW1-p20",
+      "b": "pto:R3-SW1-p26",
+      "tipo": "uplink",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP1-p1",
+      "b": "pto:R2-SW1-p1",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP1-p2",
+      "b": "pto:R2-SW1-p2",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP1-p3",
+      "b": "pto:R2-SW1-p3",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP1-p4",
+      "b": "pto:R2-SW1-p4",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP1-p5",
+      "b": "pto:R2-SW1-p6",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP1-p6",
+      "b": "pto:R2-SW1-p8",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP1-p7",
+      "b": "pto:R2-SW1-p7",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP1-p8",
+      "b": "pto:R2-SW1-p9",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP1-p9",
+      "b": "pto:R2-SW1-p11",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP1-p10",
+      "b": "pto:R2-SW1-p13",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP1-p24",
+      "b": "pto:R2-SW1-p15",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP2-p1",
+      "b": "pto:R2-SW2-p2",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP2-p2",
+      "b": "pto:R2-SW2-p1",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP2-p3",
+      "b": "pto:R2-SW2-p4",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP2-p4",
+      "b": "pto:R2-SW2-p3",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP2-p5",
+      "b": "pto:R2-SW2-p6",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP2-p6",
+      "b": "pto:R2-SW2-p5",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP2-p7",
+      "b": "pto:R2-SW2-p8",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP2-p8",
+      "b": "pto:R2-SW2-p7",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP2-p9",
+      "b": "pto:R2-SW2-p10",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP2-p10",
+      "b": "pto:R2-SW2-p9",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP2-p11",
+      "b": "pto:R2-SW2-p12",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP2-p12",
+      "b": "pto:R2-SW2-p11",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP2-p13",
+      "b": "pto:R2-SW2-p14",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP2-p14",
+      "b": "pto:R2-SW2-p13",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP2-p15",
+      "b": "pto:R2-SW2-p16",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP2-p16",
+      "b": "pto:R2-SW2-p15",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP2-p17",
+      "b": "pto:R2-SW2-p18",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP2-p18",
+      "b": "pto:R2-SW2-p20",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP2-p19",
+      "b": "pto:R2-SW2-p22",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP3-p1",
+      "b": "pto:R2-SW3-p1",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP3-p2",
+      "b": "pto:R2-SW3-p2",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP3-p3",
+      "b": "pto:R2-SW3-p3",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP3-p4",
+      "b": "pto:R2-SW3-p4",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP3-p5",
+      "b": "pto:R2-SW3-p5",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP3-p6",
+      "b": "pto:R2-SW3-p6",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP3-p7",
+      "b": "pto:R2-SW3-p7",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP3-p8",
+      "b": "pto:R2-SW3-p8",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP3-p9",
+      "b": "pto:R2-SW3-p9",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP3-p10",
+      "b": "pto:R2-SW3-p10",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP3-p11",
+      "b": "pto:R2-SW3-p11",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP3-p12",
+      "b": "pto:R2-SW3-p12",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP3-p13",
+      "b": "pto:R2-SW3-p13",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP3-p14",
+      "b": "pto:R2-SW3-p14",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP3-p15",
+      "b": "pto:R2-SW3-p15",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP3-p16",
+      "b": "pto:R2-SW3-p16",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP3-p17",
+      "b": "pto:R2-SW3-p17",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP3-p18",
+      "b": "pto:R2-SW3-p18",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP3-p19",
+      "b": "pto:R2-SW3-p19",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP3-p20",
+      "b": "pto:R2-SW3-p20",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP3-p21",
+      "b": "pto:R2-SW3-p21",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP3-p22",
+      "b": "pto:R2-SW3-p22",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP3-p23",
+      "b": "pto:R2-SW3-p23",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "pto:R2-PP3-p24",
+      "b": "pto:R2-SW3-p24",
+      "tipo": "patch",
+      "nota": ""
+    },
+    {
+      "a": "esp:utp-e-basica",
+      "b": "pto:R2-PP1-p19",
+      "tipo": "roseta",
+      "nota": "según el canvas, sin verificar en terreno"
+    },
+    {
+      "a": "esp:pie-administrativo",
+      "b": "pto:R2-PP1-p18",
+      "tipo": "roseta",
+      "nota": "según el canvas, sin verificar en terreno"
+    }
+  ],
+  "revisar": [
+    {
+      "objetivo": "pto:R2-PP2-p1",
+      "nota": "edge sin significado claro desde el grupo \"Rack 1 - Sala Enlace\" en el canvas"
+    },
+    {
+      "objetivo": "pto:R2-PP2-p2",
+      "nota": "edge sin significado claro desde el grupo \"Rack 1 - Sala Enlace\" en el canvas"
+    },
+    {
+      "objetivo": "pto:R2-PP2-p3",
+      "nota": "edge sin significado claro desde el grupo \"Rack 1 - Sala Enlace\" en el canvas"
+    },
+    {
+      "objetivo": "R3",
+      "nota": "segmento IP por confirmar (detectados 192.168.20/30/60.x)"
+    },
+    {
+      "objetivo": "R2",
+      "nota": "segmento IP por confirmar (detectados 192.168.20/30/60.x)"
+    },
+    {
+      "objetivo": "R1",
+      "nota": "segmento IP por confirmar (detectados 192.168.20/30/60.x)"
+    },
+    {
+      "objetivo": "esp:utp-e-basica",
+      "nota": "asignación tomada de la nota del canvas (pto:R2-PP1-p19), sin verificar en terreno"
+    },
+    {
+      "objetivo": "esp:pie-administrativo",
+      "nota": "asignación tomada de la nota del canvas (pto:R2-PP1-p18), sin verificar en terreno"
+    }
+  ]
+}
