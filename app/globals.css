@@ -165,7 +165,7 @@ button { cursor:pointer; }
 .net-d-link.alcance{opacity:.4}
 .net-d-link.ruta{opacity:1;stroke-width:6}
 .net-d-nodo rect{fill:var(--surface);stroke:#c2c9d2;stroke-width:1.5;cursor:pointer}
-.net-d-nodo.equipo>rect{fill:#f4f6f8}
+.net-d-nodo.equipo>rect{fill:#f4f6f8;cursor:grab;pointer-events:none}
 .net-d-nodo.aparato>rect{fill:#eef1f4}
 .net-d-nodo.espacio>rect,.net-d-nodo.cubiculo>rect{fill:var(--surface)}
 .net-d-nodo.alcance>rect{stroke:#8da8c2}
