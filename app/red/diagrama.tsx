@@ -60,8 +60,13 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
   const ajustar = useCallback(() => {
     const caja = contenedor.current?.getBoundingClientRect();
     if (!caja || !layout.ancho) return;
-    const escala = Math.min(caja.width / (layout.ancho + MARGEN * 2), caja.height / (layout.alto + MARGEN * 2));
-    setVista({ escala, x: (caja.width - layout.ancho * escala) / 2, y: (caja.height - layout.alto * escala) / 2 });
+    const escala = Math.min(Math.max(caja.width / (layout.ancho + MARGEN * 2), 0.55), 1.15);
+    const alto = layout.alto * escala;
+    setVista({
+      escala,
+      x: (caja.width - layout.ancho * escala) / 2,
+      y: alto < caja.height ? (caja.height - alto) / 2 : MARGEN * escala,
+    });
   }, [layout]);
 
   useEffect(() => { ajustar(); }, [ajustar]);
@@ -138,6 +143,7 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
           <button onClick={() => setVista(actual => ({ ...actual, escala: Math.min(actual.escala * 1.25, 4) }))} aria-label="Acercar">+</button>
           <button onClick={() => setVista(actual => ({ ...actual, escala: Math.max(actual.escala / 1.25, 0.1) }))} aria-label="Alejar">−</button>
           <button onClick={ajustar}>AJUSTAR A LA VISTA</button>
+          <button onClick={() => setAbiertas(new Set())} disabled={!abiertas.size}>CERRAR TODO</button>
         </div>
         <p className="net-diagram-hint">{origen
           ? `Conectando desde ${etiquetaEndpoint(estado, origen)} · clic en el destino, esc para cancelar`

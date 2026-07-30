@@ -88,6 +88,7 @@ button { cursor:pointer; }
 .net-seg{display:inline-flex;border:1px solid var(--line);border-radius:5px;overflow:hidden;background:var(--surface)}
 .net-seg button{border:0;background:transparent;padding:9px 12px;font:700 9px var(--font-mono);letter-spacing:.08em;color:var(--muted)}
 .net-seg button.on{background:var(--ink);color:#fff}
+.net-seg button:disabled{cursor:default;opacity:.45}
 .net-racks-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:12px}
 .net-rack-name{margin:0 0 14px;font:700 11px var(--font-mono);color:var(--ink)}.net-rack-name small{display:block;margin-top:4px;color:var(--muted);font-family:var(--font-manrope);font-size:10px;font-weight:600;white-space:pre-line}
 .net-eq{margin-bottom:14px}
