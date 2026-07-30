@@ -212,7 +212,7 @@ Medidos en el canvas real y resueltos explícitamente:
 - `ISP.md → puerto 23` de un patch panel: el borde **ya está conectado a un puerto** → enlace real de tipo `borde`, no nota.
 - `Fortinet.md → MikroTik.md` → enlace de tipo `borde` entre sus puertos sintéticos `p0`.
 - `grupo Rack 2 → grupo Administrativo` → no es enlace: pasa a `net_racks.notas`.
-- 4 nodos `## AP` (Área Financiera, Dirección, Multicopiado, Sala de Profesores) → equipos tipo `ap` con `puertos: 0`.
+- 4 nodos `## AP` (Área Financiera, Dirección, Multicopiado, Sala de Profesores) → equipos tipo `ap` con `puertos: 0`. **Dos de ellos ya están cableados a un puerto en el canvas** (Multicopiado al 22 y Sala de Profesores al 24): esos dos edges se importan como enlaces de tipo `roseta`, porque un AP cuelga de un puerto igual que la roseta de una sala y no es cableado interno del rack. Los otros dos APs quedan sin enlace.
 - 3 nodos `.md` de documentación (Capacitación TI, Plan de trabajo, Estado Conectividad) y 4 imágenes o planos → notas, o se ignoran. Nunca equipos.
 - 3 edges del grupo Rack 1 hacia los puertos 1, 2 y 3 de su panel, sin significado claro → entrada `revisar` en la bitácora.
 - Los 3 nodos de segmento IP marcados "por confirmar" (detectados 192.168.20/30/60.x) → `net_racks.notas` y una entrada `revisar` por rack.
