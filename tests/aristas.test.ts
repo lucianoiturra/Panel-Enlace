@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import semilla from "../lib/red/semilla.json" with { type: "json" };
-import { agruparEnlaces, nodoDeExtremo } from "../lib/red/aristas.ts";
+import { agruparEnlaces, aristasParaDibujar, nodoDeExtremo } from "../lib/red/aristas.ts";
 import type { EstadoRed } from "../lib/red/modelo.ts";
 
 const real = (): EstadoRed => ({ ...semilla, bitacora: [], cubiculos: [] } as unknown as EstadoRed);
@@ -35,4 +35,31 @@ test("un par con tipos mezclados se queda con el más pesado", () => {
   const [par] = agruparEnlaces(estado);
   assert.equal(par.cuenta, 2);
   assert.equal(par.tipo, "uplink");
+});
+
+test("sin nada abierto se dibujan las 16 aristas agregadas", () => {
+  assert.equal(aristasParaDibujar(real(), new Set()).length, 16);
+});
+
+test("con las dos puntas abiertas el par se desagrega en sus 24 enlaces", () => {
+  const aristas = aristasParaDibujar(real(), new Set(["eq:R2-SW3", "eq:R2-PP3"]));
+  const sueltas = aristas.filter(arista => arista.a.startsWith("pto:R2-") && arista.cuenta === 1
+    && [arista.a, arista.b].some(punta => punta.includes("PP3")));
+  assert.equal(sueltas.length, 24);
+  assert.equal(aristas.some(arista => arista.clave === "eq:R2-PP3|eq:R2-SW3"), false);
+  assert.equal(aristas.length, 16 - 1 + 24);
+});
+
+test("con una sola punta abierta el par sigue agregado", () => {
+  const aristas = aristasParaDibujar(real(), new Set(["eq:R2-SW3"]));
+  const par = aristas.find(arista => arista.clave === "eq:R2-PP3|eq:R2-SW3");
+  assert.equal(par?.cuenta, 24);
+});
+
+test("un destino no tiene rejilla, así que basta con abrir el panel", () => {
+  const aristas = aristasParaDibujar(real(), new Set(["eq:R2-PP1"]));
+  const roseta = aristas.find(arista => arista.a === "esp:utp-e-basica" || arista.b === "esp:utp-e-basica");
+  assert.ok(roseta);
+  assert.equal(roseta.cuenta, 1);
+  assert.equal([roseta.a, roseta.b].includes("pto:R2-PP1-p19"), true);
 });

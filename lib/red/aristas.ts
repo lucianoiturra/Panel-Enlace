@@ -34,3 +34,24 @@ export const agruparEnlaces = (estado: EstadoRed): Arista[] => {
   }
   return [...pares.values()];
 };
+
+// Solo los equipos con rejilla se pueden abrir. Un destino no tiene puertos que
+// mostrar, así que cuenta como resuelto y la línea puede apuntar a su borde.
+const resuelta = (nodoId: string, abiertas: Set<string>) => !nodoId.startsWith("eq:") || abiertas.has(nodoId);
+
+export const aristasParaDibujar = (estado: EstadoRed, abiertas: Set<string>): Arista[] => {
+  const desagregados = new Set<string>();
+  const salida: Arista[] = [];
+  for (const par of agruparEnlaces(estado)) {
+    if (resuelta(par.a, abiertas) && resuelta(par.b, abiertas)) desagregados.add(par.clave);
+    else salida.push(par);
+  }
+  if (!desagregados.size) return salida;
+  for (const enlace of estado.enlaces) {
+    const a = nodoDeExtremo(estado, enlace.a);
+    const b = nodoDeExtremo(estado, enlace.b);
+    if (a === b || !desagregados.has(claveDePar(a, b))) continue;
+    salida.push({ clave: `e${enlace.id}`, a: enlace.a, b: enlace.b, tipo: enlace.tipo, cuenta: 1 });
+  }
+  return salida;
+};
