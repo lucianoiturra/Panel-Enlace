@@ -6,11 +6,11 @@ product
 
 ## Users
 
-Personal de TI responsable de una sala de computación escolar. Una sola persona usa la herramienta durante revisiones, mantenimiento e inventario para conocer y actualizar el estado de cada computador y sus periféricos.
+Personal de TI responsable de una sala de computación escolar y de la red del establecimiento. Una sola persona usa la herramienta durante revisiones, mantenimiento e inventario para conocer y actualizar el estado de cada computador y sus periféricos, y para levantar y consultar qué puerto de qué rack sirve a cada espacio del colegio. Otras personas —dirección, soporte externo, quien tome el puesto después— la consultan con la misma credencial compartida: no hay modo de solo lectura, y quien entra puede editar.
 
 ## Product Purpose
 
-Mantener inventariado el estado de los computadores de la Sala de Enlace. El producto debe permitir identificar cada puesto, registrar su condición, conectividad, accesorios y observaciones, y conservar una vista general confiable de los 40 cubículos.
+Mantener inventariado el estado de los computadores de la Sala de Enlace y documentado el cableado del colegio. El producto debe permitir identificar cada puesto, registrar su condición, conectividad, accesorios y observaciones, y conservar una vista general confiable de los 40 cubículos. Sobre la red, debe responder qué puerto sirve a cada sala, qué puertos están libres, ocupados o sin identificar, y cuánto del levantamiento falta, con la cadena completa desde la roseta hasta el ISP.
 
 ## Brand Personality
 

@@ -1,6 +1,8 @@
 # Panel Enlace
 
-Panel de control para el levantamiento y seguimiento de los 40 computadores de la Sala de Enlace.
+Panel de control del Depto. Enlace, con dos secciones: el levantamiento y seguimiento de los
+40 computadores de la Sala de Enlace, y la documentación de la red del colegio —racks,
+puertos, espacios y la trazabilidad puerto ↔ sala hasta el ISP.
 
 ## Desarrollo local
 
@@ -35,13 +37,12 @@ En `DATABASE_URL`, usa la conexión **Transaction pooler** de Supabase (puerto `
 
 `EQUIPMENT_REFERENCE_JSON` es opcional. Permite cargar el inventario inicial sin publicar IP, MAC ni PINs en GitHub. Debe ser un arreglo JSON con objetos que incluyan `id`, `ip`, `mac`, `studentPin`, `adminPin` y, opcionalmente, `noComputer`.
 
-No es necesario configurar comandos especiales en Vercel: el proyecto usa `npm run build` y las funciones de Next.js crean las tablas iniciales automáticamente en el primer acceso. La migración PostgreSQL inicial también está disponible en `drizzle-pg/`.
+No es necesario configurar comandos especiales en Vercel: el proyecto usa `npm run build`. En desarrollo local las tablas se crean solas en el primer acceso, pero **en producción no**: `getDb()` salta el DDL cuando corre en Vercel, así que las migraciones de `drizzle-pg/` hay que aplicarlas en Supabase (SQL Editor o `psql`).
 
 ### Pestaña Red
 
-Las tablas `net_*` de la pestaña Red no se crean automáticamente en producción: `getDb()`
-salta el DDL cuando corre en Vercel. Antes de publicar la pestaña, aplica la migración de
-`drizzle-pg/` en Supabase (SQL Editor o `psql`). En desarrollo local se crean solas.
+Las seis tablas `net_*` vienen en `drizzle-pg/0001_robust_ultimatum.sql`. Aplícala en
+Supabase antes de publicar la pestaña, por lo dicho arriba sobre el DDL en Vercel.
 
 Los datos iniciales vienen de `lib/red/semilla.json`, generado desde el canvas con:
 
@@ -53,10 +54,22 @@ La siembra se aplica una sola vez, marcada en `app_metadata` con la clave
 `red_semilla_version`, e inserta solo lo que falta: volver a correrla no pisa asignaciones
 capturadas.
 
+Para verificar la capa de persistencia contra una instancia levantada —siembra, conteos,
+reglas de la API y bitácora— hay un script aparte. Escribe y limpia detrás de sí, salvo las
+entradas de bitácora, que son append-only:
+
+```bash
+APP_USERNAME=... APP_PASSWORD=... node herramientas/verificar-red.mjs https://tu-app.vercel.app
+```
+
+El orden de trabajo para capturar las asignaciones puerto ↔ espacio está en
+[docs/levantamiento-red.md](docs/levantamiento-red.md).
+
 ## Comandos
 
 ```bash
 npm run dev
 npm run build
 npm run lint
+npm test        # build + pruebas de las funciones puras
 ```
