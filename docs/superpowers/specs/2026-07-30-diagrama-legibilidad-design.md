@@ -63,7 +63,8 @@ en el lienzo sin informar nada.
 | Estructura del lienzo | Tres zonas de rack en el orden de los uplinks, capas dentro de cada zona |
 | Crecimiento de los destinos | Se apilan hacia abajo, bajo el equipo del que cuelgan |
 | Detalle de los puertos | Tarjeta cerrada por defecto; se abre con un clic, sin umbral de zoom |
-| Aristas | Agregadas por par de equipos; se desagregan cuando ambas puntas están abiertas |
+| Aristas | Agregadas por par de equipos; se desagregan cuando ambas puntas están resueltas |
+| Rótulo de la tarjeta | Solo el código (`R2/SW1`); el nombre completo queda en el `<title>` y en la ficha |
 | Rojo | Reservado para fallas; ámbar para falta de información |
 | Tipografía | Escala con el diagrama; se borra el escalado inverso y el recorte |
 | Encuadre | `ajustar()` ajusta solo al ancho; el alto se navega arrastrando |
@@ -99,7 +100,8 @@ Dentro de cada zona se conservan las capas que ya existen: switches arriba, patc
 panels abajo, destinos apilados bajo el equipo del que cuelgan. Los destinos
 cuelgan de patch panels (los espacios, por `roseta`) o directamente de switches
 (los APs conectados: `R2/SW1 p22`, `R3/SW2 p24`). Crecer a 105 destinos alarga el
-dibujo hacia abajo; el ancho se queda en ~1600 unidades de forma permanente.
+dibujo hacia abajo; el ancho se queda en ~1200 unidades de forma permanente, porque
+los nombres de sala son cortos y lo que crece es el apilado.
 
 **La banda de borde** aloja al ISP, FORTINET y MIKROTIK, que en los datos tienen
 `rack: ""` y estructuralmente son las capas 0 y 1.
@@ -113,18 +115,30 @@ muda.
 
 ## B. Nivel de detalle
 
-**Cerrada** es el estado por defecto de toda tarjeta. Muestra el nombre completo, la
-ocupación (`19/24 ocupados`) y los estados que piden acción como chips: `4 dañados`
-en R2/PP2, `24 sin verificar` en R1/PP1. La tarjeta se dimensiona por su texto, no
-por sus puertos, así que `R2/PP2 · Patch Panel 2` cabe entero.
+**Cerrada** es el estado por defecto de toda tarjeta. Muestra **solo el código** del
+equipo —`R2/SW1`, `R2/PP2`—, la ocupación (`19/24 ocupados`) y los estados que piden
+acción como chips: `4 dañados` en R2/PP2, `24 sin verificar` en R1/PP1.
+
+El código solo, y no el rótulo completo, porque los rótulos reales de la semilla no
+caben: `R2/SW1 · Switch 1 | Gigabit 24p Smart` pide 321 unidades, y con esos anchos
+el layout cerrado da 2090 y la escala de ajuste 0.67 — la misma ilegibilidad de hoy
+con otra forma. Con el código solo, cada tarjeta parte de un mínimo de 120
+unidades, el total baja a **~1200** y la escala de ajuste sube a **~1.1**. Dentro de
+una zona rotulada `RACK 2 · Sala Enlace`, el `R2/` ya es redundante y el modelo del
+equipo no aporta a la lectura del cableado. El rótulo completo sigue en el `<title>`
+del nodo —que ya existe— y en la ficha, que abre con doble clic.
+
+El ancho de una columna es el mayor entre su tarjeta y el destino más ancho que
+cuelga de ella, porque los destinos se apilan debajo: `PIE Administrativo` pide 181
+unidades y su columna se ensancha a eso.
 
 **Abierta** muestra los puertos numerados en rejilla de **12 por fila**, como el
 serigrafiado de un panel: 1-12 arriba, 13-24 abajo. Los switches de 28 puertos
 ocupan tres filas, 12 + 12 + 4, con la última fila alineada a la izquierda; el
-ancho de la tarjeta no depende de cuántos puertos tenga. Abierta mide ~420 unidades de
-ancho en vez de 830, así que abrir varias no reconstruye el problema. Con las 13
-tarjetas abiertas el lienzo llega a ~3000 —la mitad de los 5952 de hoy— y solo si
-el usuario lo pide.
+ancho de la tarjeta no depende de cuántos puertos tenga. Abierta mide 424 unidades
+de ancho en vez de 830, así que abrir varias no reconstruye el problema. Con las 13
+tarjetas abiertas a la vez el lienzo llega a ~3300 —bastante menos que los 5952 de
+hoy— y solo si el usuario lo pide.
 
 Cuatro reglas:
 
@@ -146,9 +160,13 @@ Al nivel general, una arista por par de equipos, con la cuenta escrita (`×24`) 
 grosor `2 + log₂(n)` acotado a 2–7 unidades. Los 98 enlaces se dibujan como 16
 aristas.
 
-Un par **se desagrega solo si ambas puntas están abiertas**. Con una abierta y la
-otra cerrada sigue agregada: media desagregación dejaría líneas que llegan a un
-borde de tarjeta sin puerto al que apuntar.
+Un par **se desagrega cuando las dos puntas están resueltas**, donde «resuelta»
+significa abierta o sin rejilla que abrir. Un destino —espacio, cubículo, AP— no
+tiene puertos que mostrar, así que su borde de tarjeta ya es el punto correcto al
+que llegar: con el panel abierto, la roseta apunta a `p19` en un extremo y al borde
+de `UTP E. Básica` en el otro. Entre dos equipos con rejilla, en cambio, hace falta
+que ambos estén abiertos; media desagregación dejaría líneas llegando a un borde de
+tarjeta sin puerto al que apuntar.
 
 Las aristas intra-rack conservan la curva vertical actual. Los uplinks entre racks
 se dibujan como una línea horizontal a la altura de la fila de switches, entrando y
@@ -204,23 +222,24 @@ unidades de layout y no cabe en un nodo de 190. El texto pasa a medir **15 unida
 fijas** y a escalar con el diagrama, como en un mapa.
 
 El número sale de la cuenta al revés: el lienzo mide ~1530 px de ancho, el layout
-cerrado ~1600 unidades más los 180 de margen, así que la escala de ajuste queda en
-**~0.85** y 15 unidades se dibujan a ~13 px. Legible sin tocar el zoom, que es todo
+cerrado ~1200 unidades más los 180 de margen, así que la escala de ajuste queda en
+**~1.1** y 15 unidades se dibujan a ~16 px. Legible sin tocar el zoom, que es todo
 lo que se le pide.
 
-Con eso, el ancho de una tarjeta se calcula desde su etiqueta:
-`max(ancho_mínimo, largo × 15 × 0.55 + relleno)`, usando la misma aproximación de
-0.55 em por carácter que ya está en el código, pero al revés. Sin DOM,
-determinista y comprobable en una prueba. **`recortar()` y `ANCHO_CARACTER` se
-eliminan de `app/red/diagrama-nodos.tsx`.** Con esa fórmula la etiqueta más larga
-—`R2/PP2 · Patch Panel 2`, 22 caracteres— pide ~197 unidades, de donde sale el
-ancho de ~200 por tarjeta cerrada y los ~1600 del total.
+Con eso, el ancho de una tarjeta se calcula desde su texto:
+`max(120, largo × 15 × 0.55 + 16)`, usando la misma aproximación de 0.55 em por
+carácter que ya está en el código, pero al revés. Sin DOM, determinista y
+comprobable en una prueba. **`recortar()` se elimina de
+`app/red/diagrama-nodos.tsx`** y `ANCHO_CARACTER` se muda a `lib/red/layout.ts`,
+donde ahora dimensiona en vez de recortar.
 
-**`ajustar()` ajusta solo al ancho**, acotado a 0.55–1.15, centrado
-horizontalmente y pegado arriba para que la banda del ISP se vea al abrir. El
-diagrama se lee de arriba hacia abajo, así que crecer en alto y navegar
-arrastrando es natural; crecer en ancho no lo era. El pan y el zoom actuales no
-cambian.
+**`ajustar()` ajusta solo al ancho**, acotado a 0.55–1.15 y centrado
+horizontalmente. En vertical **centra si el dibujo cabe y lo pega arriba si no
+cabe**: con los datos de hoy el contenido mide ~370 unidades y sobra alto, así que
+centrarlo evita el blanco desbalanceado; cuando los destinos crezcan dejará de
+caber y entonces empezar por la banda del ISP es lo correcto. El diagrama se lee de
+arriba hacia abajo, así que crecer en alto y navegar arrastrando es natural; crecer
+en ancho no lo era. El pan y el zoom actuales no cambian.
 
 ## F. Estructura
 
@@ -255,9 +274,10 @@ TDD con el runner del proyecto (`node --test`, `npm test`).
 `tests/layout.test.ts` (se amplía el existente):
 
 - las zonas salen en el orden de los uplinks (R1, R2, R3), no por `id`;
-- con todo cerrado, el ancho total no pasa de 1800 unidades;
+- con todo cerrado, el ancho total no pasa de 1400 unidades;
 - abrir una tarjeta de R2 no cambia la `x` de ninguna tarjeta de R1 ni de R3;
-- una tarjeta cerrada mide al menos el ancho de su etiqueta;
+- una tarjeta cerrada mide al menos el ancho de su código y nunca menos de 120;
+- una columna se ensancha al destino más ancho que cuelga de ella;
 - una tarjeta abierta mide 12 columnas, tenga 24 o 28 puertos;
 - los 2 APs sin enlace van a la bandeja y R3/PP2 se queda en el rack 3 marcado;
 - FORTINET y MIKROTIK quedan en la banda de borde, marcados sin ruta;
@@ -268,7 +288,9 @@ TDD con el runner del proyecto (`node --test`, `npm test`).
 - los 98 enlaces de la semilla se agregan a 16 aristas;
 - el par `R2/SW3 ══ R2/PP3` lleva cuenta 24;
 - con ambas puntas abiertas, ese par se desagrega en 24 aristas puerto a puerto;
-- con una punta abierta y la otra cerrada, sigue agregada.
+- entre dos equipos con rejilla, una punta abierta y la otra cerrada sigue agregada;
+- con el panel abierto, la roseta hacia un espacio sí se desagrega, porque el
+  espacio no tiene rejilla que abrir.
 
 `tests/trazado.test.ts`: sin cambios. `camino`, `alcanzables`, `saltos`, `completa`
 y `motivo` no cambian de forma, así que la ficha y el buscador siguen iguales.
