@@ -23,9 +23,10 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
   const [modo, setModo] = useState<"consultar" | "conectar">("consultar");
   const [origen, setOrigen] = useState("");
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
+  const [abiertas, setAbiertas] = useState<Set<string>>(new Set());
   const arrastre = useRef<{ x: number; y: number; vista: Vista } | null>(null);
 
-  const layout = useMemo(() => construirLayout(estado), [estado]);
+  const layout = useMemo(() => construirLayout(estado, abiertas), [estado, abiertas]);
   const anclas = useMemo(() => anclasDeLayout(layout), [layout]);
   const cadena = useMemo(() => trazarCadena(estado, seleccionado), [estado, seleccionado]);
   const ruta = useMemo(() => new Set(cadena.camino), [cadena]);
@@ -36,6 +37,15 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
     if (puerto) return puerto.estado === "libre" || puerto.estado === "desconocido";
     return id.startsWith("esp:") || id.startsWith("cub:");
   };
+
+  const alternar = useCallback((id: string) => {
+    setAbiertas(actual => {
+      const siguiente = new Set(actual);
+      if (siguiente.has(id)) siguiente.delete(id);
+      else siguiente.add(id);
+      return siguiente;
+    });
+  }, []);
 
   const alPunto = (id: string) => {
     if (modo !== "conectar" || !puedeSerOrigen(id)) { onSeleccionar(id); return; }
@@ -148,7 +158,7 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
         <svg role="img" aria-label="Diagrama de la red del colegio">
           <g transform={`translate(${vista.x} ${vista.y}) scale(${vista.escala})`}>
             {anclaOrigen && cursor && <line className="net-d-enlace-pendiente" x1={anclaOrigen.x} y1={anclaOrigen.y} x2={cursor.x} y2={cursor.y} />}
-            <DiagramaNodos layout={layout} escala={vista.escala} ruta={ruta} alcance={cadena.alcanzables} seleccionado={seleccionado} origen={origen} corte={corte} onPunto={alPunto} onFicha={onAbrir} />
+            <DiagramaNodos layout={layout} ruta={ruta} alcance={cadena.alcanzables} seleccionado={seleccionado} origen={origen} corte={corte} onPunto={alPunto} onFicha={onAbrir} onAlternar={alternar} />
           </g>
         </svg>
       </div>

@@ -164,27 +164,27 @@ button { cursor:pointer; }
 .net-d-link{fill:none;opacity:.18}
 .net-d-link.alcance{opacity:.4}
 .net-d-link.ruta{opacity:1;stroke-width:6}
+.net-d-zona rect{fill:#eef1f4;stroke:#d7dce2;stroke-width:1}
+.net-d-zona text{fill:var(--muted);font:700 11px var(--font-mono);letter-spacing:.09em;text-transform:uppercase;pointer-events:none}
 .net-d-nodo rect{fill:var(--surface);stroke:#c2c9d2;stroke-width:1.5;cursor:pointer}
-.net-d-nodo.equipo>rect{fill:#f4f6f8;cursor:grab;pointer-events:none}
-.net-d-nodo.aparato>rect{fill:#eef1f4}
-.net-d-nodo.espacio>rect,.net-d-nodo.cubiculo>rect{fill:var(--surface)}
+.net-d-nodo.equipo>rect{fill:#f7f8f9}
+.net-d-nodo.aparato>rect,.net-d-nodo.espacio>rect,.net-d-nodo.cubiculo>rect{fill:var(--surface)}
 .net-d-nodo.alcance>rect{stroke:#8da8c2}
-.net-d-nodo.ruta>rect{stroke:var(--ink);stroke-width:3}
-.net-d-nodo.sin-ruta>rect{stroke-dasharray:6 4;stroke:var(--red)}
-.net-d-nodo.sel>rect{stroke:var(--ink);stroke-width:3}
+.net-d-nodo.ruta>rect,.net-d-nodo.sel>rect{stroke:var(--ink);stroke-width:3}
+.net-d-nodo.sin-ruta>rect{stroke-dasharray:6 4;stroke:var(--warning)}
 .net-d-nodo.origen>rect{stroke:var(--ok);stroke-width:3}
-.net-d-nombre{fill:var(--ink);font-weight:700;dominant-baseline:auto;text-anchor:middle;pointer-events:none}
-.net-d-nodo.sin-ruta .net-d-nombre{fill:var(--red)}
+.net-d-codigo{fill:var(--ink);font:700 15px var(--font-mono);pointer-events:none}
+.net-d-resumen{fill:var(--muted);font:11px var(--font-mono);pointer-events:none}
+.net-d-nodo.sin-ruta .net-d-codigo{fill:var(--warning)}
 .net-d-pt rect{fill:var(--surface);stroke:#c2c9d2;stroke-width:1}
 .net-d-pt.ocupado rect{fill:var(--green);stroke:var(--green)}
-.net-d-pt.desconocido rect{fill:#f1f3f5;stroke-dasharray:3 2}
+.net-d-pt.desconocido rect{fill:#fdf6e4;stroke:var(--warning);stroke-dasharray:3 2}
 .net-d-pt.dañado rect{fill:#f6dfe2;stroke:var(--red)}
-.net-d-pt text{fill:var(--muted);font-family:var(--font-mono);text-anchor:middle;pointer-events:none}
+.net-d-pt text{fill:var(--muted);font:11px var(--font-mono);text-anchor:middle;pointer-events:none}
 .net-d-pt.ocupado text{fill:#fff}
-.net-d-pt.ruta rect{stroke:var(--ink);stroke-width:2.5}
-.net-d-pt.sel rect,.net-d-pt.origen rect{stroke:var(--ink);stroke-width:2.5}
+.net-d-pt.ruta rect,.net-d-pt.sel rect,.net-d-pt.origen rect{stroke:var(--ink);stroke-width:2.5}
 .net-d-corte circle{fill:var(--red)}
-.net-d-corte text{fill:#fff;text-anchor:middle;font-weight:700;pointer-events:none}
+.net-d-corte text{fill:#fff;text-anchor:middle;font:700 15px var(--font-mono);pointer-events:none}
 .net-d-enlace-pendiente{stroke:var(--ok);stroke-width:3;stroke-dasharray:8 6;pointer-events:none}
 .net-d-nodo rect:focus-visible,.net-d-pt rect:focus-visible{outline:none;stroke:#0e5aa7;stroke-width:4}
 .net-diagram-cadena{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 14px;border-top:1px solid var(--line);background:#f7f8f9}
