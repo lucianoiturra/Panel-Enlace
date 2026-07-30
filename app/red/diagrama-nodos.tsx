@@ -15,9 +15,12 @@ export type PropsNodos = {
   seleccionado: string;
   origen: string;
   corte: string;
+  editable: boolean;
+  reenlazando: boolean;
   onPunto: (id: string) => void;
   onFicha: (id: string) => void;
   onAlternar: (id: string) => void;
+  onTomarPunta: (arista: Arista, fijo: string, evento: React.PointerEvent) => void;
 };
 
 const COLOR_ENLACE = { patch: "#294f7c", uplink: "#a65330", roseta: "#237a52", borde: "#182334" } as const;
@@ -38,6 +41,16 @@ const trazo = (arista: Arista, a: Punto, b: Punto) => {
   return `M ${a.x} ${a.y} C ${medio} ${a.y}, ${medio} ${b.y}, ${b.x} ${b.y}`;
 };
 
+// La manija no se dibuja sobre el ancla sino un poco adentro de la línea: en el
+// centro de una tarjeta cerrada se apilarían todas las de sus enlaces.
+const manija = (desde: Punto, hacia: Punto): Punto => {
+  const dx = hacia.x - desde.x;
+  const dy = hacia.y - desde.y;
+  const largo = Math.hypot(dx, dy) || 1;
+  const avance = Math.min(26, largo * 0.35);
+  return { x: desde.x + (dx / largo) * avance, y: desde.y + (dy / largo) * avance };
+};
+
 export default function DiagramaNodos({
   layout,
   ruta,
@@ -45,9 +58,12 @@ export default function DiagramaNodos({
   seleccionado,
   origen,
   corte,
+  editable,
+  reenlazando,
   onPunto,
   onFicha,
   onAlternar,
+  onTomarPunta,
 }: PropsNodos) {
   const anclas = useMemo(() => anclasDeLayout(layout), [layout]);
   const nodosPorId = useMemo(() => new Map(layout.nodos.map(nodo => [nodo.id, nodo])), [layout]);
@@ -103,9 +119,26 @@ export default function DiagramaNodos({
         const b = anclas.get(arista.b);
         if (!a || !b) return null;
         const medio = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-        return <g key={arista.clave} className={`net-d-link ${nivelArista(arista)}`}>
+        // Una arista agregada resume varios enlaces: no hay uno solo que mover,
+        // así que se dibuja sin manijas hasta que el usuario abra las tarjetas.
+        const conManijas = editable && arista.enlaceId > 0 && !reenlazando;
+        return <g key={arista.clave} className={`net-d-link ${nivelArista(arista)} ${conManijas ? "editable" : ""}`}>
+          {/* Banda ancha invisible: una línea de 2px es casi imposible de apuntar,
+              y es la que enciende las manijas al pasar por encima. */}
+          {conManijas && <path className="net-d-zarpa" d={trazo(arista, a, b)} />}
           <path d={trazo(arista, a, b)} stroke={COLOR_ENLACE[arista.tipo] ?? "#68717e"} strokeWidth={grosorDe(arista.cuenta)} fill="none" />
           {arista.cuenta > 1 && <text className="net-d-cuenta" x={medio.x} y={medio.y}>×{arista.cuenta}</text>}
+          {conManijas && ([[arista.a, arista.b, a, b], [arista.b, arista.a, b, a]] as [string, string, Punto, Punto][]).map(([suelto, fijo, desde, hacia]) => {
+            const punto = manija(desde, hacia);
+            return <circle
+              key={suelto}
+              className="net-d-manija"
+              cx={punto.x}
+              cy={punto.y}
+              r={7}
+              onPointerDown={evento => { evento.stopPropagation(); onTomarPunta(arista, fijo, evento); }}
+            ><title>Arrastra esta punta para reconectar el enlace</title></circle>;
+          })}
         </g>;
       })}
 
@@ -123,6 +156,7 @@ export default function DiagramaNodos({
           role="button"
           tabIndex={0}
           aria-label={etiquetaAccesible(nodo)}
+          {...(nodo.clase === "equipo" ? { "data-equipo": nodo.id } : { "data-endpoint": nodo.id })}
           onKeyDown={evento => alTeclado(evento, nodo)}
           onClick={() => (nodo.clase === "equipo" ? onAlternar(nodo.id) : onPunto(nodo.id))}
           onDoubleClick={() => onFicha(nodo.id)}
@@ -138,6 +172,7 @@ export default function DiagramaNodos({
             rx={3}
             role="button"
             tabIndex={0}
+            data-endpoint={puerto.id}
             aria-label={`Puerto ${puerto.n}, ${puerto.estado}. Enter para seleccionar; doble clic para abrir la ficha.`}
             onKeyDown={evento => alTecladoPuerto(evento, puerto.id)}
             onClick={evento => { evento.stopPropagation(); onPunto(puerto.id); }}

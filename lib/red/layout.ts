@@ -205,32 +205,7 @@ const bandejaDe = (estado: EstadoRed): FichaBandeja[] => [
     })),
 ];
 
-// La rejilla de zonas se calcula siempre con todo cerrado, para que abrir una
-// tarjeta no empuje a los racks vecinos: la zona abierta se desborda sobre la
-// siguiente en vez de reacomodar el lienzo entero.
-const anchoDeZona = (estado: EstadoRed, idZona: string, abiertas: Set<string>) => {
-  const equipos = estado.equipos
-    .filter(equipo => equipo.tipo !== "ap")
-    .map(equipo => nodoDeEquipo(estado, equipo, abiertas));
-  const dentro = equipos.filter(nodo => nodo.zona === idZona);
-  const anchoDeFila = (fila: number) => {
-    const cartas = dentro.filter(nodo => nodo.fila === fila);
-    return cartas.length ? cartas.reduce((suma, carta) => suma + carta.w + SEPARACION, 0) - SEPARACION : 0;
-  };
-  const padres = new Map(equipos.map(nodo => [nodo.id, nodo]));
-  const columnas = new Map<string, number>();
-  for (const destino of destinosDe(estado, padres).filter(nodo => nodo.zona === idZona)) {
-    const padre = padreDeDestino(estado, destino.id);
-    columnas.set(padre, Math.max(columnas.get(padre) ?? 0, destino.w));
-  }
-  const anchosDestino = [...columnas.values()];
-  const anchoDestinos = anchosDestino.length
-    ? anchosDestino.reduce((suma, ancho) => suma + ancho + SEPARACION, 0) - SEPARACION
-    : 0;
-  return Math.max(anchoDeFila(0), anchoDeFila(1), anchoDestinos) + RELLENO_ZONA * 2;
-};
-
-export const construirLayout = (estado: EstadoRed, abiertas: Set<string> = new Set()): Layout => {
+export const construirLayout =(estado: EstadoRed, abiertas: Set<string> = new Set()): Layout => {
   const orden = ordenDeZonas(estado);
   const equipos = estado.equipos
     .filter(equipo => equipo.tipo !== "ap")
@@ -293,7 +268,10 @@ export const construirLayout = (estado: EstadoRed, abiertas: Set<string> = new S
     zonas.push({ id: idZona, nombre: nombreDeZona(estado, idZona), x: xZona, y: yZona, w, h: alto });
     anchoLienzo = Math.max(anchoLienzo, xZona + w);
     if (esBorde) altoBorde = alto;
-    else x += anchoDeZona(estado, idZona, new Set()) + SEPARACION_ZONA;
+    // La siguiente zona arranca detrás del ancho real de esta, no del que
+    // tendría cerrada: abrir una tarjeta ensancha la zona, y avanzar menos de
+    // lo que mide la dibujaba encima de su vecina.
+    else x += w + SEPARACION_ZONA;
   }
 
   const alcanzables = alcanzablesDesdeIsp(estado);

@@ -4,6 +4,7 @@ import DiagramaNodos from "./diagrama-nodos";
 import { anclasDeLayout, construirLayout } from "../../lib/red/layout";
 import { cadenaComoTexto, trazarCadena } from "../../lib/red/trazado";
 import { etiquetaEndpoint, type EstadoRed } from "../../lib/red/modelo";
+import { puntasDelEnlace, type Arista } from "../../lib/red/aristas";
 
 const MARGEN = 90;
 
@@ -14,17 +15,23 @@ type Props = {
   onAbrir: (id: string) => void;
   onSeleccionar: (id: string) => void;
   onConectar: (a: string, b: string) => void;
+  onReenlazar: (enlaceId: number, fijo: string, destino: string) => void;
+  onAviso: (mensaje: string) => void;
   onCopiar: (texto: string) => void;
 };
 type Vista = { x: number; y: number; escala: number };
+// La punta que el usuario arrastra: `fijo` se queda donde está y `suelto` es la
+// que va a cambiar de destino cuando la suelte.
+type Reenlace = { enlaceId: number; fijo: string; suelto: string };
 
-export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onSeleccionar, onConectar, onCopiar }: Props) {
+export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onSeleccionar, onConectar, onReenlazar, onAviso, onCopiar }: Props) {
   const contenedor = useRef<HTMLDivElement>(null);
   const [vista, setVista] = useState<Vista>({ x: 0, y: 0, escala: 0.6 });
   const [modo, setModo] = useState<"consultar" | "conectar">("consultar");
   const [origen, setOrigen] = useState("");
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
   const [abiertas, setAbiertas] = useState<Set<string>>(new Set());
+  const [reenlace, setReenlace] = useState<Reenlace | null>(null);
   const arrastre = useRef<{ x: number; y: number; vista: Vista } | null>(null);
 
   const layout = useMemo(() => construirLayout(estado, abiertas), [estado, abiertas]);
@@ -84,11 +91,17 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
   useEffect(() => { centrarNodo(centrarEn); }, [centrarEn, centrarNodo]);
 
   useEffect(() => {
-    if (!origen) return;
-    const alTeclear = (evento: KeyboardEvent) => { if (evento.key === "Escape") { evento.preventDefault(); setOrigen(""); setCursor(null); } };
+    if (!origen && !reenlace) return;
+    const alTeclear = (evento: KeyboardEvent) => {
+      if (evento.key !== "Escape") return;
+      evento.preventDefault();
+      setOrigen("");
+      setReenlace(null);
+      setCursor(null);
+    };
     window.addEventListener("keydown", alTeclear);
     return () => window.removeEventListener("keydown", alTeclear);
-  }, [origen]);
+  }, [origen, reenlace]);
 
   const alRodar = (evento: React.WheelEvent) => {
     evento.preventDefault();
@@ -102,25 +115,69 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
     });
   };
 
+  const enLienzo = (clientX: number, clientY: number) => {
+    const caja = contenedor.current?.getBoundingClientRect();
+    if (!caja) return null;
+    return { x: (clientX - caja.left - vista.x) / vista.escala, y: (clientY - caja.top - vista.y) / vista.escala };
+  };
+
+  // El destino se resuelve por el elemento que hay bajo el puntero al soltar:
+  // el pointerup llega al lienzo, no al rect, así que no sirve un onPointerUp
+  // por nodo. La línea en curso lleva pointer-events:none para no taparlo.
+  const extremoBajoElPuntero = (clientX: number, clientY: number) => {
+    const debajo = document.elementFromPoint(clientX, clientY)?.closest("[data-endpoint],[data-equipo]");
+    return {
+      endpoint: debajo?.getAttribute("data-endpoint") ?? "",
+      equipo: debajo?.getAttribute("data-equipo") ?? "",
+    };
+  };
+
+  const tomarPunta = (arista: Arista, fijo: string, evento: React.PointerEvent) => {
+    if (modo !== "conectar" || !arista.enlaceId) return;
+    const enlace = estado.enlaces.find(candidato => candidato.id === arista.enlaceId);
+    if (!enlace) return;
+    const puntas = puntasDelEnlace(estado, enlace, fijo);
+    setOrigen("");
+    setReenlace({ enlaceId: arista.enlaceId, ...puntas });
+    setCursor(enLienzo(evento.clientX, evento.clientY));
+  };
+
+  const soltarPunta = (clientX: number, clientY: number) => {
+    if (!reenlace) return;
+    const { endpoint, equipo } = extremoBajoElPuntero(clientX, clientY);
+    setReenlace(null);
+    setCursor(null);
+    if (equipo && !endpoint) { onAviso("Abre la tarjeta del equipo y suelta la punta sobre un puerto."); return; }
+    if (!endpoint || endpoint === reenlace.suelto) return;
+    if (endpoint === reenlace.fijo) { onAviso("Un enlace no puede empezar y terminar en el mismo punto."); return; }
+    onReenlazar(reenlace.enlaceId, reenlace.fijo, endpoint);
+  };
+
+  const cancelarPunta = () => { setReenlace(null); setCursor(null); };
+
   // Sin setPointerCapture a propósito: capturar el puntero en el lienzo hace que el navegador
   // redirija el pointerup —y con él click y dblclick— al div que captura, así que el onClick de
   // los rect del SVG no se dispara nunca. El arrastre funciona igual por burbujeo.
   const alBajar = (evento: React.PointerEvent) => {
-    if (evento.button !== 0) return;
+    if (evento.button !== 0 || reenlace) return;
     arrastre.current = { x: evento.clientX, y: evento.clientY, vista };
   };
   const alMover = (evento: React.PointerEvent) => {
-    if (origen) {
-      const caja = contenedor.current?.getBoundingClientRect();
-      if (caja) setCursor({ x: (evento.clientX - caja.left - vista.x) / vista.escala, y: (evento.clientY - caja.top - vista.y) / vista.escala });
-    }
-    if (!arrastre.current) return;
+    if (origen || reenlace) setCursor(enLienzo(evento.clientX, evento.clientY));
+    if (!arrastre.current || reenlace) return;
     const inicio = arrastre.current;
     if (Math.abs(evento.clientX - inicio.x) + Math.abs(evento.clientY - inicio.y) < 3) return;
     setVista({ escala: inicio.vista.escala, x: inicio.vista.x + (evento.clientX - inicio.x), y: inicio.vista.y + (evento.clientY - inicio.y) });
   };
-  const alSoltar = () => { arrastre.current = null; };
-  const anclaOrigen = origen ? anclas.get(origen) ?? { x: layout.ancho / 2, y: layout.alto + 60 } : undefined;
+  const alSoltar = (evento: React.PointerEvent) => {
+    arrastre.current = null;
+    soltarPunta(evento.clientX, evento.clientY);
+  };
+  const alSalir = () => { arrastre.current = null; cancelarPunta(); };
+
+  const anclaPendiente = reenlace
+    ? anclas.get(reenlace.fijo)
+    : origen ? anclas.get(origen) ?? { x: layout.ancho / 2, y: layout.alto + 60 } : undefined;
 
   const porGrupo = useMemo(() => {
     const mapa = new Map<string, typeof layout.bandeja>();
@@ -145,11 +202,13 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
           <button onClick={ajustar}>AJUSTAR A LA VISTA</button>
           <button onClick={() => setAbiertas(new Set())} disabled={!abiertas.size}>CERRAR TODO</button>
         </div>
-        <p className="net-diagram-hint">{origen
-          ? `Conectando desde ${etiquetaEndpoint(estado, origen)} · clic en el destino, esc para cancelar`
-          : modo === "conectar"
-            ? "Clic en un puerto libre o en una tarjeta de la bandeja para empezar el enlace."
-            : "Clic en un nodo resalta su ruta hasta el ISP. Doble clic abre la ficha."}</p>
+        <p className="net-diagram-hint">{reenlace
+          ? `Moviendo la punta ${etiquetaEndpoint(estado, reenlace.suelto)} · suéltala sobre el nuevo destino, esc para cancelar`
+          : origen
+            ? `Conectando desde ${etiquetaEndpoint(estado, origen)} · clic en el destino, esc para cancelar`
+            : modo === "conectar"
+              ? "Clic en un puerto libre para empezar un enlace, o arrastra la punta de una línea para llevarla a otro destino."
+              : "Clic en un nodo resalta su ruta hasta el ISP. Doble clic abre la ficha."}</p>
       </div>
 
       {seleccionado && <div className="net-diagram-cadena">
@@ -161,11 +220,11 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
         <button className="secondary" type="button" onClick={() => onCopiar(cadenaComoTexto(cadena))}>Copiar</button>
       </div>}
 
-      <div className={`net-diagram-canvas ${modo === "conectar" ? "conectando" : ""}`} ref={contenedor} onWheel={alRodar} onPointerDown={alBajar} onPointerMove={alMover} onPointerUp={alSoltar} onPointerLeave={alSoltar}>
+      <div className={`net-diagram-canvas ${modo === "conectar" ? "conectando" : ""} ${reenlace ? "reenlazando" : ""}`} ref={contenedor} onWheel={alRodar} onPointerDown={alBajar} onPointerMove={alMover} onPointerUp={alSoltar} onPointerLeave={alSalir}>
         <svg role="img" aria-label="Diagrama de la red del colegio">
           <g className={`net-d-lienzo ${seleccionado ? "sel-activa" : ""}`} transform={`translate(${vista.x} ${vista.y}) scale(${vista.escala})`}>
-            {anclaOrigen && cursor && <line className="net-d-enlace-pendiente" x1={anclaOrigen.x} y1={anclaOrigen.y} x2={cursor.x} y2={cursor.y} />}
-            <DiagramaNodos layout={layout} ruta={ruta} alcance={cadena.alcanzables} seleccionado={seleccionado} origen={origen} corte={corte} onPunto={alPunto} onFicha={onAbrir} onAlternar={alternar} />
+            {anclaPendiente && cursor && <line className="net-d-enlace-pendiente" x1={anclaPendiente.x} y1={anclaPendiente.y} x2={cursor.x} y2={cursor.y} />}
+            <DiagramaNodos layout={layout} ruta={ruta} alcance={cadena.alcanzables} seleccionado={seleccionado} origen={origen} corte={corte} editable={modo === "conectar"} reenlazando={Boolean(reenlace)} onPunto={alPunto} onFicha={onAbrir} onAlternar={alternar} onTomarPunta={tomarPunta} />
           </g>
         </svg>
       </div>

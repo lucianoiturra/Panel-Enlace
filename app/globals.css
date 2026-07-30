@@ -112,6 +112,10 @@ button { cursor:pointer; }
 .net-none{color:#9a6d00}
 @media(max-width:600px){.net-toolbar-right{align-items:stretch;flex-direction:column}.net-racks-bar{flex-wrap:wrap}.net-strip{grid-template-columns:repeat(auto-fit,minmax(32px,1fr))}.net-pt{height:34px}}
 .net-capture-wrap{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:20px}
+/* El wrap ya es su propio contexto de apilado, así que el z-index:40 global del
+   backdrop se compara contra el z-index:2 del panel y no contra el resto de la
+   página: sin bajarlo, el velo tapa la captura entera y se come cada clic. */
+.net-capture-wrap>.backdrop{z-index:1}
 .net-capture{position:relative;z-index:2;width:min(660px,94vw);max-height:92dvh;display:flex;flex-direction:column;background:var(--surface);border-radius:8px;box-shadow:0 18px 40px #14251d4a;overflow:hidden}
 .net-capture .modal-head p{margin:6px 0 10px}
 .net-capture-body{padding:16px 18px;overflow:auto;display:flex;flex-direction:column;gap:14px}
@@ -191,6 +195,16 @@ button { cursor:pointer; }
 .net-d-corte circle{fill:var(--red)}
 .net-d-corte text{fill:#fff;text-anchor:middle;font:700 15px var(--font-mono);pointer-events:none}
 .net-d-enlace-pendiente{stroke:var(--ok);stroke-width:3;stroke-dasharray:8 6;pointer-events:none}
+.net-d-zarpa{fill:none;stroke:transparent;stroke-width:18;pointer-events:stroke;cursor:pointer}
+/* Ocultas y sordas hasta que el puntero entra en la línea: si no, quedarían
+   manijas invisibles por todo el lienzo robándole los clics a las tarjetas. */
+.net-d-manija{fill:var(--surface);stroke:var(--ok);stroke-width:2.5;cursor:grab;opacity:0;pointer-events:none;transition:opacity .12s}
+.net-d-link.editable:hover .net-d-manija{opacity:1;pointer-events:auto}
+/* Mientras se arrastra una punta, las manijas no deben interceptar el puntero:
+   el destino se resuelve con elementFromPoint sobre el nodo que hay debajo. */
+.net-diagram-canvas.reenlazando .net-d-manija{pointer-events:none}
+.net-diagram-canvas.reenlazando{cursor:grabbing}
+.net-d-lienzo .net-d-link.editable:hover{opacity:1}
 .net-d-nodo rect:focus-visible,.net-d-pt rect:focus-visible{outline:none;stroke:#0e5aa7;stroke-width:4}
 .net-diagram-cadena{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 14px;border-top:1px solid var(--line);background:#f7f8f9}
 .net-diagram-saltos{display:flex;align-items:center;flex-wrap:wrap;gap:2px;flex:1;min-width:0}

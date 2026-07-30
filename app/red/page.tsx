@@ -97,6 +97,14 @@ export default function PaginaRed() {
     await pedir(`/api/red/enlaces?id=${id}`, { method: "DELETE" }, "No fue posible quitar el enlace.");
   }, "Enlace quitado.");
 
+  // Primero se crea el enlace nuevo y solo después se borra el viejo: al revés,
+  // si el destino ya estuviera ocupado o el POST fallara, el cable original se
+  // habría perdido sin nada que lo reemplace.
+  const reenlazar = (enlaceId: number, fijo: string, destino: string) => conGuardado(async () => {
+    await pedir("/api/red/enlaces", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ a: fijo, b: destino }) }, "No fue posible mover el enlace.");
+    await pedir(`/api/red/enlaces?id=${enlaceId}`, { method: "DELETE" }, "El enlace nuevo quedó creado, pero no se pudo quitar el anterior.");
+  }, "Enlace reconectado.");
+
   const asignarRapido = (a: string, b: string) => {
     const provisional = -Date.now();
     const texto = `${etiquetaEndpoint(estado, a)} → ${etiquetaEndpoint(estado, b)}`;
@@ -264,7 +272,7 @@ export default function PaginaRed() {
                 ? <VistaRacks estado={estado} rackActivo={rackVisible} onRack={setRackActivo} formato={formatoRacks} onFormato={setFormatoRacks} seleccionado={seleccionado} onAbrir={abrirFicha} />
                 : vista === "cobertura"
                   ? <VistaCobertura estado={estado} onAbrir={abrirFicha} />
-                  : <Diagrama estado={estado} seleccionado={seleccionado} centrarEn={vista === "diagrama" ? coincidenciaBuscador : ""} onAbrir={abrirFicha} onSeleccionar={setSeleccionado} onConectar={asignarRapido} onCopiar={copiarTexto} />}
+                  : <Diagrama estado={estado} seleccionado={seleccionado} centrarEn={vista === "diagrama" ? coincidenciaBuscador : ""} onAbrir={abrirFicha} onSeleccionar={setSeleccionado} onConectar={asignarRapido} onReenlazar={reenlazar} onAviso={mensaje => mostrarAviso(mensaje, "error")} onCopiar={copiarTexto} />}
           </div>
         </section>
       </section>

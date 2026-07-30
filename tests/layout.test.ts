@@ -183,13 +183,50 @@ test("los puertos de una tarjeta abierta caben dentro de ella", () => {
   assert.notEqual(panel.puertos[0].y, panel.puertos[12].y, "el 13 baja de fila");
 });
 
-test("abrir una tarjeta de R2 no mueve ninguna de R1 ni de R3", () => {
+test("abrir una tarjeta de R2 no mueve las zonas que quedan a su izquierda", () => {
   const cerrado = construirLayout(real());
   const abierto = construirLayout(real(), new Set(["eq:R2-PP2"]));
   const antes = new Map(cerrado.nodos.map(nodo => [nodo.id, nodo.x]));
   for (const nodo of abierto.nodos) {
-    if (nodo.zona !== "R1" && nodo.zona !== "R3") continue;
+    if (nodo.zona !== "R1") continue;
     assert.equal(nodo.x, antes.get(nodo.id), `${nodo.id} se movió`);
+  }
+});
+
+test("abrir una tarjeta empuja a la derecha las zonas siguientes, no las pisa", () => {
+  const cerrado = construirLayout(real());
+  const abierto = construirLayout(real(), new Set(["eq:R2-PP2"]));
+  const antes = cerrado.zonas.find(zona => zona.id === "R3");
+  const despues = abierto.zonas.find(zona => zona.id === "R3");
+  assert.ok(antes && despues);
+  assert.ok(despues.x > antes.x, `R3 debía correrse: antes ${antes.x}, después ${despues.x}`);
+});
+
+// El bug del pantallazo: R1/SW1 abierta medía 456 de ancho pero la rejilla
+// avanzaba 212, así que la zona R1 se dibujaba encima de la R2.
+test("con cualquier tarjeta abierta las zonas siguen sin solaparse", () => {
+  const conRejilla = construirLayout(real()).nodos.filter(nodo => nodo.clase === "equipo");
+  assert.ok(conRejilla.length > 0);
+  for (const carta of conRejilla) {
+    const layout = construirLayout(real(), new Set([carta.id]));
+    const racks = layout.zonas.filter(zona => zona.id !== ZONA_BORDE).sort((a, b) => a.x - b.x);
+    for (let i = 1; i < racks.length; i += 1) {
+      const previa = racks[i - 1];
+      assert.ok(
+        racks[i].x >= previa.x + previa.w,
+        `con ${carta.id} abierta, ${previa.id} (hasta ${previa.x + previa.w}) pisa a ${racks[i].id} (desde ${racks[i].x})`,
+      );
+    }
+  }
+});
+
+test("con una tarjeta abierta cada nodo sigue cabiendo en su zona", () => {
+  const layout = construirLayout(real(), new Set(["eq:R1-SW1"]));
+  const porId = new Map(layout.zonas.map(zona => [zona.id, zona]));
+  for (const nodo of layout.nodos) {
+    const zona = porId.get(nodo.zona);
+    assert.ok(zona, `la zona ${nodo.zona} existe`);
+    assert.ok(nodo.x >= zona.x && nodo.x + nodo.w <= zona.x + zona.w, `${nodo.id} se sale de ${zona.id}`);
   }
 });
 
