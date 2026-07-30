@@ -16,6 +16,9 @@ type Props = {
   onSeleccionar: (id: string) => void;
   onConectar: (a: string, b: string) => void;
   onReenlazar: (enlaceId: number, fijo: string, destino: string) => void;
+  onReordenar: (ids: string[]) => void;
+  onRestablecerOrden: () => void;
+  hayOrden: boolean;
   onAviso: (mensaje: string) => void;
   onCopiar: (texto: string) => void;
 };
@@ -24,15 +27,16 @@ type Vista = { x: number; y: number; escala: number };
 // que va a cambiar de destino cuando la suelte.
 type Reenlace = { enlaceId: number; fijo: string; suelto: string };
 
-export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onSeleccionar, onConectar, onReenlazar, onAviso, onCopiar }: Props) {
+export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onSeleccionar, onConectar, onReenlazar, onReordenar, onRestablecerOrden, hayOrden, onAviso, onCopiar }: Props) {
   const contenedor = useRef<HTMLDivElement>(null);
   const [vista, setVista] = useState<Vista>({ x: 0, y: 0, escala: 0.6 });
-  const [modo, setModo] = useState<"consultar" | "conectar">("consultar");
+  const [modo, setModo] = useState<"consultar" | "conectar" | "ordenar">("consultar");
   const [origen, setOrigen] = useState("");
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
   const [abiertas, setAbiertas] = useState<Set<string>>(new Set());
   const [reenlace, setReenlace] = useState<Reenlace | null>(null);
   const arrastre = useRef<{ x: number; y: number; vista: Vista } | null>(null);
+  const ultimoMovido = useRef("");
 
   const layout = useMemo(() => construirLayout(estado, abiertas), [estado, abiertas]);
   const anclas = useMemo(() => anclasDeLayout(layout), [layout]);
@@ -54,6 +58,29 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
       return siguiente;
     });
   }, []);
+
+  const mover = useCallback((id: string, delta: number) => {
+    const grupo = layout.grupos.find(lista => lista.includes(id));
+    if (!grupo) return;
+    const indice = grupo.indexOf(id);
+    const destino = indice + delta;
+    if (destino < 0 || destino >= grupo.length) return;
+    const ids = [...grupo];
+    ids[indice] = grupo[destino];
+    ids[destino] = grupo[indice];
+    ultimoMovido.current = `${id}:${delta}`;
+    onReordenar(ids);
+  }, [layout, onReordenar]);
+
+  // Reordenar mueve el nodo de lugar en el DOM y el navegador suelta el foco:
+  // sin esto, encadenar dos movimientos con el teclado obliga a tabular de
+  // nuevo hasta el botón.
+  useEffect(() => {
+    const clave = ultimoMovido.current;
+    if (!clave) return;
+    ultimoMovido.current = "";
+    contenedor.current?.querySelector<SVGGraphicsElement>(`[data-flecha="${clave}"]`)?.focus();
+  }, [layout]);
 
   const alPunto = (id: string) => {
     if (modo !== "conectar" || !puedeSerOrigen(id)) { onSeleccionar(id); return; }
@@ -195,12 +222,14 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
         <div className="net-seg" role="group" aria-label="Modo del diagrama">
           <button className={modo === "consultar" ? "on" : ""} aria-pressed={modo === "consultar"} onClick={() => { setModo("consultar"); setOrigen(""); setCursor(null); }}>CONSULTAR</button>
           <button className={modo === "conectar" ? "on" : ""} aria-pressed={modo === "conectar"} onClick={() => setModo("conectar")}>CONECTAR</button>
+          <button className={modo === "ordenar" ? "on" : ""} aria-pressed={modo === "ordenar"} onClick={() => { setModo("ordenar"); setOrigen(""); setCursor(null); }}>ORDENAR</button>
         </div>
         <div className="net-seg" role="group" aria-label="Zoom">
           <button onClick={() => setVista(actual => ({ ...actual, escala: Math.min(actual.escala * 1.25, 4) }))} aria-label="Acercar">+</button>
           <button onClick={() => setVista(actual => ({ ...actual, escala: Math.max(actual.escala / 1.25, 0.1) }))} aria-label="Alejar">−</button>
           <button onClick={ajustar}>AJUSTAR A LA VISTA</button>
           <button onClick={() => setAbiertas(new Set())} disabled={!abiertas.size}>CERRAR TODO</button>
+          {modo === "ordenar" && <button onClick={onRestablecerOrden} disabled={!hayOrden}>RESTABLECER ORDEN</button>}
         </div>
         <p className="net-diagram-hint">{reenlace
           ? `Moviendo la punta ${etiquetaEndpoint(estado, reenlace.suelto)} · suéltala sobre el nuevo destino, esc para cancelar`
@@ -208,7 +237,9 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
             ? `Conectando desde ${etiquetaEndpoint(estado, origen)} · clic en el destino, esc para cancelar`
             : modo === "conectar"
               ? "Clic en un puerto libre para empezar un enlace, o arrastra la punta de una línea para llevarla a otro destino."
-              : "Clic en un nodo resalta su ruta hasta el ISP. Doble clic abre la ficha."}</p>
+              : modo === "ordenar"
+                ? "Usa las flechas para mover racks, equipos y destinos. El orden se guarda solo y vale para todos."
+                : "Clic en un nodo resalta su ruta hasta el ISP. Doble clic abre la ficha."}</p>
       </div>
 
       {seleccionado && <div className="net-diagram-cadena">
@@ -224,7 +255,7 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
         <svg role="img" aria-label="Diagrama de la red del colegio">
           <g className={`net-d-lienzo ${seleccionado ? "sel-activa" : ""}`} transform={`translate(${vista.x} ${vista.y}) scale(${vista.escala})`}>
             {anclaPendiente && cursor && <line className="net-d-enlace-pendiente" x1={anclaPendiente.x} y1={anclaPendiente.y} x2={cursor.x} y2={cursor.y} />}
-            <DiagramaNodos layout={layout} ruta={ruta} alcance={cadena.alcanzables} seleccionado={seleccionado} origen={origen} corte={corte} editable={modo === "conectar"} reenlazando={Boolean(reenlace)} onPunto={alPunto} onFicha={onAbrir} onAlternar={alternar} onTomarPunta={tomarPunta} />
+            <DiagramaNodos layout={layout} ruta={ruta} alcance={cadena.alcanzables} seleccionado={seleccionado} origen={origen} corte={corte} editable={modo === "conectar"} reenlazando={Boolean(reenlace)} ordenando={modo === "ordenar"} onMover={mover} onPunto={alPunto} onFicha={onAbrir} onAlternar={alternar} onTomarPunta={tomarPunta} />
           </g>
         </svg>
       </div>

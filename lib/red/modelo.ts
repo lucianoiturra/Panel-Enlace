@@ -18,7 +18,7 @@ export type Espacio = { id: string; nombre: string; categoria: CategoriaEspacio;
 export type Enlace = { id: number; a: string; b: string; tipo: TipoEnlace; nota: string };
 export type EntradaBitacora = { id: number; fecha: string; tipo: TipoBitacora; objetivo: string; antes: string; despues: string; nota: string };
 export type Cubiculo = { id: number; status: string; ip: string; mac: string; inventoryCode: string };
-export type EstadoRed = { racks: Rack[]; equipos: Equipo[]; puertos: Puerto[]; espacios: Espacio[]; enlaces: Enlace[]; bitacora: EntradaBitacora[]; cubiculos: Cubiculo[] };
+export type EstadoRed = { racks: Rack[]; equipos: Equipo[]; puertos: Puerto[]; espacios: Espacio[]; enlaces: Enlace[]; bitacora: EntradaBitacora[]; cubiculos: Cubiculo[]; orden: Record<string, number> };
 
 export const etiquetasEstadoEspacio: Record<EstadoEspacio, string> = {
   operativo: "Operativo",

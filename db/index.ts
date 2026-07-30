@@ -131,6 +131,10 @@ async function ensureSchema() {
         despues TEXT NOT NULL DEFAULT '',
         nota TEXT NOT NULL DEFAULT ''
       )`,
+      `CREATE TABLE IF NOT EXISTS net_orden (
+        id TEXT PRIMARY KEY,
+        orden INTEGER NOT NULL
+      )`,
       "CREATE INDEX IF NOT EXISTS net_puerto_equipo_idx ON net_puertos (equipo)",
       "CREATE UNIQUE INDEX IF NOT EXISTS net_enlace_par_idx ON net_enlaces (a, b)",
       "CREATE INDEX IF NOT EXISTS net_enlace_a_idx ON net_enlaces (a)",

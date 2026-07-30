@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     const espacios = await db.select().from(netEspacios).orderBy(asc(netEspacios.id));
     const enlaces = await db.select({ id: netEnlaces.id, a: netEnlaces.a, b: netEnlaces.b, tipo: netEnlaces.tipo, nota: netEnlaces.nota }).from(netEnlaces);
     const listaCubiculos = await db.select({ id: cubicles.id, status: cubicles.status, ip: cubicles.ip, mac: cubicles.mac, inventoryCode: cubicles.inventoryCode }).from(cubicles);
-    const estado = { racks: [], equipos, puertos, espacios, enlaces, bitacora: [], cubiculos: listaCubiculos } as EstadoRed;
+    const estado = { racks: [], equipos, puertos, espacios, enlaces, bitacora: [], cubiculos: listaCubiculos, orden: {} } as EstadoRed;
     return noStoreJson(trazarCadena(estado, endpoint));
   } catch (error) {
     return apiErrorResponse(error, "No fue posible trazar la cadena.");

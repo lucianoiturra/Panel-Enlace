@@ -2,12 +2,12 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import semilla from "../lib/red/semilla.json" with { type: "json" };
 import {
-  anchoDeTexto, anclasDeLayout, codigoDeEquipo, construirLayout, ordenDeZonas, resumenDePuertos,
+  anchoDeTexto, anclasDeLayout, codigoDeEquipo, construirLayout, ordenDeZonas, ordenarPor, resumenDePuertos,
   ANCHO_MINIMO, ANCHO_PUERTO, COLUMNAS_PUERTO, ZONA_BORDE,
 } from "../lib/red/layout.ts";
 import type { EstadoRed } from "../lib/red/modelo.ts";
 
-const real = (): EstadoRed => ({ ...semilla, bitacora: [], cubiculos: [] } as unknown as EstadoRed);
+const real = (): EstadoRed => ({ ...semilla, bitacora: [], cubiculos: [], orden: {} } as unknown as EstadoRed);
 
 test("las zonas salen en el orden de la cadena de uplinks, no por id", () => {
   assert.deepEqual(ordenDeZonas(real()), [ZONA_BORDE, "R1", "R2", "R3"]);
@@ -248,4 +248,79 @@ test("al abrirla, el ancla del puerto pasa a su propia casilla", () => {
     x: panel.x + puerto.x + puerto.w / 2,
     y: panel.y + puerto.y + puerto.h / 2,
   });
+});
+
+test("sin orden guardado, ordenarPor respeta el orden automático", () => {
+  assert.deepEqual(ordenarPor({}, ["b", "a", "c"]), ["b", "a", "c"]);
+});
+
+test("el orden guardado manda sobre el automático", () => {
+  assert.deepEqual(ordenarPor({ a: 0, b: 1, c: 2 }, ["c", "b", "a"]), ["a", "b", "c"]);
+});
+
+// El caso del equipo agregado después de acomodar el rack: cae al final sin
+// desarmar lo que ya se ordenó a mano.
+test("lo que no tiene orden guardado va al final, en su orden automático", () => {
+  assert.deepEqual(ordenarPor({ c: 0 }, ["a", "b", "c", "d"]), ["c", "a", "b", "d"]);
+});
+
+test("un orden guardado de un id que ya no existe no altera la lista", () => {
+  assert.deepEqual(ordenarPor({ "eq:BORRADO": 0 }, ["a", "b"]), ["a", "b"]);
+});
+
+test("las zonas salen en el orden guardado y el borde sigue primero", () => {
+  const estado = real();
+  estado.orden = { R3: 0, R2: 1, R1: 2, [ZONA_BORDE]: 0 };
+  assert.deepEqual(ordenDeZonas(estado), [ZONA_BORDE, "R3", "R2", "R1"]);
+});
+
+const equisDe = (layout: ReturnType<typeof construirLayout>, id: string) =>
+  layout.nodos.find(nodo => nodo.id === id)?.x ?? -1;
+const yeDe = (layout: ReturnType<typeof construirLayout>, id: string) =>
+  layout.nodos.find(nodo => nodo.id === id)?.y ?? -1;
+
+test("dos switches del mismo rack se intercambian sin mover los paneles", () => {
+  const base = construirLayout(real());
+  const estado = real();
+  estado.orden = { "eq:R2-SW3": 0, "eq:R2-SW2": 1, "eq:R2-SW1": 2 };
+  const movido = construirLayout(estado);
+  assert.ok(equisDe(base, "eq:R2-SW1") < equisDe(base, "eq:R2-SW3"), "el orden de partida es SW1, SW2, SW3");
+  assert.ok(equisDe(movido, "eq:R2-SW3") < equisDe(movido, "eq:R2-SW1"), "SW3 quedó a la izquierda de SW1");
+  assert.equal(equisDe(movido, "eq:R2-PP1"), equisDe(base, "eq:R2-PP1"), "la fila de paneles no se movió");
+});
+
+test("un destino sube dentro de la pila de su equipo", () => {
+  const base = construirLayout(real());
+  assert.ok(yeDe(base, "esp:utp-e-basica") < yeDe(base, "esp:pie-administrativo"), "el orden de partida");
+  const estado = real();
+  estado.orden = { "esp:pie-administrativo": 0, "esp:utp-e-basica": 1 };
+  const movido = construirLayout(estado);
+  assert.ok(yeDe(movido, "esp:pie-administrativo") < yeDe(movido, "esp:utp-e-basica"));
+  assert.equal(equisDe(movido, "esp:pie-administrativo"), equisDe(movido, "esp:utp-e-basica"), "siguen en la misma columna");
+});
+
+// R2/PP1 sostiene la columna de los espacios y R2/SW1 la del AP. Al mandar el
+// panel al final de su fila, su columna pasa a la derecha de la del switch.
+test("al mover un panel, la columna de destinos que cuelga de él se mueve con él", () => {
+  const base = construirLayout(real());
+  assert.ok(equisDe(base, "esp:utp-e-basica") < equisDe(base, "pto:AP-sala-multicopiado-p0"), "el orden de partida");
+  const estado = real();
+  estado.orden = { "eq:R2-PP2": 0, "eq:R2-PP3": 1, "eq:R2-PP1": 2 };
+  const movido = construirLayout(estado);
+  assert.ok(equisDe(movido, "pto:AP-sala-multicopiado-p0") < equisDe(movido, "esp:utp-e-basica"));
+});
+
+test("los grupos cubren racks, filas y pilas, sin repetir ningún id", () => {
+  const layout = construirLayout(real());
+  const todos = layout.grupos.flat();
+  assert.equal(new Set(todos).size, todos.length, "un id aparece en dos grupos");
+  const tiene = (...ids: string[]) => layout.grupos.some(grupo => ids.every(id => grupo.includes(id)));
+  assert.ok(tiene("R1", "R2", "R3"), "falta el grupo de racks");
+  assert.equal(layout.grupos.some(grupo => grupo.includes(ZONA_BORDE)), false, "la zona de borde no se ordena");
+  assert.ok(tiene("eq:R2-SW1", "eq:R2-SW2", "eq:R2-SW3"), "falta la fila de switches de R2");
+  assert.ok(tiene("eq:R2-PP1", "eq:R2-PP2", "eq:R2-PP3"), "falta la fila de paneles de R2");
+  assert.equal(tiene("eq:R2-SW1", "eq:R2-PP1"), false, "un switch no se ordena contra un panel");
+  assert.equal(tiene("eq:R2-SW1", "eq:R3-SW1"), false, "un switch no se ordena contra otro rack");
+  assert.ok(tiene("esp:utp-e-basica", "esp:pie-administrativo"), "falta la pila de R2/PP1");
+  assert.ok(tiene("pto:FORTINET-p0", "pto:ISP-p0", "pto:MIKROTIK-p0"), "falta la fila de equipos de borde");
 });

@@ -126,3 +126,8 @@ export const netBitacora = pgTable(
   },
   (table) => [index("net_bitacora_objetivo_idx").on(table.objetivo)],
 );
+
+export const netOrden = pgTable("net_orden", {
+  id: text("id").primaryKey(),
+  orden: integer("orden").notNull(),
+});

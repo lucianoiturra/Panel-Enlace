@@ -17,6 +17,8 @@ export type PropsNodos = {
   corte: string;
   editable: boolean;
   reenlazando: boolean;
+  ordenando: boolean;
+  onMover: (id: string, delta: number) => void;
   onPunto: (id: string) => void;
   onFicha: (id: string) => void;
   onAlternar: (id: string) => void;
@@ -25,6 +27,9 @@ export type PropsNodos = {
 
 const COLOR_ENLACE = { patch: "#294f7c", uplink: "#a65330", roseta: "#237a52", borde: "#182334" } as const;
 const grosorDe = (cuenta: number) => Math.min(7, 2 + Math.log2(Math.max(cuenta, 1)));
+const ANCHO_FLECHA = 20;
+const ALTO_FLECHA = 18;
+const ALTO_FLECHA_V = 14;
 
 type Punto = { x: number; y: number };
 
@@ -60,6 +65,8 @@ export default function DiagramaNodos({
   corte,
   editable,
   reenlazando,
+  ordenando,
+  onMover,
   onPunto,
   onFicha,
   onAlternar,
@@ -67,6 +74,11 @@ export default function DiagramaNodos({
 }: PropsNodos) {
   const anclas = useMemo(() => anclasDeLayout(layout), [layout]);
   const nodosPorId = useMemo(() => new Map(layout.nodos.map(nodo => [nodo.id, nodo])), [layout]);
+  const posicion = useMemo(() => {
+    const mapa = new Map<string, { grupo: string[]; indice: number }>();
+    for (const grupo of layout.grupos) grupo.forEach((id, indice) => mapa.set(id, { grupo, indice }));
+    return mapa;
+  }, [layout]);
 
   const pertenece = (conjunto: Set<string>, id: string) =>
     conjunto.has(id) || nodosPorId.get(id)?.idsPuerto.some(puerto => conjunto.has(puerto)) === true;
@@ -102,6 +114,47 @@ export default function DiagramaNodos({
   const etiquetaAccesible = (nodo: Nodo) => nodo.clase === "equipo"
     ? `${nodo.etiqueta}. Enter para ${nodo.abierta ? "cerrar" : "abrir"} sus puertos; doble clic para abrir la ficha.`
     : `${nodo.etiqueta}. Enter para seleccionar; doble clic para abrir la ficha.`;
+
+  // Devuelve null para lo que no pertenece a ningún grupo —la zona de borde— y
+  // omite la flecha del extremo: una flecha que no hace nada es ruido sobre un
+  // diagrama que ya está denso.
+  const flechasDe = (id: string, nombre: string, x: number, y: number, vertical: boolean) => {
+    const lugar = posicion.get(id);
+    if (!lugar) return null;
+    const alto = vertical ? ALTO_FLECHA_V : ALTO_FLECHA;
+    const pasos = [
+      { delta: -1, simbolo: vertical ? "▲" : "◀", hacia: vertical ? "arriba" : "la izquierda" },
+      { delta: 1, simbolo: vertical ? "▼" : "▶", hacia: vertical ? "abajo" : "la derecha" },
+    ];
+    return <g key={id}>
+      {pasos.map(({ delta, simbolo, hacia }, indice) => {
+        const destino = lugar.indice + delta;
+        if (destino < 0 || destino >= lugar.grupo.length) return null;
+        const cx = x + (vertical ? 0 : indice * (ANCHO_FLECHA + 4));
+        const cy = y + (vertical ? indice * (alto + 2) : 0);
+        return <g key={delta} className="net-d-flecha">
+          <rect
+            x={cx}
+            y={cy}
+            width={ANCHO_FLECHA}
+            height={alto}
+            rx={3}
+            role="button"
+            tabIndex={0}
+            data-flecha={`${id}:${delta}`}
+            aria-label={`Mover ${nombre} hacia ${hacia}`}
+            onKeyDown={evento => {
+              if (evento.key !== "Enter" && evento.key !== " ") return;
+              evento.preventDefault();
+              onMover(id, delta);
+            }}
+            onClick={evento => { evento.stopPropagation(); onMover(id, delta); }}
+          />
+          <text x={cx + ANCHO_FLECHA / 2} y={cy + alto / 2 + 4}>{simbolo}</text>
+        </g>;
+      })}
+    </g>;
+  };
 
   const cortada = corte ? anclas.get(corte) : undefined;
 
@@ -181,6 +234,13 @@ export default function DiagramaNodos({
           <text x={puerto.x + puerto.w / 2} y={puerto.y + puerto.h / 2 + 5}>{puerto.n}</text>
         </g>)}
       </g>)}
+
+      {ordenando && <g className="net-d-orden">
+        {layout.zonas.map(zona => flechasDe(zona.id, zona.nombre, zona.x + zona.w - 52, zona.y + 4, false))}
+        {layout.nodos.map(nodo => nodo.fila === 2
+          ? flechasDe(nodo.id, nodo.etiqueta, nodo.x + nodo.w + 4, nodo.y, true)
+          : flechasDe(nodo.id, nodo.etiqueta, nodo.x, nodo.y + nodo.h + 6, false))}
+      </g>}
     </>
   );
 }

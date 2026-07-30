@@ -209,6 +209,11 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offs
 .net-diagram-canvas.reenlazando{cursor:grabbing}
 .net-d-lienzo .net-d-link.editable:hover{opacity:1}
 .net-d-nodo rect:focus-visible,.net-d-pt rect:focus-visible{outline:none;stroke:var(--focus);stroke-width:4}
+.net-d-flecha rect{fill:var(--surface);stroke:var(--ink);stroke-width:1.5;cursor:pointer}
+.net-d-flecha text{fill:var(--ink);font:700 12px var(--font-mono);text-anchor:middle;pointer-events:none}
+.net-d-flecha:hover rect{fill:var(--ink)}
+.net-d-flecha:hover text{fill:#fff}
+.net-d-flecha rect:focus-visible{outline:none;stroke:var(--focus);stroke-width:3}
 .net-diagram-cadena{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 14px;border-top:1px solid var(--line);background:#f7f8f9}
 .net-diagram-saltos{display:flex;align-items:center;flex-wrap:wrap;gap:2px;flex:1;min-width:0}
 .net-diagram-saltos button{border:0;background:none;padding:3px 5px;font:700 11px var(--font-mono);color:var(--ink);cursor:pointer;border-radius:3px}

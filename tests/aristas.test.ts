@@ -8,7 +8,7 @@ import type { EstadoRed } from "../lib/red/modelo.ts";
 // semilla.json no trae ids: los pone la columna serial al sembrar. Aquí se
 // numeran igual que en la base para probar sobre lo que la app recibe de verdad.
 const real = (): EstadoRed => {
-  const estado = { ...semilla, bitacora: [], cubiculos: [] } as unknown as EstadoRed;
+  const estado = { ...semilla, bitacora: [], cubiculos: [], orden: {} } as unknown as EstadoRed;
   estado.enlaces = estado.enlaces.map((enlace, indice) => ({ ...enlace, id: indice + 1 }));
   return estado;
 };

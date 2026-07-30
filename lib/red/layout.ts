@@ -33,13 +33,20 @@ export type Nodo = {
 };
 export type Zona = { id: string; nombre: string; x: number; y: number; w: number; h: number };
 export type FichaBandeja = { id: string; etiqueta: string; grupo: string };
-export type Layout = { zonas: Zona[]; nodos: Nodo[]; aristas: Arista[]; bandeja: FichaBandeja[]; ancho: number; alto: number };
+export type Layout = { zonas: Zona[]; nodos: Nodo[]; aristas: Arista[]; bandeja: FichaBandeja[]; grupos: string[][]; ancho: number; alto: number };
 
 const FILA_BORDE: TipoEquipo[] = ["isp", "firewall", "router"];
 const GRUPOS = { sala: "Salas", oficina: "Oficinas", otro: "Otros" } as const;
 
 export const anchoDeTexto = (texto: string) =>
   Math.max(ANCHO_MINIMO, Math.round(texto.length * TIPOGRAFIA * ANCHO_CARACTER) + RELLENO);
+
+// El orden guardado manda; lo que no tiene va al final, en su orden automático.
+// El desplazamiento de mil es lo que garantiza esa segunda mitad: las filas
+// guardadas se escriben siempre como 0..n-1 y ningún grupo llega a mil.
+export const ordenarPor = (orden: Record<string, number>, automatico: string[]): string[] =>
+  [...automatico].sort((a, b) =>
+    (orden[a] ?? 1000 + automatico.indexOf(a)) - (orden[b] ?? 1000 + automatico.indexOf(b)));
 
 export const codigoDeEquipo = (equipoId: string) => equipoId.replace("-", "/");
 
@@ -88,7 +95,7 @@ export const ordenDeZonas = (estado: EstadoRed): string[] => {
     for (const vecino of [...(vecinos.get(actual) ?? [])].sort()) if (!vistos.has(vecino)) cola.push(vecino);
   }
   for (const rack of [...racks].sort()) if (!vistos.has(rack)) orden.push(rack);
-  return [ZONA_BORDE, ...orden];
+  return [ZONA_BORDE, ...ordenarPor(estado.orden, orden)];
 };
 
 const filaDeEquipo = (tipo: TipoEquipo) => (FILA_BORDE.includes(tipo) ? 0 : tipo === "switch" ? 0 : 1);
@@ -212,6 +219,9 @@ export const construirLayout =(estado: EstadoRed, abiertas: Set<string> = new Se
     .map(equipo => nodoDeEquipo(estado, equipo, abiertas));
   const porId = new Map(equipos.map(nodo => [nodo.id, nodo]));
   const nodos = [...equipos, ...destinosDe(estado, porId)];
+  const porNodo = new Map(nodos.map(nodo => [nodo.id, nodo]));
+  const grupos: string[][] = [];
+  const racksDibujados: string[] = [];
 
   const zonas: Zona[] = [];
   let x = 0;
@@ -226,8 +236,10 @@ export const construirLayout =(estado: EstadoRed, abiertas: Set<string> = new Se
     let ancho = 0;
     let alto = ALTO_TITULO_ZONA;
     for (const fila of [0, 1]) {
-      const cartas = dentro.filter(nodo => nodo.fila === fila).sort((a, b) => (a.id < b.id ? -1 : 1));
-      if (!cartas.length) continue;
+      const ids = ordenarPor(estado.orden, dentro.filter(nodo => nodo.fila === fila).map(nodo => nodo.id).sort());
+      if (!ids.length) continue;
+      grupos.push(ids);
+      const cartas = ids.map(id => porNodo.get(id)!);
       const altoFila = Math.max(...cartas.map(carta => carta.h));
       let cursor = xZona + RELLENO_ZONA;
       for (const carta of cartas) {
@@ -248,7 +260,10 @@ export const construirLayout =(estado: EstadoRed, abiertas: Set<string> = new Se
     const ordenadas = [...columnas.entries()].sort(([a], [b]) => (porId.get(a)?.x ?? 0) - (porId.get(b)?.x ?? 0));
     let cursor = xZona + RELLENO_ZONA;
     let altoFila = 0;
-    for (const [, pila] of ordenadas) {
+    for (const [, columna] of ordenadas) {
+      const ids = ordenarPor(estado.orden, columna.map(destino => destino.id));
+      grupos.push(ids);
+      const pila = ids.map(id => porNodo.get(id)!);
       const anchoColumna = Math.max(...pila.map(destino => destino.w));
       let y = yZona + alto;
       for (const destino of pila) {
@@ -267,12 +282,15 @@ export const construirLayout =(estado: EstadoRed, abiertas: Set<string> = new Se
     const w = ancho + RELLENO_ZONA * 2;
     zonas.push({ id: idZona, nombre: nombreDeZona(estado, idZona), x: xZona, y: yZona, w, h: alto });
     anchoLienzo = Math.max(anchoLienzo, xZona + w);
+    if (!esBorde) racksDibujados.push(idZona);
     if (esBorde) altoBorde = alto;
     // La siguiente zona arranca detrás del ancho real de esta, no del que
     // tendría cerrada: abrir una tarjeta ensancha la zona, y avanzar menos de
     // lo que mide la dibujaba encima de su vecina.
     else x += w + SEPARACION_ZONA;
   }
+
+  if (racksDibujados.length) grupos.push(racksDibujados);
 
   const alcanzables = alcanzablesDesdeIsp(estado);
   for (const nodo of nodos) nodo.sinRuta = !alcanzables.has(nodo.id);
@@ -282,6 +300,7 @@ export const construirLayout =(estado: EstadoRed, abiertas: Set<string> = new Se
     nodos,
     aristas: aristasParaDibujar(estado, abiertas),
     bandeja: bandejaDe(estado),
+    grupos,
     ancho: anchoLienzo,
     alto: Math.max(...zonas.map(zona => zona.y + zona.h), 0),
   };

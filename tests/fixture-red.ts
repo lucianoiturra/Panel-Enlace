@@ -40,4 +40,5 @@ export const fixture = (): EstadoRed => ({
     { id: 12, status: "operational", ip: "192.168.20.112", mac: "1C-83-41-1C-7D-A7", inventoryCode: "AF-2026-012" },
     { id: 13, status: "pending", ip: "", mac: "", inventoryCode: "" },
   ],
+  orden: {},
 });

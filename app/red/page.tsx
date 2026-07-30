@@ -11,7 +11,7 @@ import Captura, { type FilaSesion } from "./captura";
 import { cadenaComoTexto, trazarCadena } from "../../lib/red/trazado";
 import { estadosEspacio, etiquetaEndpoint, etiquetaPuerto, etiquetasEstadoEspacio, puertosDeEndpoint, type Enlace, type EstadoEspacio, type EstadoRed } from "../../lib/red/modelo";
 
-const estadoVacio: EstadoRed = { racks: [], equipos: [], puertos: [], espacios: [], enlaces: [], bitacora: [], cubiculos: [] };
+const estadoVacio: EstadoRed = { racks: [], equipos: [], puertos: [], espacios: [], enlaces: [], bitacora: [], cubiculos: [], orden: {} };
 
 const cortosEstado: Record<EstadoEspacio, string> = { operativo: "OK", "solo-wifi": "≈", "sin-internet": "×", "sin-verificar": "?" };
 
@@ -118,6 +118,29 @@ export default function PaginaRed() {
     await pedir("/api/red/enlaces", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ a: fijo, b: destino }) }, "No fue posible mover el enlace.");
     await pedir(`/api/red/enlaces?id=${enlaceId}`, { method: "DELETE" }, "El enlace nuevo quedó creado, pero no se pudo quitar el anterior.");
   }, "Enlace reconectado.");
+
+  // El movimiento se ve al instante y se guarda en segundo plano: acomodar un
+  // rack son diez o quince clics seguidos, y esperar la recarga completa del
+  // estado en cada uno haría el modo inusable.
+  const reordenar = (ids: string[]) => {
+    const previo = estado.orden;
+    setEstado(actual => ({ ...actual, orden: { ...actual.orden, ...Object.fromEntries(ids.map((id, indice) => [id, indice])) } }));
+    void (async () => {
+      try {
+        await pedir("/api/red/orden", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids }) }, "No fue posible guardar el orden.");
+      } catch (error) {
+        setEstado(actual => ({ ...actual, orden: previo }));
+        mostrarAviso(error instanceof Error ? error.message : "No fue posible guardar el orden.", "error");
+      }
+    })();
+  };
+
+  const restablecerOrden = () => {
+    if (!window.confirm("¿Volver al orden automático del diagrama? Se pierde el orden que definiste a mano.")) return;
+    void conGuardado(async () => {
+      await pedir("/api/red/orden", { method: "DELETE" }, "No fue posible restablecer el orden.");
+    }, "Orden restablecido.");
+  };
 
   const asignarRapido = (a: string, b: string) => {
     const provisional = -Date.now();
@@ -283,7 +306,7 @@ export default function PaginaRed() {
                 ? <VistaRacks estado={estado} rackActivo={rackVisible} onRack={setRackActivo} formato={formatoRacks} onFormato={setFormatoRacks} seleccionado={seleccionado} onAbrir={abrirFicha} />
                 : vista === "cobertura"
                   ? <VistaCobertura estado={estado} onAbrir={abrirFicha} />
-                  : <Diagrama estado={estado} seleccionado={seleccionado} centrarEn={vista === "diagrama" ? coincidenciaBuscador : ""} onAbrir={abrirFicha} onSeleccionar={setSeleccionado} onConectar={asignarRapido} onReenlazar={reenlazar} onAviso={mensaje => mostrarAviso(mensaje, "error")} onCopiar={copiarTexto} />}
+                  : <Diagrama estado={estado} seleccionado={seleccionado} centrarEn={vista === "diagrama" ? coincidenciaBuscador : ""} onAbrir={abrirFicha} onSeleccionar={setSeleccionado} onConectar={asignarRapido} onReenlazar={reenlazar} onReordenar={reordenar} onRestablecerOrden={restablecerOrden} hayOrden={Object.keys(estado.orden).length > 0} onAviso={mensaje => mostrarAviso(mensaje, "error")} onCopiar={copiarTexto} />}
           </div>
         </section>
       </section>
