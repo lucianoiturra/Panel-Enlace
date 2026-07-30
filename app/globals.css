@@ -161,9 +161,13 @@ button { cursor:pointer; }
 .net-diagram-canvas{height:min(70vh,640px);background:#f7f8f9;border-block:1px solid var(--line);overflow:hidden;touch-action:none;cursor:grab}
 .net-diagram-canvas:active{cursor:grabbing}
 .net-diagram-canvas svg{width:100%;height:100%;display:block}
-.net-d-link{fill:none;opacity:.18}
-.net-d-link.alcance{opacity:.4}
-.net-d-link.ruta{opacity:1;stroke-width:6}
+.net-d-link{opacity:.5}
+.net-d-link path{fill:none}
+.net-d-cuenta{fill:var(--muted);font:700 11px var(--font-mono);text-anchor:middle;paint-order:stroke;stroke:#f7f8f9;stroke-width:4px;pointer-events:none}
+.net-d-lienzo.sel-activa .net-d-link{opacity:.12}
+.net-d-lienzo.sel-activa .net-d-link.alcance{opacity:.5}
+.net-d-lienzo.sel-activa .net-d-link.ruta{opacity:1}
+.net-d-link.ruta path{stroke-width:6}
 .net-d-zona rect{fill:#eef1f4;stroke:#d7dce2;stroke-width:1}
 .net-d-zona text{fill:var(--muted);font:700 11px var(--font-mono);letter-spacing:.09em;text-transform:uppercase;pointer-events:none}
 .net-d-nodo rect{fill:var(--surface);stroke:#c2c9d2;stroke-width:1.5;cursor:pointer}

@@ -156,7 +156,7 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
 
       <div className={`net-diagram-canvas ${modo === "conectar" ? "conectando" : ""}`} ref={contenedor} onWheel={alRodar} onPointerDown={alBajar} onPointerMove={alMover} onPointerUp={alSoltar} onPointerLeave={alSoltar}>
         <svg role="img" aria-label="Diagrama de la red del colegio">
-          <g transform={`translate(${vista.x} ${vista.y}) scale(${vista.escala})`}>
+          <g className={`net-d-lienzo ${seleccionado ? "sel-activa" : ""}`} transform={`translate(${vista.x} ${vista.y}) scale(${vista.escala})`}>
             {anclaOrigen && cursor && <line className="net-d-enlace-pendiente" x1={anclaOrigen.x} y1={anclaOrigen.y} x2={cursor.x} y2={cursor.y} />}
             <DiagramaNodos layout={layout} ruta={ruta} alcance={cadena.alcanzables} seleccionado={seleccionado} origen={origen} corte={corte} onPunto={alPunto} onFicha={onAbrir} onAlternar={alternar} />
           </g>

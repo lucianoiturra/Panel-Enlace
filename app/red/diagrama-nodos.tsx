@@ -20,11 +20,22 @@ export type PropsNodos = {
   onAlternar: (id: string) => void;
 };
 
-const COLOR_ENLACE = { patch: "#294f7c", uplink: "#a65330", roseta: "#237a52", borde: "#68717e" } as const;
+const COLOR_ENLACE = { patch: "#294f7c", uplink: "#a65330", roseta: "#237a52", borde: "#182334" } as const;
+const grosorDe = (cuenta: number) => Math.min(7, 2 + Math.log2(Math.max(cuenta, 1)));
 
-const curva = (a: { x: number; y: number }, b: { x: number; y: number }) => {
+type Punto = { x: number; y: number };
+
+const curva = (a: Punto, b: Punto) => {
   const medio = (a.y + b.y) / 2;
   return `M ${a.x} ${a.y} C ${a.x} ${medio}, ${b.x} ${medio}, ${b.x} ${b.y}`;
+};
+
+// Un uplink entre racks une dos switches a la misma altura: una curva vertical
+// bajaría hasta la fila de paneles y volvería a subir, cruzando las tarjetas.
+const trazo = (arista: Arista, a: Punto, b: Punto) => {
+  if (arista.tipo !== "uplink" || Math.abs(a.y - b.y) > 8) return curva(a, b);
+  const medio = (a.x + b.x) / 2;
+  return `M ${a.x} ${a.y} C ${medio} ${a.y}, ${medio} ${b.y}, ${b.x} ${b.y}`;
 };
 
 export default function DiagramaNodos({
@@ -39,9 +50,14 @@ export default function DiagramaNodos({
   onAlternar,
 }: PropsNodos) {
   const anclas = useMemo(() => anclasDeLayout(layout), [layout]);
+  const nodosPorId = useMemo(() => new Map(layout.nodos.map(nodo => [nodo.id, nodo])), [layout]);
 
-  const nivel = (id: string) => ruta.has(id) ? "ruta" : alcance.has(id) ? "alcance" : "";
-  const nivelArista = (arista: Arista) => ruta.has(arista.a) && ruta.has(arista.b) ? "ruta" : alcance.has(arista.a) && alcance.has(arista.b) ? "alcance" : "";
+  const pertenece = (conjunto: Set<string>, id: string) =>
+    conjunto.has(id) || nodosPorId.get(id)?.idsPuerto.some(puerto => conjunto.has(puerto)) === true;
+  const nivel = (id: string) => pertenece(ruta, id) ? "ruta" : pertenece(alcance, id) ? "alcance" : "";
+  const nivelArista = (arista: Arista) => pertenece(ruta, arista.a) && pertenece(ruta, arista.b)
+    ? "ruta"
+    : pertenece(alcance, arista.a) && pertenece(alcance, arista.b) ? "alcance" : "";
   const clasesNodo = (nodo: Nodo) => ["net-d-nodo", nodo.clase, nivel(nodo.id), nodo.sinRuta ? "sin-ruta" : "", seleccionado === nodo.id ? "sel" : "", origen === nodo.id ? "origen" : ""].filter(Boolean).join(" ");
   const clasesPuerto = (puerto: PuertoNodo) => ["net-d-pt", puerto.estado, nivel(puerto.id),
     seleccionado === puerto.id ? "sel" : "", origen === puerto.id ? "origen" : ""].filter(Boolean).join(" ");
@@ -86,7 +102,11 @@ export default function DiagramaNodos({
         const a = anclas.get(arista.a);
         const b = anclas.get(arista.b);
         if (!a || !b) return null;
-        return <path key={arista.clave} className={`net-d-link ${nivelArista(arista)}`} d={curva(a, b)} stroke={COLOR_ENLACE[arista.tipo] ?? "#68717e"} strokeWidth={arista.tipo === "uplink" ? 5 : 3} />;
+        const medio = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        return <g key={arista.clave} className={`net-d-link ${nivelArista(arista)}`}>
+          <path d={trazo(arista, a, b)} stroke={COLOR_ENLACE[arista.tipo] ?? "#68717e"} strokeWidth={grosorDe(arista.cuenta)} fill="none" />
+          {arista.cuenta > 1 && <text className="net-d-cuenta" x={medio.x} y={medio.y}>×{arista.cuenta}</text>}
+        </g>;
       })}
 
       {cortada && <g className="net-d-corte" transform={`translate(${cortada.x} ${cortada.y})`}>
