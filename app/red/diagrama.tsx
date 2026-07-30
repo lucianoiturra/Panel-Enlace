@@ -86,10 +86,12 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
     });
   };
 
+  // Sin setPointerCapture a propósito: capturar el puntero en el lienzo hace que el navegador
+  // redirija el pointerup —y con él click y dblclick— al div que captura, así que el onClick de
+  // los rect del SVG no se dispara nunca. El arrastre funciona igual por burbujeo.
   const alBajar = (evento: React.PointerEvent) => {
     if (evento.button !== 0) return;
     arrastre.current = { x: evento.clientX, y: evento.clientY, vista };
-    (evento.currentTarget as Element).setPointerCapture?.(evento.pointerId);
   };
   const alMover = (evento: React.PointerEvent) => {
     if (origen) {
