@@ -3,7 +3,7 @@ export type EstadoPuerto = "libre" | "ocupado" | "desconocido" | "dañado";
 export type EstadoEspacio = "operativo" | "solo-wifi" | "sin-internet" | "sin-verificar";
 export type CategoriaEspacio = "sala" | "oficina" | "otro";
 export type TipoEnlace = "patch" | "uplink" | "roseta" | "borde";
-export type TipoBitacora = "enlace-creado" | "enlace-borrado" | "estado-espacio" | "estado-puerto" | "nota" | "revisar";
+export type TipoBitacora = "enlace-creado" | "enlace-borrado" | "estado-espacio" | "estado-puerto" | "nota" | "revisar" | "recurso-creado" | "recurso-editado";
 
 export const tiposEquipo: TipoEquipo[] = ["switch", "patchpanel", "router", "firewall", "ap", "isp"];
 export const estadosPuerto: EstadoPuerto[] = ["libre", "ocupado", "desconocido", "dañado"];
@@ -14,7 +14,7 @@ export const tiposEnlace: TipoEnlace[] = ["patch", "uplink", "roseta", "borde"];
 export type Rack = { id: string; nombre: string; ubicacion: string; x: number; y: number; w: number; h: number; notas: string };
 export type Equipo = { id: string; rack: string; tipo: TipoEquipo; etiqueta: string; modelo: string; puertos: number; color: string; x: number; y: number; nota: string };
 export type Puerto = { id: string; equipo: string; n: number; estado: EstadoPuerto; nota: string };
-export type Espacio = { id: string; nombre: string; categoria: CategoriaEspacio; estado: EstadoEspacio; x: number; y: number; nota: string };
+export type Espacio = { id: string; nombre: string; ubicacion: string; categoria: CategoriaEspacio; estado: EstadoEspacio; x: number; y: number; nota: string };
 export type Enlace = { id: number; a: string; b: string; tipo: TipoEnlace; nota: string };
 export type EntradaBitacora = { id: number; fecha: string; tipo: TipoBitacora; objetivo: string; antes: string; despues: string; nota: string };
 export type Cubiculo = { id: number; status: string; ip: string; mac: string; inventoryCode: string };

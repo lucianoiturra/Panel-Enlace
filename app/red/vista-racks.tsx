@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { cadenaComoTexto, trazarCadena } from "../../lib/red/trazado";
+import { cadenaComoTexto, trazarCircuito } from "../../lib/red/trazado";
 import { etiquetaEndpoint, etiquetaPuerto, etiquetasEstadoPuerto, prefijoDe, type EstadoRed } from "../../lib/red/modelo";
 
 type Props = {
@@ -30,7 +30,7 @@ export default function VistaRacks({ estado, rackActivo, onRack, formato, onForm
 
   const cadenas = useMemo(() => {
     if (formato !== "lista") return new Map<string, string>();
-    return new Map(puertosDelRack.map(puerto => [puerto.id, cadenaComoTexto(trazarCadena(estado, puerto.id))]));
+    return new Map(puertosDelRack.map(puerto => [puerto.id, cadenaComoTexto(trazarCircuito(estado, puerto.id))]));
   }, [estado, formato, puertosDelRack]);
 
   return (

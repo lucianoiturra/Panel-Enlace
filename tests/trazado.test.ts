@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { fixture } from "./fixture-red.ts";
-import { cadenaComoTexto, trazarCadena } from "../lib/red/trazado.ts";
+import { cadenaComoTexto, origenDeCircuito, trazarCadena, trazarCircuito } from "../lib/red/trazado.ts";
 
 test("traza la cadena completa desde un espacio hasta el ISP", () => {
   const cadena = trazarCadena(fixture(), "esp:3-basico-b");
@@ -74,7 +74,7 @@ test("traza desde un cubículo", () => {
 
 test("cadenaComoTexto une los saltos con flechas", () => {
   const cadena = trazarCadena(fixture(), "esp:3-basico-b");
-  assert.equal(cadenaComoTexto(cadena), "3° Básico B → R2/PP1 p14 → R2/SW1 p11 → R3/SW1 p02 → MikroTik → Proveedores de Servicios de Internet");
+  assert.equal(cadenaComoTexto(cadena), "Proveedores de Servicios de Internet → MikroTik → R3/SW1 p02 → R2/SW1 p11 → R2/PP1 p14 → 3° Básico B");
 });
 
 test("cadenaComoTexto marca la cadena incompleta", () => {
@@ -114,4 +114,53 @@ test("un endpoint inexistente devuelve camino y alcanzables vacíos", () => {
   const cadena = trazarCadena(fixture(), "esp:no-existe");
   assert.deepEqual(cadena.camino, []);
   assert.equal(cadena.alcanzables.size, 0);
+});
+
+test("una ruta incompleta se detiene en la troncal y no salta a otra sala", () => {
+  const estado = fixture();
+  estado.enlaces = estado.enlaces.filter(enlace => enlace.id !== 4 && enlace.id !== 5);
+  estado.equipos.push({ id: "AP-OTRA-SALA", rack: "R3", tipo: "ap", etiqueta: "AP otra sala", modelo: "", puertos: 0, color: "", x: 0, y: 0, nota: "" });
+  estado.puertos.push({ id: "pto:AP-OTRA-SALA-p0", equipo: "AP-OTRA-SALA", n: 0, estado: "ocupado", nota: "" });
+  estado.enlaces.push({ id: 6, a: "pto:R3-SW1-p28", b: "pto:AP-OTRA-SALA-p0", tipo: "roseta", nota: "" });
+  const cadena = trazarCadena(estado, "esp:3-basico-b");
+  assert.equal(cadena.completa, false);
+  assert.equal(cadena.saltos.at(-1)?.id, "pto:R3-SW1-p02");
+  assert.equal(cadena.saltos.some(salto => salto.id === "pto:AP-OTRA-SALA-p0"), false);
+});
+
+test("seleccionar el puerto de un AP enfoca el circuito hasta ese AP", () => {
+  const estado = fixture();
+  estado.equipos.push({ id: "AP-SALA", rack: "R2", tipo: "ap", etiqueta: "AP Sala", modelo: "", puertos: 0, color: "", x: 0, y: 0, nota: "" });
+  estado.puertos.push({ id: "pto:AP-SALA-p0", equipo: "AP-SALA", n: 0, estado: "ocupado", nota: "" });
+  estado.enlaces.push({ id: 6, a: "pto:R2-SW1-p11", b: "pto:AP-SALA-p0", tipo: "roseta", nota: "" });
+  assert.equal(origenDeCircuito(estado, "pto:R2-SW1-p11"), "pto:AP-SALA-p0");
+  const cadena = trazarCircuito(estado, "pto:R2-SW1-p11");
+  assert.equal(cadena.completa, true);
+  assert.equal(cadena.saltos[0]?.id, "pto:AP-SALA-p0");
+  assert.equal(cadena.camino.includes("pto:R2-SW1-p11"), true);
+});
+
+test("si falta el último parcheo sigue los uplinks hacia el rack de borde", () => {
+  const estado = fixture();
+  estado.enlaces = estado.enlaces.filter(enlace => ![3, 4, 5].includes(enlace.id));
+  estado.racks.push({ id: "R1", nombre: "Rack 1", ubicacion: "Sala Enlace", x: 0, y: 0, w: 0, h: 0, notas: "" });
+  estado.equipos.push(
+    { id: "R1-SW1", rack: "R1", tipo: "switch", etiqueta: "Switch 1", modelo: "", puertos: 24, color: "", x: 0, y: 0, nota: "" },
+    { id: "R1-PP1", rack: "R1", tipo: "patchpanel", etiqueta: "Patch 1", modelo: "", puertos: 24, color: "", x: 0, y: 0, nota: "" },
+    { id: "FORTINET", rack: "", tipo: "firewall", etiqueta: "Fortinet", modelo: "", puertos: 0, color: "", x: 0, y: 0, nota: "" },
+  );
+  estado.puertos.push(
+    { id: "pto:R1-SW1-p23", equipo: "R1-SW1", n: 23, estado: "ocupado", nota: "" },
+    { id: "pto:R1-PP1-p23", equipo: "R1-PP1", n: 23, estado: "ocupado", nota: "" },
+    { id: "pto:FORTINET-p0", equipo: "FORTINET", n: 0, estado: "ocupado", nota: "" },
+  );
+  estado.enlaces.push(
+    { id: 6, a: "pto:R1-SW1-p23", b: "pto:R2-SW1-p24", tipo: "uplink", nota: "" },
+    { id: 7, a: "pto:FORTINET-p0", b: "pto:R1-PP1-p23", tipo: "borde", nota: "" },
+    { id: 8, a: "pto:FORTINET-p0", b: "pto:ISP-p0", tipo: "borde", nota: "" },
+  );
+  const cadena = trazarCadena(estado, "esp:3-basico-b");
+  assert.equal(cadena.completa, false);
+  assert.equal(cadena.saltos.at(-1)?.id, "pto:R1-SW1-p23");
+  assert.match(cadena.motivo ?? "", /R1\/SW1 p23/);
 });

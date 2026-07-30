@@ -8,7 +8,8 @@ import VistaCobertura from "./vista-cobertura";
 import Diagrama from "./diagrama";
 import Ficha from "./ficha";
 import Captura, { type FilaSesion } from "./captura";
-import { cadenaComoTexto, trazarCadena } from "../../lib/red/trazado";
+import NuevoRecurso, { type RecursoNuevo } from "./nuevo-recurso";
+import { cadenaComoTexto, trazarCircuito } from "../../lib/red/trazado";
 import { estadosEspacio, etiquetaEndpoint, etiquetaPuerto, etiquetasEstadoEspacio, puertosDeEndpoint, type Enlace, type EstadoEspacio, type EstadoRed } from "../../lib/red/modelo";
 
 const estadoVacio: EstadoRed = { racks: [], equipos: [], puertos: [], espacios: [], enlaces: [], bitacora: [], cubiculos: [], orden: {} };
@@ -41,6 +42,7 @@ export default function PaginaRed() {
   const [rackActivo, setRackActivo] = useState("");
   const [formatoRacks, setFormatoRacks] = useState<"tiras" | "lista">("tiras");
   const [capturaAbierta, setCapturaAbierta] = useState(false);
+  const [nuevoAbierto, setNuevoAbierto] = useState(false);
   const [sesion, setSesion] = useState<FilaSesion[]>([]);
   const rackVisible = rackActivo || estado.racks[0]?.id || "";
 
@@ -74,7 +76,7 @@ export default function PaginaRed() {
     }
   };
 
-  const cadenaFicha = useMemo(() => trazarCadena(estado, fichaAbierta), [estado, fichaAbierta]);
+  const cadenaFicha = useMemo(() => trazarCircuito(estado, fichaAbierta), [estado, fichaAbierta]);
   const abrirFicha = (id: string) => { setSeleccionado(id); setFichaAbierta(id); };
 
   const pedir = async (url: string, opciones: RequestInit, respaldo: string) => {
@@ -103,9 +105,41 @@ export default function PaginaRed() {
     await pedir("/api/red", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tipo, id: fichaAbierta, ...cambios }) }, "No fue posible guardar los cambios.");
   }, "Cambio guardado.");
 
-  const crearEnlace = (puertoId: string, nota: string) => conGuardado(async () => {
-    await pedir("/api/red/enlaces", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ a: fichaAbierta, b: puertoId, nota }) }, "No fue posible crear el enlace.");
-  }, "Puerto asignado.");
+  const guardarRecurso = (cambios: RecursoNuevo & { id: string }) => conGuardado(async () => {
+    await pedir("/api/red/recursos", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(cambios),
+    }, "No fue posible guardar los datos.");
+  }, "Datos actualizados.");
+
+  const crearRecurso = (recurso: RecursoNuevo) => {
+    if (guardando) return;
+    void (async () => {
+      setGuardando(true);
+      try {
+        const response = await pedir("/api/red/recursos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(recurso),
+        }, "No fue posible agregar el elemento.");
+        const { id } = await response.json() as { id: string };
+        const recargado = await cargar();
+        if (!recargado) return;
+        setNuevoAbierto(false);
+        abrirFicha(id);
+        mostrarAviso(recurso.tipo === "ap" ? "Punto de acceso agregado." : "Espacio agregado.");
+      } catch (error) {
+        mostrarAviso(error instanceof Error ? error.message : "No fue posible agregar el elemento.", "error");
+      } finally {
+        setGuardando(false);
+      }
+    })();
+  };
+
+  const crearEnlace = (destinoId: string, nota: string) => conGuardado(async () => {
+    await pedir("/api/red/enlaces", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ a: fichaAbierta, b: destinoId, nota }) }, "No fue posible crear la conexión.");
+  }, "Conexión creada.");
 
   const borrarEnlace = (id: number) => conGuardado(async () => {
     await pedir(`/api/red/enlaces?id=${id}`, { method: "DELETE" }, "No fue posible quitar el enlace.");
@@ -230,7 +264,7 @@ export default function PaginaRed() {
       if (filtro !== "todos" && espacio.estado !== filtro) return false;
       if (!texto) return true;
       const puertos = puertosDeEndpoint(estado, espacio.id).map(puerto => etiquetaPuerto(estado, puerto.id)).join(" ");
-      return `${espacio.nombre} ${espacio.categoria} ${puertos}`.toLowerCase().includes(texto);
+      return `${espacio.nombre} ${espacio.ubicacion} ${espacio.categoria} ${puertos}`.toLowerCase().includes(texto);
     });
   }, [estado, filtro, consulta]);
 
@@ -239,7 +273,7 @@ export default function PaginaRed() {
     if (texto.length < 2) return "";
     const normalizar = (valor: string) => valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     const buscado = normalizar(texto);
-    const espacio = estado.espacios.find(candidato => normalizar(candidato.nombre).includes(buscado));
+    const espacio = estado.espacios.find(candidato => normalizar(`${candidato.nombre} ${candidato.ubicacion}`).includes(buscado));
     if (espacio) return espacio.id;
     const cubiculo = estado.cubiculos.find(candidato => `cubiculo ${candidato.id}`.includes(buscado) || `cub ${candidato.id}` === buscado);
     if (cubiculo) return `cub:${cubiculo.id}`;
@@ -247,7 +281,7 @@ export default function PaginaRed() {
     return puerto?.id ?? "";
   }, [consulta, estado]);
 
-  const cadenaBuscador = useMemo(() => trazarCadena(estado, coincidenciaBuscador), [estado, coincidenciaBuscador]);
+  const cadenaBuscador = useMemo(() => trazarCircuito(estado, coincidenciaBuscador), [estado, coincidenciaBuscador]);
 
   const copiarCadenaBuscador = async () => {
     try {
@@ -276,7 +310,7 @@ export default function PaginaRed() {
 
       <section className="shell">
         {errorCarga && <div className="error-banner" role="alert"><span>{errorCarga}</span><button type="button" onClick={() => void cargar()} disabled={cargando}>{cargando ? "Reintentando…" : "Reintentar"}</button></div>}
-        <div className="workspace-head"><div><h1>Red del colegio</h1><p className="subtitle">{estado.racks.length} racks · {estado.puertos.filter(puerto => puerto.n > 0).length} puertos · {estado.espacios.length} espacios · {estado.cubiculos.length} cubículos.</p></div><button className="secondary toolbar-action" onClick={() => setCapturaAbierta(true)}>Captura rápida</button></div>
+        <div className="workspace-head"><div><h1>Red del colegio</h1><p className="subtitle">{estado.racks.length} racks · {estado.puertos.filter(puerto => puerto.n > 0).length} puertos · {estado.espacios.length} espacios · {estado.cubiculos.length} cubículos.</p></div><div className="workspace-actions"><button className="secondary toolbar-action" onClick={() => setNuevoAbierto(true)}>Agregar elemento</button><button className="secondary toolbar-action" onClick={() => setCapturaAbierta(true)}>Captura rápida</button></div></div>
 
         <section className="status-rail" aria-label="Filtros y pendientes de la red">
           <div className="status-filters">
@@ -311,9 +345,10 @@ export default function PaginaRed() {
         </section>
       </section>
 
-      {fichaAbierta && <Ficha key={fichaAbierta} estado={estado} endpointId={fichaAbierta} cadena={cadenaFicha} guardando={guardando} onCerrar={() => setFichaAbierta("")} onGuardarCampos={guardarCampos} onCrearEnlace={crearEnlace} onBorrarEnlace={borrarEnlace} />}
+      {fichaAbierta && <Ficha key={fichaAbierta} estado={estado} endpointId={fichaAbierta} cadena={cadenaFicha} guardando={guardando} onCerrar={() => setFichaAbierta("")} onGuardarCampos={guardarCampos} onGuardarRecurso={guardarRecurso} onCrearEnlace={crearEnlace} onBorrarEnlace={borrarEnlace} />}
       {fichaAbierta && <button className="backdrop" onClick={() => setFichaAbierta("")} aria-label="Cerrar ficha" />}
       {capturaAbierta && <Captura estado={estado} sesion={sesion} puertoInicial={seleccionado.startsWith("pto:") ? seleccionado : ""} onCerrar={() => setCapturaAbierta(false)} onAsignar={asignarRapido} onMarcarLibre={marcarLibre} onDeshacer={deshacerAsignacion} />}
+      {nuevoAbierto && <NuevoRecurso guardando={guardando} onCerrar={() => setNuevoAbierto(false)} onCrear={crearRecurso} />}
       {aviso && <div className={`toast ${tipoAviso}`} role={tipoAviso === "error" ? "alert" : "status"} aria-live="polite">{aviso}</div>}
     </main>
   );

@@ -5,6 +5,7 @@ export type Cadena = { saltos: Salto[]; completa: boolean; motivo?: string; cami
 
 const TOPE_SALTOS = 2000;
 const conChasis: TipoEquipo[] = ["switch", "router", "firewall", "ap", "isp"];
+const equiposDeTroncal: TipoEquipo[] = ["switch", "router", "firewall", "isp"];
 
 const construirAdyacencia = (estado: EstadoRed) => {
   const adyacencia = new Map<string, string[]>();
@@ -60,7 +61,90 @@ const motivoIncompleto = (estado: EstadoRed, origenId: string, ultimo: string) =
     if (prefijoDe(origenId) === "pto") return "El puerto no tiene enlaces registrados.";
     return "Sin puerto asignado todavía.";
   }
-  return `La cadena termina en ${etiquetaEndpoint(estado, ultimo)} sin llegar al ISP.`;
+  return `El tramo documentado llega hasta ${etiquetaEndpoint(estado, ultimo)}. Falta registrar la conexión que continúa hacia el ISP.`;
+};
+
+const esPuntoDeTroncal = (estado: EstadoRed, id: string) => {
+  const equipoId = id.startsWith("eq:")
+    ? id.slice(3)
+    : estado.puertos.find(puerto => puerto.id === id)?.equipo;
+  const equipo = estado.equipos.find(candidato => candidato.id === equipoId);
+  return Boolean(equipo && equiposDeTroncal.includes(equipo.tipo));
+};
+
+const equipoDePunto = (estado: EstadoRed, id: string) => {
+  const equipoId = id.startsWith("eq:")
+    ? id.slice(3)
+    : estado.puertos.find(puerto => puerto.id === id)?.equipo;
+  return estado.equipos.find(equipo => equipo.id === equipoId);
+};
+
+// Aunque falte un cable documentado, los enlaces de borde indican en qué rack
+// entra internet. La distancia por uplinks permite seguir hacia ese rack en vez
+// de elegir, por longitud, una rama descendente que termina en otra sala.
+const distanciasDeRackAlBorde = (estado: EstadoRed) => {
+  const puertos = new Map(estado.puertos.map(puerto => [puerto.id, puerto]));
+  const equipos = new Map(estado.equipos.map(equipo => [equipo.id, equipo]));
+  const equipoDe = (id: string) => equipos.get(puertos.get(id)?.equipo ?? "");
+  const anclas = new Set<string>();
+  const vecinos = new Map<string, Set<string>>();
+  const unir = (a: string, b: string) => {
+    if (!vecinos.has(a)) vecinos.set(a, new Set());
+    vecinos.get(a)!.add(b);
+  };
+  for (const enlace of estado.enlaces) {
+    const a = equipoDe(enlace.a);
+    const b = equipoDe(enlace.b);
+    if (enlace.tipo === "borde") {
+      if (a && equiposDeTroncal.includes(a.tipo) && b?.rack) anclas.add(b.rack);
+      if (b && equiposDeTroncal.includes(b.tipo) && a?.rack) anclas.add(a.rack);
+    }
+    if (enlace.tipo !== "uplink" || !a?.rack || !b?.rack || a.rack === b.rack) continue;
+    unir(a.rack, b.rack);
+    unir(b.rack, a.rack);
+  }
+  const distancias = new Map<string, number>();
+  const cola = [...anclas];
+  for (const rack of cola) distancias.set(rack, 0);
+  while (cola.length) {
+    const rack = cola.shift()!;
+    for (const vecino of vecinos.get(rack) ?? []) {
+      if (distancias.has(vecino)) continue;
+      distancias.set(vecino, (distancias.get(rack) ?? 0) + 1);
+      cola.push(vecino);
+    }
+  }
+  return distancias;
+};
+
+// Al seleccionar un puerto buscamos primero el destino que cuelga físicamente de
+// él sin atravesar el chasis de un switch. Así, SW1 p22 enfoca el AP conectado a
+// p22 y no una rama cualquiera alcanzable por los demás puertos del switch.
+export const origenDeCircuito = (estado: EstadoRed, seleccionado: string) => {
+  if (prefijoDe(seleccionado) !== "pto") return seleccionado;
+  const vecinos = new Map<string, string[]>();
+  const unir = (a: string, b: string) => vecinos.set(a, [...(vecinos.get(a) ?? []), b]);
+  for (const enlace of estado.enlaces) {
+    unir(enlace.a, enlace.b);
+    unir(enlace.b, enlace.a);
+  }
+  const esDestino = (id: string) => {
+    if (prefijoDe(id) === "esp" || prefijoDe(id) === "cub") return true;
+    const puerto = estado.puertos.find(candidato => candidato.id === id);
+    return estado.equipos.some(equipo => equipo.id === puerto?.equipo && equipo.tipo === "ap");
+  };
+  const vistos = new Set([seleccionado]);
+  const cola = [seleccionado];
+  while (cola.length) {
+    const actual = cola.shift()!;
+    if (actual !== seleccionado && esDestino(actual)) return actual;
+    for (const vecino of vecinos.get(actual) ?? []) {
+      if (vistos.has(vecino)) continue;
+      vistos.add(vecino);
+      cola.push(vecino);
+    }
+  }
+  return seleccionado;
 };
 
 export const trazarCadena = (estado: EstadoRed, origenId: string): Cadena => {
@@ -89,8 +173,25 @@ export const trazarCadena = (estado: EstadoRed, origenId: string): Cadena => {
   }
 
   const masLejano = () => {
+    const distancias = distanciasDeRackAlBorde(estado);
     let elegido = origenId;
     let mejor = -1;
+    let mejorDistancia = Number.POSITIVE_INFINITY;
+    for (const [id, profundidad] of profundidades) {
+      if (!esPuntoDeTroncal(estado, id)) continue;
+      const equipo = equipoDePunto(estado, id);
+      const distancia = equipo?.rack ? distancias.get(equipo.rack) ?? Number.POSITIVE_INFINITY : -1;
+      if (
+        distancia < mejorDistancia
+        || (distancia === mejorDistancia && profundidad > mejor)
+        || (distancia === mejorDistancia && profundidad === mejor && id < elegido)
+      ) {
+        elegido = id;
+        mejor = profundidad;
+        mejorDistancia = distancia;
+      }
+    }
+    if (mejor >= 0) return elegido;
     for (const [id, profundidad] of profundidades) {
       if (id.startsWith("eq:")) continue;
       if (profundidad > mejor || (profundidad === mejor && id < elegido)) { elegido = id; mejor = profundidad; }
@@ -104,11 +205,18 @@ export const trazarCadena = (estado: EstadoRed, origenId: string): Cadena => {
   const saltos = presentar(estado, camino);
   const alcanzables = new Set(padres.keys());
   if (destino) return { saltos, completa: true, camino, alcanzables };
-  return { saltos, completa: false, motivo: motivoIncompleto(estado, origenId, final), camino, alcanzables };
+  const ultimoVisible = saltos[saltos.length - 1]?.id ?? final;
+  return { saltos, completa: false, motivo: motivoIncompleto(estado, origenId, ultimoVisible), camino, alcanzables };
 };
 
+export const trazarCircuito = (estado: EstadoRed, seleccionado: string) =>
+  trazarCadena(estado, origenDeCircuito(estado, seleccionado));
+
+export const saltosDesdeIsp = (cadena: Cadena) =>
+  cadena.completa ? [...cadena.saltos].reverse() : cadena.saltos;
+
 export const cadenaComoTexto = (cadena: Cadena) => {
-  const ruta = cadena.saltos.map(salto => salto.etiqueta).join(" → ");
+  const ruta = saltosDesdeIsp(cadena).map(salto => salto.etiqueta).join(" → ");
   if (cadena.completa) return ruta;
   return ruta ? `${ruta} · ${cadena.motivo ?? "cadena incompleta"}` : (cadena.motivo ?? "cadena incompleta");
 };

@@ -6,12 +6,12 @@ import {
   type PuertoNodo,
   type ResumenPuertos,
 } from "../../lib/red/layout";
-import type { Arista } from "../../lib/red/aristas";
+import { claveDePar, type Arista } from "../../lib/red/aristas";
 
 export type PropsNodos = {
   layout: Layout;
   ruta: Set<string>;
-  alcance: Set<string>;
+  paresRuta: Set<string>;
   seleccionado: string;
   origen: string;
   corte: string;
@@ -59,7 +59,7 @@ const manija = (desde: Punto, hacia: Punto): Punto => {
 export default function DiagramaNodos({
   layout,
   ruta,
-  alcance,
+  paresRuta,
   seleccionado,
   origen,
   corte,
@@ -82,11 +82,9 @@ export default function DiagramaNodos({
 
   const pertenece = (conjunto: Set<string>, id: string) =>
     conjunto.has(id) || nodosPorId.get(id)?.idsPuerto.some(puerto => conjunto.has(puerto)) === true;
-  const nivel = (id: string) => pertenece(ruta, id) ? "ruta" : pertenece(alcance, id) ? "alcance" : "";
-  const nivelArista = (arista: Arista) => pertenece(ruta, arista.a) && pertenece(ruta, arista.b)
-    ? "ruta"
-    : pertenece(alcance, arista.a) && pertenece(alcance, arista.b) ? "alcance" : "";
-  const clasesNodo = (nodo: Nodo) => ["net-d-nodo", nodo.clase, nivel(nodo.id), nodo.sinRuta ? "sin-ruta" : "", seleccionado === nodo.id ? "sel" : "", origen === nodo.id ? "origen" : ""].filter(Boolean).join(" ");
+  const nivel = (id: string) => pertenece(ruta, id) ? "ruta" : "";
+  const nivelArista = (arista: Arista) => paresRuta.has(claveDePar(arista.a, arista.b)) ? "ruta" : "";
+  const clasesNodo = (nodo: Nodo) => ["net-d-nodo", nodo.clase, nivel(nodo.id), nodo.estado === "dañado" ? "danado" : "", nodo.sinRuta ? "sin-ruta" : "", seleccionado === nodo.id ? "sel" : "", origen === nodo.id ? "origen" : ""].filter(Boolean).join(" ");
   const clasesPuerto = (puerto: PuertoNodo) => ["net-d-pt", puerto.estado, nivel(puerto.id),
     seleccionado === puerto.id ? "sel" : "", origen === puerto.id ? "origen" : ""].filter(Boolean).join(" ");
 
@@ -171,14 +169,16 @@ export default function DiagramaNodos({
         const a = anclas.get(arista.a);
         const b = anclas.get(arista.b);
         if (!a || !b) return null;
+        const nivelDeArista = nivelArista(arista);
         const medio = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
         // Una arista agregada resume varios enlaces: no hay uno solo que mover,
         // así que se dibuja sin manijas hasta que el usuario abra las tarjetas.
         const conManijas = editable && arista.enlaceId > 0 && !reenlazando;
-        return <g key={arista.clave} className={`net-d-link ${nivelArista(arista)} ${conManijas ? "editable" : ""}`}>
+        return <g key={arista.clave} className={`net-d-link ${nivelDeArista} ${conManijas ? "editable" : ""}`}>
           {/* Banda ancha invisible: una línea de 2px es casi imposible de apuntar,
               y es la que enciende las manijas al pasar por encima. */}
           {conManijas && <path className="net-d-zarpa" d={trazo(arista, a, b)} />}
+          {nivelDeArista === "ruta" && <path className="net-d-ruta-halo" d={trazo(arista, a, b)} />}
           <path d={trazo(arista, a, b)} stroke={COLOR_ENLACE[arista.tipo] ?? "#68717e"} strokeWidth={grosorDe(arista.cuenta)} fill="none" />
           {arista.cuenta > 1 && <text className="net-d-cuenta" x={medio.x} y={medio.y}>×{arista.cuenta}</text>}
           {conManijas && ([[arista.a, arista.b, a, b], [arista.b, arista.a, b, a]] as [string, string, Punto, Punto][]).map(([suelto, fijo, desde, hacia]) => {
@@ -216,6 +216,10 @@ export default function DiagramaNodos({
         />
         <text className="net-d-codigo" x={10} y={19}>{nodo.codigo}</text>
         {nodo.resumen && <text className="net-d-resumen" x={10} y={34}>{textoResumen(nodo.resumen)}</text>}
+        {nodo.estado === "dañado" && <g className="net-d-danado" transform={`translate(${nodo.w - 13} 13)`}>
+          <circle r={9} />
+          <text y={4}>×</text>
+        </g>}
         {nodo.puertos.map(puerto => <g key={puerto.id} className={clasesPuerto(puerto)}>
           <rect
             x={puerto.x}

@@ -1,0 +1,1 @@
+ALTER TABLE "net_espacios" ADD COLUMN "ubicacion" text DEFAULT '' NOT NULL;

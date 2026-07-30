@@ -146,6 +146,14 @@ test("FORTINET y MIKROTIK quedan en la banda de borde, sin ruta", () => {
   assert.equal(layout.nodos.find(nodo => nodo.id === "eq:R2-SW1")?.sinRuta, false);
 });
 
+test("un equipo de un puerto hereda el estado dañado para mostrar su simbología", () => {
+  const estado = real();
+  estado.puertos = estado.puertos.map(puerto =>
+    puerto.id === "pto:MIKROTIK-p0" ? { ...puerto, estado: "dañado" } : puerto);
+  const mikrotik = construirLayout(estado).nodos.find(nodo => nodo.id === "pto:MIKROTIK-p0");
+  assert.equal(mikrotik?.estado, "dañado");
+});
+
 test("la zona se ensancha al destino más ancho que cuelga de ella", () => {
   const layout = construirLayout(real());
   const zona = layout.zonas.find(candidata => candidata.id === "R2");

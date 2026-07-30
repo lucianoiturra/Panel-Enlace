@@ -93,6 +93,7 @@ export const netPuertos = pgTable(
 export const netEspacios = pgTable("net_espacios", {
   id: text("id").primaryKey(),
   nombre: text("nombre").notNull().default(""),
+  ubicacion: text("ubicacion").notNull().default(""),
   categoria: text("categoria").notNull().default("sala"),
   estado: text("estado").notNull().default("sin-verificar"),
   x: integer("x").notNull().default(0),

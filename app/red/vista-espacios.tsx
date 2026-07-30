@@ -19,6 +19,7 @@ export default function VistaEspacios({ espacios, puertosDe, etiquetaDePuerto, c
         return (
           <button key={espacio.id} className={`net-card ${espacio.estado} ${seleccionado === espacio.id ? "selected" : ""}`} onClick={() => onAbrir(espacio.id)} aria-label={`${espacio.nombre}, ${etiquetasEstadoEspacio[espacio.estado]}`}>
             <span className="net-card-name">{espacio.nombre}</span>
+            {espacio.ubicacion && <span className="net-card-location">{espacio.ubicacion}</span>}
             {puertos.length ? <span className="net-card-port">{puertos.map(puerto => etiquetaDePuerto(puerto.id)).join(" · ")}</span> : <span className="net-card-port none">Sin puerto</span>}
             {esSalaComputacion && <span className="net-card-extra">{cubiculos.length} cubículos</span>}
           </button>

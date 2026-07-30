@@ -1,5 +1,5 @@
 import { aristasParaDibujar, nodoDeExtremo, type Arista } from "./aristas.ts";
-import { puertosDeEndpoint, type EstadoPuerto, type EstadoRed, type TipoEquipo } from "./modelo.ts";
+import { prefijoDe, puertosDeEndpoint, type EstadoPuerto, type EstadoRed, type TipoEquipo } from "./modelo.ts";
 
 export const TIPOGRAFIA = 15;
 // Ancho medio de un carácter como fracción del tamaño de fuente. Antes servía para
@@ -29,7 +29,7 @@ export type Nodo = {
   zona: string; fila: number;
   x: number; y: number; w: number; h: number;
   abierta: boolean; idsPuerto: string[]; puertos: PuertoNodo[];
-  resumen: ResumenPuertos | null; sinRuta: boolean;
+  resumen: ResumenPuertos | null; estado: EstadoPuerto | null; sinRuta: boolean;
 };
 export type Zona = { id: string; nombre: string; x: number; y: number; w: number; h: number };
 export type FichaBandeja = { id: string; etiqueta: string; grupo: string };
@@ -131,6 +131,7 @@ const nodoDeEquipo = (estado: EstadoRed, equipo: EstadoRed["equipos"][number], a
         }))
       : [],
     resumen: conRejilla ? resumenDePuertos(estado, equipo.id) : null,
+    estado: conRejilla ? null : puertos[0]?.estado ?? null,
     sinRuta: false,
   };
 };
@@ -178,7 +179,9 @@ const destinosDe = (estado: EstadoRed, padres: Map<string, Nodo>): Nodo[] => {
       id, clase, codigo: texto, etiqueta: texto,
       zona: padre.zona, fila: 2,
       x: 0, y: 0, w: anchoDeTexto(texto), h: ALTO_DESTINO,
-      abierta: false, idsPuerto: [], puertos: [], resumen: null, sinRuta: false,
+      abierta: false, idsPuerto: [], puertos: [], resumen: null,
+      estado: prefijoDe(id) === "pto" ? estado.puertos.find(puerto => puerto.id === id)?.estado ?? null : null,
+      sinRuta: false,
     };
   };
   const apDe = (equipo: EstadoRed["equipos"][number]) => {
