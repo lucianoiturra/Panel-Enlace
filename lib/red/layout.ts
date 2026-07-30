@@ -7,6 +7,12 @@ export const ALTO_HOJA = 46;
 export const SEPARACION = 26;
 export const ALTO_CAPA = 200;
 export const ZONA_BORDE = "borde";
+export const TIPOGRAFIA = 15;
+// Ancho medio de un carácter como fracción del tamaño de fuente. Antes servía para
+// recortar la etiqueta al nodo; ahora dimensiona el nodo según su etiqueta.
+export const ANCHO_CARACTER = 0.55;
+export const ANCHO_MINIMO = 120;
+export const RELLENO = 16;
 
 export type ClaseNodo = "equipo" | "aparato" | "espacio" | "cubiculo";
 export type PuertoNodo = { id: string; n: number; estado: EstadoPuerto; x: number; y: number; w: number; h: number };
@@ -14,12 +20,30 @@ export type Nodo = { id: string; clase: ClaseNodo; etiqueta: string; capa: numbe
 export type Arista = { id: number; a: string; b: string; nodoA: string; nodoB: string; tipo: TipoEnlace };
 export type FichaBandeja = { id: string; etiqueta: string; grupo: string };
 export type Layout = { nodos: Nodo[]; aristas: Arista[]; bandeja: FichaBandeja[]; ancho: number; alto: number };
+export type ResumenPuertos = { total: number; ocupados: number; libres: number; dañados: number; sinVerificar: number };
 
 const CAPAS: Record<TipoEquipo, number> = { isp: 0, firewall: 1, router: 1, switch: 2, patchpanel: 3, ap: 4 };
 const CAPA_HOJA = 4;
 const GRUPOS = { sala: "Salas", oficina: "Oficinas", otro: "Otros" } as const;
 
 export const capaDeEquipo = (tipo: TipoEquipo) => CAPAS[tipo];
+
+export const anchoDeTexto = (texto: string) =>
+  Math.max(ANCHO_MINIMO, Math.round(texto.length * TIPOGRAFIA * ANCHO_CARACTER) + RELLENO);
+
+export const codigoDeEquipo = (equipoId: string) => equipoId.replace("-", "/");
+
+export const resumenDePuertos = (estado: EstadoRed, equipoId: string): ResumenPuertos => {
+  const puertos = estado.puertos.filter(puerto => puerto.equipo === equipoId);
+  const cuantos = (valor: EstadoPuerto) => puertos.filter(puerto => puerto.estado === valor).length;
+  return {
+    total: puertos.length,
+    ocupados: cuantos("ocupado"),
+    libres: cuantos("libre"),
+    dañados: cuantos("dañado"),
+    sinVerificar: cuantos("desconocido"),
+  };
+};
 
 export const ordenDeZonas = (estado: EstadoRed): string[] => {
   const equipos = new Map(estado.equipos.map(equipo => [equipo.id, equipo]));

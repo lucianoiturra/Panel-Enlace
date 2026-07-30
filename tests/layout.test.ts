@@ -2,7 +2,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { fixture } from "./fixture-red.ts";
 import semilla from "../lib/red/semilla.json" with { type: "json" };
-import { anclasDeLayout, capaDeEquipo, construirLayout, ordenDeZonas } from "../lib/red/layout.ts";
+import {
+  anchoDeTexto, anclasDeLayout, capaDeEquipo, codigoDeEquipo, construirLayout,
+  ordenDeZonas, resumenDePuertos, ANCHO_MINIMO,
+} from "../lib/red/layout.ts";
 import { puertosDeEndpoint, type EstadoRed } from "../lib/red/modelo.ts";
 
 test("capaDeEquipo ordena los tipos de arriba hacia abajo", () => {
@@ -121,4 +124,21 @@ test("un rack sin uplink que lo alcance va al final, por id", () => {
   const estado = { ...semilla, bitacora: [], cubiculos: [] } as unknown as EstadoRed;
   estado.equipos = [...estado.equipos, { id: "R0-SW1", rack: "R0", tipo: "switch", etiqueta: "Suelto", modelo: "", puertos: 8, color: "", x: 0, y: 0, nota: "" }];
   assert.deepEqual(ordenDeZonas(estado), ["borde", "R1", "R2", "R3", "R0"]);
+});
+
+test("el ancho sale del texto y nunca baja del mínimo", () => {
+  assert.equal(anchoDeTexto("R2/SW1"), ANCHO_MINIMO);
+  assert.equal(anchoDeTexto("PIE Administrativo"), Math.round(18 * 15 * 0.55) + 16);
+  assert.ok(anchoDeTexto("PIE Administrativo") > ANCHO_MINIMO);
+});
+
+test("el código del equipo es el id con barra", () => {
+  assert.equal(codigoDeEquipo("R2-SW1"), "R2/SW1");
+  assert.equal(codigoDeEquipo("AP-sala-multicopiado"), "AP/sala-multicopiado");
+});
+
+test("el resumen cuenta cada estado de puerto", () => {
+  const estado = { ...semilla, bitacora: [], cubiculos: [] } as unknown as EstadoRed;
+  assert.deepEqual(resumenDePuertos(estado, "R2-PP2"), { total: 24, ocupados: 19, libres: 1, dañados: 0, sinVerificar: 4 });
+  assert.deepEqual(resumenDePuertos(estado, "R1-PP1"), { total: 24, ocupados: 0, libres: 0, dañados: 0, sinVerificar: 24 });
 });
