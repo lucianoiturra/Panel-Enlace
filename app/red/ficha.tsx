@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { cadenaComoTexto, type Cadena } from "../../lib/red/trazado";
 import { estadosEspacio, estadosPuerto, etiquetaEndpoint, etiquetaPuerto, etiquetasEstadoEspacio, etiquetasEstadoPuerto, numeroCubiculo, prefijoDe, type EstadoRed } from "../../lib/red/modelo";
+import { useDialogFocus } from "../use-dialog-focus";
 
 type Props = {
   estado: EstadoRed;
@@ -15,6 +16,7 @@ type Props = {
 };
 
 export default function Ficha({ estado, endpointId, cadena, guardando, onCerrar, onGuardarCampos, onCrearEnlace, onBorrarEnlace }: Props) {
+  const dialogRef = useDialogFocus<HTMLElement>(onCerrar);
   const tipo = prefijoDe(endpointId);
   const espacio = estado.espacios.find(candidato => candidato.id === endpointId);
   const puerto = estado.puertos.find(candidato => candidato.id === endpointId);
@@ -23,6 +25,8 @@ export default function Ficha({ estado, endpointId, cadena, guardando, onCerrar,
   const [notaRoseta, setNotaRoseta] = useState("");
   const [puertoElegido, setPuertoElegido] = useState("");
   const [copiado, setCopiado] = useState(false);
+  const [errorCopia, setErrorCopia] = useState("");
+  const copyTimerRef = useRef<number | null>(null);
 
   const enlaces = estado.enlaces.filter(enlace => enlace.a === endpointId || enlace.b === endpointId);
   const historial = estado.bitacora.filter(entrada => entrada.objetivo === endpointId);
@@ -31,10 +35,21 @@ export default function Ficha({ estado, endpointId, cadena, guardando, onCerrar,
     .map(candidato => ({ id: candidato.id, etiqueta: `${etiquetaPuerto(estado, candidato.id)} · ${etiquetasEstadoPuerto[candidato.estado]}` })), [estado]);
 
   const copiar = async () => {
-    await navigator.clipboard.writeText(cadenaComoTexto(cadena));
-    setCopiado(true);
-    window.setTimeout(() => setCopiado(false), 2000);
+    try {
+      await navigator.clipboard.writeText(cadenaComoTexto(cadena));
+      setErrorCopia("");
+      setCopiado(true);
+      if (copyTimerRef.current) window.clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = window.setTimeout(() => setCopiado(false), 2000);
+    } catch {
+      setCopiado(false);
+      setErrorCopia("No fue posible copiar la cadena.");
+    }
   };
+
+  useEffect(() => () => {
+    if (copyTimerRef.current) window.clearTimeout(copyTimerRef.current);
+  }, []);
 
   const asignar = async () => {
     if (!puertoElegido) return;
@@ -49,7 +64,7 @@ export default function Ficha({ estado, endpointId, cadena, guardando, onCerrar,
     : cubiculo ? `Sala de Enlace · ${cubiculo.inventoryCode || "sin código de inventario"}` : "";
 
   return (
-    <aside className="drawer open" role="dialog" aria-modal="true" aria-labelledby="ficha-red-titulo">
+    <aside ref={dialogRef} className="drawer open" role="dialog" aria-modal="true" aria-labelledby="ficha-red-titulo">
       <div className="drawer-head">
         <div><span>{espacio ? "FICHA DE ESPACIO" : puerto ? "FICHA DE PUERTO" : "FICHA DE CUBÍCULO"}</span><h2 id="ficha-red-titulo">{titulo}</h2><small className="net-sub">{subtitulo}</small></div>
         <button onClick={onCerrar} aria-label="Cerrar">×</button>
@@ -61,12 +76,13 @@ export default function Ficha({ estado, endpointId, cadena, guardando, onCerrar,
           {cadena.saltos.length ? <ol>{cadena.saltos.map(salto => <li key={salto.id}><b>{salto.etiqueta}</b></li>)}</ol> : null}
           {!cadena.completa && <p className="net-chain-warn">{cadena.motivo}</p>}
           <button className="secondary" type="button" onClick={() => void copiar()}>{copiado ? "Copiado" : "Copiar cadena"}</button>
+          {errorCopia && <p className="net-chain-warn" role="alert">{errorCopia}</p>}
         </div>
 
         {espacio && <label>Estado<select value={espacio.estado} disabled={guardando} onChange={event => void onGuardarCampos({ estado: event.target.value })}>{estadosEspacio.map(valor => <option key={valor} value={valor}>{etiquetasEstadoEspacio[valor]}</option>)}</select></label>}
         {puerto && <label>Estado<select value={puerto.estado} disabled={guardando} onChange={event => void onGuardarCampos({ estado: event.target.value })}>{estadosPuerto.map(valor => <option key={valor} value={valor}>{etiquetasEstadoPuerto[valor]}</option>)}</select></label>}
 
-        {(espacio || puerto) && <label>Nota<textarea value={nota} maxLength={500} rows={3} onChange={event => setNota(event.target.value)} onBlur={() => void onGuardarCampos({ nota })} placeholder="Roseta, canalización, hallazgos en terreno…" /><small className="character-count">{nota.length}/500</small></label>}
+        {(espacio || puerto) && <label>Nota<textarea value={nota} maxLength={500} rows={3} disabled={guardando} onChange={event => setNota(event.target.value)} onBlur={() => { const original = espacio?.nota ?? puerto?.nota ?? ""; if (!guardando && nota !== original) void onGuardarCampos({ nota }); }} placeholder="Roseta, canalización, hallazgos en terreno…" /><small className="character-count">{nota.length}/500</small></label>}
 
         {cubiculo && <div className="net-kv"><div><span>IP</span><b>{cubiculo.ip || "sin registrar"}</b></div><div><span>MAC</span><b>{cubiculo.mac || "sin registrar"}</b></div><div><span>ESTADO</span><b>{cubiculo.status}</b></div></div>}
         {cubiculo && <Link className="secondary net-link" href="/">Ver ficha completa en la pestaña Sala</Link>}

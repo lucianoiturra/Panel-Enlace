@@ -41,8 +41,10 @@ No es necesario configurar comandos especiales en Vercel: el proyecto usa `npm r
 
 ### Pestaña Red
 
-Las seis tablas `net_*` vienen en `drizzle-pg/0001_robust_ultimatum.sql`. Aplícala en
-Supabase antes de publicar la pestaña, por lo dicho arriba sobre el DDL en Vercel.
+Las seis tablas `net_*` vienen en `drizzle-pg/0001_robust_ultimatum.sql`. Después aplica
+`drizzle-pg/0002_nostalgic_tarot.sql`, que agrega integridad referencial a tareas y
+checklists. Ejecuta ambas en orden en Supabase antes de publicar, por lo dicho arriba
+sobre el DDL en Vercel.
 
 Los datos iniciales vienen de `lib/red/semilla.json`, generado desde el canvas con:
 

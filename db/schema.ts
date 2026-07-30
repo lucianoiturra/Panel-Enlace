@@ -35,7 +35,7 @@ export const stationTasks = pgTable(
   "station_tasks",
   {
     id: serial("id").primaryKey(),
-    cubicleId: integer("cubicle_id").notNull(),
+    cubicleId: integer("cubicle_id").notNull().references(() => cubicles.id, { onDelete: "cascade" }),
     description: text("description").notNull(),
     completed: boolean("completed").notNull().default(false),
     createdAt: text("created_at").notNull(),
@@ -47,8 +47,8 @@ export const checklistResults = pgTable(
   "checklist_results",
   {
     id: serial("id").primaryKey(),
-    cubicleId: integer("cubicle_id").notNull(),
-    itemId: integer("item_id").notNull(),
+    cubicleId: integer("cubicle_id").notNull().references(() => cubicles.id, { onDelete: "cascade" }),
+    itemId: integer("item_id").notNull().references(() => checklistItems.id, { onDelete: "cascade" }),
     checked: boolean("checked").notNull().default(false),
   },
   (table) => [uniqueIndex("result_cubicle_item_idx").on(table.cubicleId, table.itemId)],

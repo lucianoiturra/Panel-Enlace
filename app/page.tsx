@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import NavSecciones from "./nav-secciones";
+import { isValidIpv4, isValidMac, isValidPin } from "../lib/room-validation";
 
 type Status = "operational" | "attention" | "offline" | "pending" | "no_computer";
 type PinStatus = "unreviewed" | "configured" | "no_pin" | "not_applicable";
@@ -36,15 +37,6 @@ const readApiError = async (response: Response, fallback: string) => {
   }
 };
 
-const isValidIpv4 = (value: string) => {
-  if (!value.trim()) return true;
-  const parts = value.trim().split(".");
-  return parts.length === 4 && parts.every(part => /^\d{1,3}$/.test(part) && Number(part) <= 255);
-};
-
-const isValidMac = (value: string) => !value.trim() || /^(?:[0-9A-F]{2}-){5,6}[0-9A-F]{2}$/i.test(value.trim());
-const isValidPin = (value: string) => /^[^\s]{4,64}$/.test(value.trim());
-
 export default function Home() {
   const [stations, setStations] = useState<Station[]>(emptyStations);
   const [items, setItems] = useState<Item[]>([]);
@@ -59,7 +51,9 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loadingPins, setLoadingPins] = useState(false);
   const [notice, setNotice] = useState("");
+  const [noticeId, setNoticeId] = useState(0);
   const [noticeKind, setNoticeKind] = useState<"success" | "error">("success");
   const [loadError, setLoadError] = useState("");
   const [drawerError, setDrawerError] = useState("");
@@ -75,12 +69,21 @@ export default function Home() {
   const [newTask, setNewTask] = useState("");
   const [redCadena, setRedCadena] = useState<{ texto: string; completa: boolean } | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const drawerReturnFocusRef = useRef<HTMLElement | null>(null);
   const taskDeleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pinRequestRef = useRef(0);
 
   const showNotice = (message: string, kind: "success" | "error" = "success") => {
     setNotice(message);
     setNoticeKind(kind);
+    setNoticeId(current => current + 1);
   };
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(""), 4500);
+    return () => window.clearTimeout(timer);
+  }, [notice, noticeId]);
 
   const load = async () => {
     setLoading(true);
@@ -118,7 +121,12 @@ export default function Home() {
   }, [isDirty]);
 
   useEffect(() => {
-    if (selected !== null) closeButtonRef.current?.focus();
+    if (selected !== null) {
+      closeButtonRef.current?.focus();
+    } else if (drawerReturnFocusRef.current?.isConnected) {
+      drawerReturnFocusRef.current.focus();
+      drawerReturnFocusRef.current = null;
+    }
   }, [selected]);
 
   useEffect(() => {
@@ -173,15 +181,33 @@ export default function Home() {
 
   const openStation = (id: number) => {
     const station = stations.find(s => s.id === id)!;
+    drawerReturnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setRedCadena(null);
     setSelected(id); setDraft({ ...station }); setInitialDraft({ ...station }); setShowAdminPin(false); setShowStudentPin(false);
     const next: Record<string, boolean> = {};
     items.forEach(item => { next[item.id] = !!results.find(r => r.cubicleId === id && r.itemId === item.id)?.checked; });
     setChecks(next); setInitialChecks(next); setDrawerError(""); setTaskError(""); setFieldErrors({});
+    setLoadingPins(true);
+    const requestId = ++pinRequestRef.current;
+    void (async () => {
+      try {
+        const response = await fetch(`/api/room?pinFor=${id}`, { cache: "no-store" });
+        if (!response.ok) throw new Error(await readApiError(response, "No fue posible cargar los PIN."));
+        const pins = await response.json() as { adminPin: string; studentPin: string };
+        setDraft(current => current?.id === id ? { ...current, ...pins } : current);
+        setInitialDraft(current => current?.id === id ? { ...current, ...pins } : current);
+      } catch (error) {
+        if (pinRequestRef.current === requestId) setDrawerError(`${error instanceof Error ? error.message : "No fue posible cargar los PIN."} Cierra y vuelve a abrir la ficha antes de guardar.`);
+      } finally {
+        if (pinRequestRef.current === requestId) setLoadingPins(false);
+      }
+    })();
   };
 
   const requestCloseDrawer = () => {
     if (isDirty && !window.confirm("Hay cambios sin guardar. ¿Quieres descartarlos y cerrar la ficha?")) return;
+    pinRequestRef.current += 1;
+    setLoadingPins(false);
     setDraft(null); setInitialDraft(null); setSelected(null); setDrawerError(""); setFieldErrors({});
   };
 
@@ -199,7 +225,7 @@ export default function Home() {
   };
 
   const save = async () => {
-    if (!draft || saving) return;
+    if (!draft || saving || loadingPins) return;
     const errors = validateDraft(draft);
     setFieldErrors(errors);
     if (Object.keys(errors).length) {
@@ -211,8 +237,9 @@ export default function Home() {
     try {
       const response = await fetch("/api/room", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...draft, checks }) });
       if (!response.ok) throw new Error(await readApiError(response, "No fue posible guardar los cambios."));
-      const saved = { ...draft, updatedAt: new Date().toISOString() };
-      setStations(current => current.map(s => s.id === draft.id ? saved : s));
+      const { updatedAt } = await response.json() as { updatedAt: string };
+      const saved = { ...draft, updatedAt };
+      setStations(current => current.map(s => s.id === draft.id ? { ...saved, adminPin: "", studentPin: "" } : s));
       setResults(current => {
         const rest = current.filter(r => r.cubicleId !== draft.id);
         return [...rest, ...Object.entries(checks).map(([itemId, checked], index) => ({ id: -index - 1, cubicleId: draft.id, itemId: Number(itemId), checked }))];
@@ -358,8 +385,9 @@ export default function Home() {
         </section>
       </section>
 
-      <aside className={`drawer ${draft ? "open" : ""}`} aria-hidden={!draft} role="dialog" aria-modal={!!draft} aria-labelledby="drawer-title">
+      <aside className={`drawer ${draft ? "open" : ""}`} aria-hidden={!draft} aria-busy={draft ? loadingPins : undefined} role="dialog" aria-modal={!!draft} aria-labelledby="drawer-title">
         {draft && <><div className="drawer-head"><div><span>FICHA DE EQUIPO</span><h2 id="drawer-title">Cubículo {String(draft.id).padStart(2, "0")}</h2>{isDirty && <small className="unsaved-label">Cambios sin guardar</small>}</div><button ref={closeButtonRef} onClick={requestCloseDrawer} aria-label="Cerrar">×</button></div><div className="drawer-body">
+          {loadingPins && <div className="loading-note" role="status">Cargando credenciales protegidas…</div>}
           {drawerError && <div className="inline-error" role="alert">{drawerError}</div>}
           <label>Estado<select className={`status-select ${draft.status}`} value={draft.status} onChange={e => { const status = e.target.value as Status; setDraft({ ...draft, status, ...(status === "no_computer" ? { adminPinStatus: "not_applicable", studentPinStatus: "not_applicable" } : {}) }); }}>{Object.entries(statusInfo).map(([value, info]) => <option key={value} value={value}>{info.label}</option>)}</select></label>
           <div className="two-cols"><label>Marca y modelo<input value={draft.brandModel} maxLength={160} onChange={e => setDraft({ ...draft, brandModel: e.target.value })} placeholder="Ej: Dell OptiPlex 7090" /></label><label>N.º de serie<input value={draft.serialNumber} maxLength={100} aria-invalid={!!fieldErrors.serialNumber} aria-describedby={fieldErrors.serialNumber ? "serial-error" : undefined} onChange={e => { setDraft({ ...draft, serialNumber: e.target.value }); setFieldErrors(current => ({ ...current, serialNumber: undefined })); }} placeholder="S/N del equipo" />{fieldErrors.serialNumber && <small id="serial-error" className="field-error">{fieldErrors.serialNumber}</small>}</label></div>
@@ -370,13 +398,13 @@ export default function Home() {
           <div className="net-line"><span>RED</span>{redCadena ? <b className={redCadena.completa ? "" : "pending"}>{redCadena.texto}</b> : <b className="pending">Consultando…</b>}<a href={`/red?endpoint=cub:${draft.id}`}>Ver en la pestaña Red</a></div>
           <div className="two-cols"><label>Teclado<select value={draft.keyboard} onChange={e => setDraft({ ...draft, keyboard: e.target.value })}><option>Sin registrar</option><option>Operativo</option><option>Con fallas</option><option>No disponible</option></select></label><label>Mouse<select value={draft.mouse} onChange={e => setDraft({ ...draft, mouse: e.target.value })}><option>Sin registrar</option><option>Operativo</option><option>Con fallas</option><option>No disponible</option></select></label></div>
           <div className="check-section"><div><span>CHECKLIST</span><small>{Object.values(checks).filter(Boolean).length} de {items.length} completados</small></div>{items.map(item => <label className="check-row" key={item.id}><input type="checkbox" checked={!!checks[item.id]} onChange={e => setChecks({ ...checks, [item.id]: e.target.checked })} /><span>{item.label}</span></label>)}</div>
-          <div className="task-section"><div className="task-heading"><span>TAREAS ESPECÍFICAS</span><small>{tasks.filter(task => task.cubicleId === draft.id && !task.completed && task.id !== pendingTaskDeletion?.id).length} pendientes</small></div>{taskError && <div className="field-error" role="alert">{taskError}</div>}<div className="task-list">{tasks.filter(task => task.cubicleId === draft.id && task.id !== pendingTaskDeletion?.id).map(task => <div className={`task-row ${task.completed ? "completed" : ""}`} key={task.id}><button className="task-check" type="button" disabled={!!busyAction} onClick={() => void toggleTask(task)} aria-label={task.completed ? "Marcar pendiente" : "Marcar completada"}>{task.completed ? "✓" : ""}</button><span>{task.description}</span><button className="task-delete" type="button" disabled={!!pendingTaskDeletion || !!busyAction} onClick={() => removeTask(task)} aria-label="Eliminar tarea">×</button></div>)}</div><div className="task-add"><input value={newTask} maxLength={160} aria-invalid={!!taskError} onChange={e => { setNewTask(e.target.value); setTaskError(""); }} onKeyDown={e => e.key === "Enter" && void addTask()} placeholder="Ej: Actualizar tarjeta Wi‑Fi" /><button type="button" disabled={!!busyAction} onClick={() => void addTask()}>{busyAction === "add-task" ? "Agregando…" : "Agregar"}</button></div></div>
+          <div className="task-section"><div className="task-heading"><span>TAREAS ESPECÍFICAS</span><small>{tasks.filter(task => task.cubicleId === draft.id && !task.completed && task.id !== pendingTaskDeletion?.id).length} pendientes</small></div>{taskError && <div className="field-error" role="alert">{taskError}</div>}<div className="task-list">{tasks.filter(task => task.cubicleId === draft.id && task.id !== pendingTaskDeletion?.id).map(task => <div className={`task-row ${task.completed ? "completed" : ""}`} key={task.id}><button className="task-check" type="button" disabled={!!busyAction} onClick={() => void toggleTask(task)} aria-label={task.completed ? "Marcar pendiente" : "Marcar completada"}>{task.completed ? "✓" : ""}</button><span>{task.description}</span><button className="task-delete" type="button" disabled={!!pendingTaskDeletion || !!busyAction} onClick={() => removeTask(task)} aria-label="Eliminar tarea">×</button></div>)}</div><div className="task-add"><input value={newTask} maxLength={160} aria-label="Nueva tarea específica" aria-invalid={!!taskError} onChange={e => { setNewTask(e.target.value); setTaskError(""); }} onKeyDown={e => e.key === "Enter" && void addTask()} placeholder="Ej: Actualizar tarjeta Wi‑Fi" /><button type="button" disabled={!!busyAction} onClick={() => void addTask()}>{busyAction === "add-task" ? "Agregando…" : "Agregar"}</button></div></div>
           <label>Observaciones<textarea value={draft.observations} maxLength={2000} onChange={e => setDraft({ ...draft, observations: e.target.value })} placeholder="Registra fallas, cambios o información relevante…" rows={4} /><small className="character-count">{draft.observations.length}/2000</small></label>
-        </div><div className="drawer-foot"><span className="shortcut-hint">Ctrl/⌘ + S para guardar</span><button className="secondary" onClick={requestCloseDrawer} disabled={saving}>Cancelar</button><button className="primary" onClick={save} disabled={saving || !isDirty}>{saving ? "Guardando…" : isDirty ? "Guardar cambios" : "Sin cambios"}</button></div></>}
+        </div><div className="drawer-foot"><span className="shortcut-hint">Ctrl/⌘ + S para guardar</span><button className="secondary" onClick={requestCloseDrawer} disabled={saving}>Cancelar</button><button className="primary" onClick={save} disabled={saving || loadingPins || !isDirty}>{loadingPins ? "Cargando…" : saving ? "Guardando…" : isDirty ? "Guardar cambios" : "Sin cambios"}</button></div></>}
       </aside>
       {draft && <button className="backdrop" onClick={requestCloseDrawer} aria-label="Cerrar ficha" />}
 
-      <dialog id="checklist-admin" className="modal"><div className="modal-head"><div><span>CONFIGURACIÓN POR LOTE</span><h2>Checklist de la sala</h2><p>Cada nueva verificación se aplicará a los cubículos que tengan computador.</p></div><button onClick={() => (document.getElementById("checklist-admin") as HTMLDialogElement)?.close()} aria-label="Cerrar checklist">×</button></div>{checklistError && <div className="modal-error" role="alert">{checklistError}</div>}<div className="modal-list">{items.length ? items.map(item => <div key={item.id}><span>{item.label}</span><button disabled={!!busyAction} onClick={() => removeChecklist(item.id)} aria-label={`Eliminar ${item.label}`}>{busyAction === `delete-checklist-${item.id}` ? "Eliminando…" : "Eliminar"}</button></div>) : <p className="empty-state">Aún no hay verificaciones. Agrega la primera para comenzar.</p>}</div><div className="add-row"><input value={newCheck} maxLength={120} aria-invalid={!!checklistError} onChange={e => { setNewCheck(e.target.value); setChecklistError(""); }} onKeyDown={e => e.key === "Enter" && void addChecklist()} placeholder="Nueva verificación (ej: Cámara web)" /><button className="primary" disabled={!!busyAction} onClick={addChecklist}>{busyAction === "add-checklist" ? "Agregando…" : "Agregar"}</button></div></dialog>
+      <dialog id="checklist-admin" className="modal"><div className="modal-head"><div><span>CONFIGURACIÓN POR LOTE</span><h2>Checklist de la sala</h2><p>Cada nueva verificación se aplicará a los cubículos que tengan computador.</p></div><button onClick={() => (document.getElementById("checklist-admin") as HTMLDialogElement)?.close()} aria-label="Cerrar checklist">×</button></div>{checklistError && <div className="modal-error" role="alert">{checklistError}</div>}<div className="modal-list">{items.length ? items.map(item => <div key={item.id}><span>{item.label}</span><button disabled={!!busyAction} onClick={() => removeChecklist(item.id)} aria-label={`Eliminar ${item.label}`}>{busyAction === `delete-checklist-${item.id}` ? "Eliminando…" : "Eliminar"}</button></div>) : <p className="empty-state">Aún no hay verificaciones. Agrega la primera para comenzar.</p>}</div><div className="add-row"><input value={newCheck} maxLength={120} aria-label="Nueva verificación del checklist" aria-invalid={!!checklistError} onChange={e => { setNewCheck(e.target.value); setChecklistError(""); }} onKeyDown={e => e.key === "Enter" && void addChecklist()} placeholder="Nueva verificación (ej: Cámara web)" /><button className="primary" disabled={!!busyAction} onClick={addChecklist}>{busyAction === "add-checklist" ? "Agregando…" : "Agregar"}</button></div></dialog>
       {pendingTaskDeletion && <div className="undo-toast" role="status"><span>Tarea eliminada.</span><button type="button" onClick={undoTaskDeletion}>Deshacer</button></div>}
       {notice && <div className={`toast ${noticeKind}`} role={noticeKind === "error" ? "alert" : "status"} aria-live="polite">{notice}</div>}
     </main>

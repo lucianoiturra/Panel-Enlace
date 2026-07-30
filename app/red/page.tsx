@@ -34,6 +34,7 @@ export default function PaginaRed() {
   const [fichaAbierta, setFichaAbierta] = useState("");
   const [ultimaSync, setUltimaSync] = useState<Date | null>(null);
   const [aviso, setAviso] = useState("");
+  const [avisoId, setAvisoId] = useState(0);
   const [tipoAviso, setTipoAviso] = useState<"success" | "error">("success");
   const [guardando, setGuardando] = useState(false);
   const [vista, setVista] = useState<"espacios" | "racks" | "cobertura" | "diagrama">("espacios");
@@ -43,7 +44,17 @@ export default function PaginaRed() {
   const [sesion, setSesion] = useState<FilaSesion[]>([]);
   const rackVisible = rackActivo || estado.racks[0]?.id || "";
 
-  const mostrarAviso = (mensaje: string, tipo: "success" | "error" = "success") => { setAviso(mensaje); setTipoAviso(tipo); };
+  const mostrarAviso = (mensaje: string, tipo: "success" | "error" = "success") => {
+    setAviso(mensaje);
+    setTipoAviso(tipo);
+    setAvisoId(actual => actual + 1);
+  };
+
+  useEffect(() => {
+    if (!aviso) return;
+    const temporizador = window.setTimeout(() => setAviso(""), 4500);
+    return () => window.clearTimeout(temporizador);
+  }, [aviso, avisoId]);
 
   const cargar = async () => {
     setCargando(true);
@@ -53,9 +64,11 @@ export default function PaginaRed() {
       if (!response.ok) throw new Error(await leerError(response, "No fue posible cargar la red."));
       setEstado(await response.json() as EstadoRed);
       setUltimaSync(new Date());
+      return true;
     } catch (error) {
       setErrorCarga(`${error instanceof Error ? error.message : "No se pudo conectar con el almacenamiento."} Revisa la conexión e inténtalo nuevamente.`);
       mostrarAviso("No se pudieron cargar los datos de la red.", "error");
+      return false;
     } finally {
       setCargando(false);
     }
@@ -75,8 +88,9 @@ export default function PaginaRed() {
     setGuardando(true);
     try {
       await accion();
-      await cargar();
-      mostrarAviso(exito);
+      const recargado = await cargar();
+      if (recargado) mostrarAviso(exito);
+      else mostrarAviso(`${exito} No fue posible refrescar la vista; vuelve a cargarla.`, "error");
     } catch (error) {
       mostrarAviso(error instanceof Error ? error.message : "No fue posible guardar el cambio.", "error");
     } finally {
@@ -168,13 +182,6 @@ export default function PaginaRed() {
 
   useEffect(() => {
     if (!fichaAbierta) return;
-    const alTeclear = (evento: KeyboardEvent) => { if (evento.key === "Escape") { evento.preventDefault(); setFichaAbierta(""); } };
-    window.addEventListener("keydown", alTeclear);
-    return () => window.removeEventListener("keydown", alTeclear);
-  }, [fichaAbierta]);
-
-  useEffect(() => {
-    if (!fichaAbierta) return;
     const anterior = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = anterior; };
@@ -220,8 +227,12 @@ export default function PaginaRed() {
   const cadenaBuscador = useMemo(() => trazarCadena(estado, coincidenciaBuscador), [estado, coincidenciaBuscador]);
 
   const copiarCadenaBuscador = async () => {
-    await navigator.clipboard.writeText(cadenaComoTexto(cadenaBuscador));
-    mostrarAviso("Cadena copiada.");
+    try {
+      await navigator.clipboard.writeText(cadenaComoTexto(cadenaBuscador));
+      mostrarAviso("Cadena copiada.");
+    } catch {
+      mostrarAviso("No fue posible copiar la cadena.", "error");
+    }
   };
 
   const copiarTexto = (texto: string) => void (async () => {

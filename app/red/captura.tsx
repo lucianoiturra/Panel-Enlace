@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { aliasCubiculo, calza, normalizar } from "../../lib/red/busqueda";
 import { etiquetaPuerto, etiquetasEstadoPuerto, puertosDeEndpoint, type EstadoRed } from "../../lib/red/modelo";
+import { useDialogFocus } from "../use-dialog-focus";
 
 export type FilaSesion = { enlaceId: number; texto: string };
 
@@ -17,6 +18,7 @@ type Props = {
 type Candidato = { id: string; nombre: string; grupo: string; puerto: string };
 
 export default function Captura({ estado, sesion, puertoInicial, onCerrar, onAsignar, onMarcarLibre, onDeshacer }: Props) {
+  const dialogRef = useDialogFocus<HTMLDivElement>(onCerrar);
   const [sentido, setSentido] = useState<"puerto" | "endpoint">("puerto");
   const equipos = useMemo(() => estado.equipos.filter(equipo => equipo.puertos > 0), [estado.equipos]);
   const [equipoId, setEquipoId] = useState(() => puertoInicial ? estado.puertos.find(puerto => puerto.id === puertoInicial)?.equipo ?? "" : "");
@@ -84,17 +86,16 @@ export default function Captura({ estado, sesion, puertoInicial, onCerrar, onAsi
 
   const alTeclear = (evento: React.KeyboardEvent<HTMLInputElement>) => {
     if (evento.key === "Enter") { evento.preventDefault(); confirmar(); }
-    if (evento.key === "Tab") { evento.preventDefault(); avanzar(); }
     if (evento.key === "ArrowDown") { evento.preventDefault(); setResaltado(indice => Math.min(indice + 1, Math.max(opciones.length - 1, 0))); }
     if (evento.key === "ArrowUp") { evento.preventDefault(); setResaltado(indice => Math.max(indice - 1, 0)); }
     if ((evento.ctrlKey || evento.metaKey) && evento.key.toLowerCase() === "z") { evento.preventDefault(); if (sesion[0]) onDeshacer(sesion[0].enlaceId); }
-    if (evento.key === "Escape") { evento.preventDefault(); onCerrar(); }
   };
 
   const asignadosDelEquipo = puertosDelEquipo.filter(puerto => puerto.estado === "ocupado").length;
+  const puertoTieneEnlaces = puertoActual ? estado.enlaces.some(enlace => enlace.a === puertoActual.id || enlace.b === puertoActual.id) : false;
 
   return (
-    <div className="net-capture-wrap" role="dialog" aria-modal="true" aria-labelledby="captura-titulo">
+    <div ref={dialogRef} className="net-capture-wrap" role="dialog" aria-modal="true" aria-labelledby="captura-titulo">
       <div className="net-capture">
         <div className="modal-head">
           <div>
@@ -128,10 +129,10 @@ export default function Captura({ estado, sesion, puertoInicial, onCerrar, onAsi
 
           <div className="net-capture-field">
             <label htmlFor="captura-campo">{sentido === "puerto" ? "¿Qué llega a este puerto?" : "¿A qué puerto llega su roseta?"}</label>
-            <input id="captura-campo" ref={campo} value={texto} autoComplete="off" onChange={event => { setTexto(event.target.value); setResaltado(0); }} onKeyDown={alTeclear} placeholder={sentido === "puerto" ? "Ej: 3 basico b · cub 12" : "Ej: r2/pp1/p15"} />
+            <input id="captura-campo" ref={campo} value={texto} autoComplete="off" role="combobox" aria-autocomplete="list" aria-expanded={opciones.length > 0} aria-controls="captura-opciones" aria-activedescendant={opciones[resaltado] ? `captura-opcion-${resaltado}` : undefined} onChange={event => { setTexto(event.target.value); setResaltado(0); }} onKeyDown={alTeclear} placeholder={sentido === "puerto" ? "Ej: 3 basico b · cub 12" : "Ej: r2/pp1/p15"} />
             {texto.trim() && !opciones.length && <p className="net-capture-vacio" role="status">Sin coincidencias para «{texto.trim()}». Revisa el nombre o marca el puerto sin uso.</p>}
-            {opciones.length > 0 && <ul className="net-capture-ac" role="listbox">
-              {opciones.map((opcion, indice) => <li key={opcion.id} role="option" aria-selected={indice === resaltado} className={indice === resaltado ? "hl" : ""} onMouseDown={event => { event.preventDefault(); setResaltado(indice); confirmarOpcion(indice); }}>
+            {opciones.length > 0 && <ul id="captura-opciones" className="net-capture-ac" role="listbox">
+              {opciones.map((opcion, indice) => <li id={`captura-opcion-${indice}`} key={opcion.id} role="option" aria-selected={indice === resaltado} className={indice === resaltado ? "hl" : ""} onMouseDown={event => { event.preventDefault(); setResaltado(indice); confirmarOpcion(indice); }}>
                 <span>{opcion.principal}</span><small>{opcion.secundario}</small>{opcion.aviso && <em>{opcion.aviso}</em>}
               </li>)}
             </ul>}
@@ -144,14 +145,15 @@ export default function Captura({ estado, sesion, puertoInicial, onCerrar, onAsi
         </div>
 
         <div className="net-capture-foot">
-          <div className="net-hints"><span><kbd>↵</kbd> asignar y siguiente</span><span><kbd>tab</kbd> saltar</span><span><kbd>ctrl</kbd>+<kbd>z</kbd> deshacer</span><span><kbd>esc</kbd> salir</span></div>
+          <div className="net-hints"><span><kbd>↵</kbd> asignar y siguiente</span><span><kbd>tab</kbd> navegar</span><span><kbd>ctrl</kbd>+<kbd>z</kbd> deshacer</span><span><kbd>esc</kbd> salir</span></div>
           <div className="net-capture-actions">
-            {sentido === "puerto" && <button className="secondary" type="button" disabled={!puertoActual} onClick={() => { if (puertoActual) onMarcarLibre(puertoActual.id); avanzar(); }}>Marcar sin uso</button>}
+            <button className="secondary" type="button" onClick={avanzar}>Saltar</button>
+            {sentido === "puerto" && <button className="secondary" type="button" disabled={!puertoActual || puertoTieneEnlaces} title={puertoTieneEnlaces ? "Quita sus enlaces antes de marcarlo libre." : undefined} onClick={() => { if (puertoActual) onMarcarLibre(puertoActual.id); avanzar(); }}>Marcar sin uso</button>}
             <button className="primary" type="button" disabled={!opciones.length} onClick={confirmar}>Asignar</button>
           </div>
         </div>
       </div>
-      <button className="backdrop" onClick={onCerrar} aria-label="Cerrar captura" />
+      <button className="backdrop net-capture-backdrop" tabIndex={-1} onClick={onCerrar} aria-label="Cerrar captura" />
     </div>
   );
 }

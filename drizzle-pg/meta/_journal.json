@@ -15,6 +15,13 @@
       "when": 1785370964263,
       "tag": "0001_robust_ultimatum",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785423758755,
+      "tag": "0002_nostalgic_tarot",
+      "breakpoints": true
     }
   ]
 }

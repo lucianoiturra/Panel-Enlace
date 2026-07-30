@@ -1,0 +1,3 @@
+ALTER TABLE "checklist_results" ADD CONSTRAINT "checklist_results_cubicle_id_cubicles_id_fk" FOREIGN KEY ("cubicle_id") REFERENCES "public"."cubicles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "checklist_results" ADD CONSTRAINT "checklist_results_item_id_checklist_items_id_fk" FOREIGN KEY ("item_id") REFERENCES "public"."checklist_items"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "station_tasks" ADD CONSTRAINT "station_tasks_cubicle_id_cubicles_id_fk" FOREIGN KEY ("cubicle_id") REFERENCES "public"."cubicles"("id") ON DELETE cascade ON UPDATE no action;

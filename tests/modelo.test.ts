@@ -70,3 +70,13 @@ test("validarEnlace rechaza el duplicado en cualquiera de los dos órdenes", () 
   const ordenInverso = validarEnlace(estado, "pto:R2-PP1-p14", "esp:3-basico-b");
   assert.equal(ordenInverso.ok, false);
 });
+
+test("validarEnlace rechaza relaciones sin un puerto físico", () => {
+  const estado = fixture();
+  const entreEspacios = validarEnlace(estado, "esp:3-basico-b", "esp:4-basico-a");
+  assert.equal(entreEspacios.ok, false);
+  assert.match(entreEspacios.ok === false ? entreEspacios.error : "", /al menos un puerto/);
+
+  const entreCubiculoYEspacio = validarEnlace(estado, "cub:12", "esp:4-basico-a");
+  assert.equal(entreCubiculoYEspacio.ok, false);
+});

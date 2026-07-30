@@ -75,6 +75,9 @@ export const validarEnlace = (estado: EstadoRed, a: string, b: string): { ok: tr
   if (a === b) return { ok: false, error: "No se puede enlazar un punto a sí mismo." };
   if (!existeEndpoint(estado, a)) return { ok: false, error: `El punto ${a} no existe.` };
   if (!existeEndpoint(estado, b)) return { ok: false, error: `El punto ${b} no existe.` };
+  if (prefijoDe(a) !== "pto" && prefijoDe(b) !== "pto") {
+    return { ok: false, error: "Todo enlace debe incluir al menos un puerto." };
+  }
   const [primero, segundo] = ordenCanonico(a, b);
   if (estado.enlaces.some(enlace => enlace.a === primero && enlace.b === segundo)) return { ok: false, error: "Ese enlace ya existe." };
   return { ok: true };

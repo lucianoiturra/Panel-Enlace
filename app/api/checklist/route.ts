@@ -1,30 +1,37 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { checklistItems, checklistResults } from "../../../db/schema";
+import { apiErrorResponse, noStoreJson, readJson } from "../../../lib/api-response";
 
 export async function POST(request: Request) {
   try {
-    const { label } = await request.json() as { label?: string };
+    const { label } = await readJson<{ label?: string }>(request);
     const clean = label?.trim();
-    if (!clean) return Response.json({ error: "Escribe una verificación" }, { status: 400 });
-    if (clean.length > 120) return Response.json({ error: "La verificación no puede superar 120 caracteres." }, { status: 400 });
+    if (!clean) return noStoreJson({ error: "Escribe una verificación." }, { status: 400 });
+    if (clean.length > 120) return noStoreJson({ error: "La verificación no puede superar 120 caracteres." }, { status: 400 });
     const db = await getDb();
     const [item] = await db.insert(checklistItems).values({ label: clean, createdAt: new Date().toISOString() }).returning();
-    return Response.json({ item }, { status: 201 });
+    return noStoreJson({ item }, { status: 201 });
   } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : "No fue posible agregar" }, { status: 500 });
+    return apiErrorResponse(error, "No fue posible agregar la verificación.");
   }
 }
 
 export async function DELETE(request: Request) {
   try {
     const id = Number(new URL(request.url).searchParams.get("id"));
-    if (!Number.isInteger(id) || id < 1) return Response.json({ error: "Verificación inválida" }, { status: 400 });
+    if (!Number.isInteger(id) || id < 1) return noStoreJson({ error: "Verificación inválida." }, { status: 400 });
     const db = await getDb();
-    await db.delete(checklistResults).where(eq(checklistResults.itemId, id));
-    await db.delete(checklistItems).where(eq(checklistItems.id, id));
-    return Response.json({ ok: true });
+    const removed = await db.transaction(async (tx) => {
+      const [item] = await tx.select({ id: checklistItems.id }).from(checklistItems).where(eq(checklistItems.id, id)).limit(1);
+      if (!item) return false;
+      await tx.delete(checklistResults).where(eq(checklistResults.itemId, id));
+      await tx.delete(checklistItems).where(eq(checklistItems.id, id));
+      return true;
+    });
+    if (!removed) return noStoreJson({ error: "Esa verificación ya no existe." }, { status: 404 });
+    return noStoreJson({ ok: true });
   } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : "No fue posible eliminar" }, { status: 500 });
+    return apiErrorResponse(error, "No fue posible eliminar la verificación.");
   }
 }

@@ -15,10 +15,10 @@
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",
-    "next": "16.2.6",
+    "next": "16.2.12",
+    "postgres": "^3.4.7",
     "react": "19.2.6",
-    "react-dom": "19.2.6",
-    "postgres": "^3.4.7"
+    "react-dom": "19.2.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.2.1",
@@ -27,11 +27,14 @@
     "@types/react-dom": "19.2.3",
     "drizzle-kit": "0.31.10",
     "eslint": "9.39.4",
-    "eslint-config-next": "16.2.6",
+    "eslint-config-next": "16.2.12",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3"
   },
   "overrides": {
+    "esbuild": "0.28.1",
+    "postcss": "8.5.25",
+    "sharp": "0.35.3",
     "ws": "^8.21.1"
   },
   "type": "module"
