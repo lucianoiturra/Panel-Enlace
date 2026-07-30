@@ -189,9 +189,13 @@ hay nada guardado.
 
 **Teclado.** Cada flecha es un elemento enfocable con `role="button"`, `tabIndex={0}` y
 etiqueta explícita —«Mover Switch 1 a la izquierda»—, activable con Enter o espacio, como
-ya lo hacen las tarjetas y los puertos en `diagrama-nodos.tsx`. Las claves de React son
-los ids de los nodos, así que al reordenar el elemento conserva el foco y se pueden
-encadenar varios movimientos con la misma tecla sin volver a buscar el botón.
+ya lo hacen las tarjetas y los puertos en `diagrama-nodos.tsx`.
+
+Reordenar mueve el nodo de lugar en el DOM y el navegador suelta el foco, así que el foco
+se devuelve a mano: cada flecha lleva un `data-flecha="<id>:<delta>"` y, después de
+redibujar, se vuelve a enfocar la misma. Sin eso, encadenar dos movimientos con el teclado
+obliga a tabular de nuevo hasta el botón, que es justo lo que se quiere evitar cuando hay
+que acomodar un rack entero.
 
 ## F. Archivos
 
@@ -230,8 +234,16 @@ TDD con el runner del proyecto (`node --test`, `npm test`).
 - un orden guardado para un id que ya no existe no altera el resto;
 - `layout.grupos` contiene un grupo con los racks, uno por fila con equipos de cada
   zona y uno por pila de destinos, y ningún id aparece en dos grupos;
-- mover un switch mueve con él la columna de destinos que cuelga de él, porque las
-  columnas siguen ordenándose por la `x` del padre.
+- al mover un equipo, la columna de destinos que cuelga de él se mueve con él, porque
+  las columnas siguen ordenándose por la `x` del padre.
+
+Sobre ese último punto, un detalle de la mecánica que la prueba tiene que respetar: las
+columnas se **ordenan** por la `x` del padre, pero se **colocan** con un cursor que
+avanza desde el borde de la zona, así que solo se mueven cuando cambia su orden
+relativo. En los datos de hoy la columna de los espacios cuelga de `R2/PP1` y la del AP
+de `R2/SW1`, y ambos equipos arrancan en la misma `x`: intercambiar dos switches entre
+sí no cambia ese orden relativo y no mueve nada. Quien escriba la prueba tiene que mover
+`R2/PP1` dentro de su fila, que sí lo cambia.
 
 Verificación manual: abrir `/red` → DIAGRAMA → ORDENAR, mover un rack a la derecha y
 recargar la página para confirmar que el orden quedó; intercambiar dos patch panels de un
