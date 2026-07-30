@@ -2,8 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import semilla from "../lib/red/semilla.json" with { type: "json" };
 import {
-  anchoDeTexto, codigoDeEquipo, construirLayout, ordenDeZonas, resumenDePuertos,
-  ANCHO_MINIMO, ZONA_BORDE,
+  anchoDeTexto, anclasDeLayout, codigoDeEquipo, construirLayout, ordenDeZonas, resumenDePuertos,
+  ANCHO_MINIMO, ANCHO_PUERTO, COLUMNAS_PUERTO, ZONA_BORDE,
 } from "../lib/red/layout.ts";
 import type { EstadoRed } from "../lib/red/modelo.ts";
 
@@ -157,4 +157,58 @@ test("la zona se ensancha al destino más ancho que cuelga de ella", () => {
 
 test("con todo cerrado el lienzo sigue sin pasar de 1400 de ancho", () => {
   assert.ok(construirLayout(real()).ancho <= 1400);
+});
+
+const ANCHO_ABIERTA = COLUMNAS_PUERTO * ANCHO_PUERTO + 16;
+
+test("una tarjeta abierta mide 12 columnas, tenga 24 o 28 puertos", () => {
+  const layout = construirLayout(real(), new Set(["eq:R2-PP2", "eq:R2-SW3"]));
+  const panel = layout.nodos.find(nodo => nodo.id === "eq:R2-PP2");
+  const switche = layout.nodos.find(nodo => nodo.id === "eq:R2-SW3");
+  assert.equal(panel?.abierta, true);
+  assert.equal(panel?.w, ANCHO_ABIERTA);
+  assert.equal(panel?.puertos.length, 24);
+  assert.equal(switche?.puertos.length, 28);
+  assert.equal(switche?.w, ANCHO_ABIERTA);
+});
+
+test("los puertos de una tarjeta abierta caben dentro de ella", () => {
+  const panel = construirLayout(real(), new Set(["eq:R2-PP2"])).nodos.find(nodo => nodo.id === "eq:R2-PP2");
+  assert.ok(panel);
+  for (const puerto of panel.puertos) {
+    assert.ok(puerto.x >= 0 && puerto.x + puerto.w <= panel.w, `el puerto ${puerto.n} se sale de ancho`);
+    assert.ok(puerto.y + puerto.h <= panel.h, `el puerto ${puerto.n} se sale de alto`);
+  }
+  assert.equal(panel.puertos[0].y, panel.puertos[11].y, "los 12 primeros comparten fila");
+  assert.notEqual(panel.puertos[0].y, panel.puertos[12].y, "el 13 baja de fila");
+});
+
+test("abrir una tarjeta de R2 no mueve ninguna de R1 ni de R3", () => {
+  const cerrado = construirLayout(real());
+  const abierto = construirLayout(real(), new Set(["eq:R2-PP2"]));
+  const antes = new Map(cerrado.nodos.map(nodo => [nodo.id, nodo.x]));
+  for (const nodo of abierto.nodos) {
+    if (nodo.zona !== "R1" && nodo.zona !== "R3") continue;
+    assert.equal(nodo.x, antes.get(nodo.id), `${nodo.id} se movió`);
+  }
+});
+
+test("el ancla de un puerto de tarjeta cerrada cae en el centro de la tarjeta", () => {
+  const layout = construirLayout(real());
+  const anclas = anclasDeLayout(layout);
+  const panel = layout.nodos.find(nodo => nodo.id === "eq:R2-PP2");
+  assert.ok(panel);
+  assert.deepEqual(anclas.get("pto:R2-PP2-p7"), { x: panel.x + panel.w / 2, y: panel.y + panel.h / 2 });
+});
+
+test("al abrirla, el ancla del puerto pasa a su propia casilla", () => {
+  const layout = construirLayout(real(), new Set(["eq:R2-PP2"]));
+  const anclas = anclasDeLayout(layout);
+  const panel = layout.nodos.find(nodo => nodo.id === "eq:R2-PP2");
+  const puerto = panel?.puertos.find(candidato => candidato.n === 7);
+  assert.ok(panel && puerto);
+  assert.deepEqual(anclas.get("pto:R2-PP2-p7"), {
+    x: panel.x + puerto.x + puerto.w / 2,
+    y: panel.y + puerto.y + puerto.h / 2,
+  });
 });

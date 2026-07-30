@@ -15,6 +15,10 @@ export const RELLENO_ZONA = 16;
 export const ALTO_TITULO_ZONA = 24;
 export const ALTO_DESTINO = 30;
 export const SEPARACION_DESTINO = 6;
+export const ANCHO_PUERTO = 34;
+export const ALTO_PUERTO = 26;
+export const COLUMNAS_PUERTO = 12;
+export const ANCHO_ABIERTA = COLUMNAS_PUERTO * ANCHO_PUERTO + RELLENO;
 export const ZONA_BORDE = "borde";
 
 export type ResumenPuertos = { total: number; ocupados: number; libres: number; dañados: number; sinVerificar: number };
@@ -89,21 +93,36 @@ export const ordenDeZonas = (estado: EstadoRed): string[] => {
 
 const filaDeEquipo = (tipo: TipoEquipo) => (FILA_BORDE.includes(tipo) ? 0 : tipo === "switch" ? 0 : 1);
 
-const nodoDeEquipo = (estado: EstadoRed, equipo: EstadoRed["equipos"][number]): Nodo => {
+const nodoDeEquipo = (estado: EstadoRed, equipo: EstadoRed["equipos"][number], abiertas: Set<string>): Nodo => {
   const puertos = estado.puertos.filter(puerto => puerto.equipo === equipo.id).sort((a, b) => a.n - b.n);
   const conRejilla = equipo.puertos > 0;
   const codigo = codigoDeEquipo(equipo.id);
+  const id = conRejilla ? `eq:${equipo.id}` : puertos[0]?.id ?? `eq:${equipo.id}`;
+  const abierta = conRejilla && abiertas.has(id);
+  const filas = abierta ? Math.ceil(puertos.length / COLUMNAS_PUERTO) : 0;
   return {
-    id: conRejilla ? `eq:${equipo.id}` : puertos[0]?.id ?? `eq:${equipo.id}`,
+    id,
     clase: conRejilla ? "equipo" : "aparato",
     codigo,
     etiqueta: `${codigo} · ${equipo.etiqueta}`,
     zona: FILA_BORDE.includes(equipo.tipo) ? ZONA_BORDE : equipo.rack || ZONA_BORDE,
     fila: filaDeEquipo(equipo.tipo),
-    x: 0, y: 0, w: anchoDeTexto(codigo), h: ALTO_TARJETA,
-    abierta: false,
+    x: 0, y: 0,
+    w: abierta ? ANCHO_ABIERTA : anchoDeTexto(codigo),
+    h: ALTO_TARJETA + filas * (ALTO_PUERTO + 4),
+    abierta,
     idsPuerto: puertos.map(puerto => puerto.id),
-    puertos: [],
+    puertos: abierta
+      ? puertos.map((puerto, indice) => ({
+          id: puerto.id,
+          n: puerto.n,
+          estado: puerto.estado,
+          x: RELLENO / 2 + (indice % COLUMNAS_PUERTO) * ANCHO_PUERTO,
+          y: ALTO_TARJETA + Math.floor(indice / COLUMNAS_PUERTO) * (ALTO_PUERTO + 4),
+          w: ANCHO_PUERTO - 4,
+          h: ALTO_PUERTO,
+        }))
+      : [],
     resumen: conRejilla ? resumenDePuertos(estado, equipo.id) : null,
     sinRuta: false,
   };
@@ -186,11 +205,36 @@ const bandejaDe = (estado: EstadoRed): FichaBandeja[] => [
     })),
 ];
 
+// La rejilla de zonas se calcula siempre con todo cerrado, para que abrir una
+// tarjeta no empuje a los racks vecinos: la zona abierta se desborda sobre la
+// siguiente en vez de reacomodar el lienzo entero.
+const anchoDeZona = (estado: EstadoRed, idZona: string, abiertas: Set<string>) => {
+  const equipos = estado.equipos
+    .filter(equipo => equipo.tipo !== "ap")
+    .map(equipo => nodoDeEquipo(estado, equipo, abiertas));
+  const dentro = equipos.filter(nodo => nodo.zona === idZona);
+  const anchoDeFila = (fila: number) => {
+    const cartas = dentro.filter(nodo => nodo.fila === fila);
+    return cartas.length ? cartas.reduce((suma, carta) => suma + carta.w + SEPARACION, 0) - SEPARACION : 0;
+  };
+  const padres = new Map(equipos.map(nodo => [nodo.id, nodo]));
+  const columnas = new Map<string, number>();
+  for (const destino of destinosDe(estado, padres).filter(nodo => nodo.zona === idZona)) {
+    const padre = padreDeDestino(estado, destino.id);
+    columnas.set(padre, Math.max(columnas.get(padre) ?? 0, destino.w));
+  }
+  const anchosDestino = [...columnas.values()];
+  const anchoDestinos = anchosDestino.length
+    ? anchosDestino.reduce((suma, ancho) => suma + ancho + SEPARACION, 0) - SEPARACION
+    : 0;
+  return Math.max(anchoDeFila(0), anchoDeFila(1), anchoDestinos) + RELLENO_ZONA * 2;
+};
+
 export const construirLayout = (estado: EstadoRed, abiertas: Set<string> = new Set()): Layout => {
   const orden = ordenDeZonas(estado);
   const equipos = estado.equipos
     .filter(equipo => equipo.tipo !== "ap")
-    .map(equipo => nodoDeEquipo(estado, equipo));
+    .map(equipo => nodoDeEquipo(estado, equipo, abiertas));
   const porId = new Map(equipos.map(nodo => [nodo.id, nodo]));
   const nodos = [...equipos, ...destinosDe(estado, porId)];
 
@@ -209,6 +253,7 @@ export const construirLayout = (estado: EstadoRed, abiertas: Set<string> = new S
     for (const fila of [0, 1]) {
       const cartas = dentro.filter(nodo => nodo.fila === fila).sort((a, b) => (a.id < b.id ? -1 : 1));
       if (!cartas.length) continue;
+      const altoFila = Math.max(...cartas.map(carta => carta.h));
       let cursor = xZona + RELLENO_ZONA;
       for (const carta of cartas) {
         carta.x = cursor;
@@ -216,7 +261,7 @@ export const construirLayout = (estado: EstadoRed, abiertas: Set<string> = new S
         cursor += carta.w + SEPARACION;
       }
       ancho = Math.max(ancho, cursor - SEPARACION - xZona - RELLENO_ZONA);
-      alto += ALTO_TARJETA + SEPARACION_FILA;
+      alto += altoFila + SEPARACION_FILA;
     }
 
     // Fila 2: una columna por equipo padre, ordenadas por la x del padre.
@@ -248,7 +293,7 @@ export const construirLayout = (estado: EstadoRed, abiertas: Set<string> = new S
     zonas.push({ id: idZona, nombre: nombreDeZona(estado, idZona), x: xZona, y: yZona, w, h: alto });
     anchoLienzo = Math.max(anchoLienzo, xZona + w);
     if (esBorde) altoBorde = alto;
-    else x += w + SEPARACION_ZONA;
+    else x += anchoDeZona(estado, idZona, new Set()) + SEPARACION_ZONA;
   }
 
   const alcanzables = alcanzablesDesdeIsp(estado);
