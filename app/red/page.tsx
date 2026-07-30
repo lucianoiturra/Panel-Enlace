@@ -306,7 +306,7 @@ export default function PaginaRed() {
                 ? <VistaRacks estado={estado} rackActivo={rackVisible} onRack={setRackActivo} formato={formatoRacks} onFormato={setFormatoRacks} seleccionado={seleccionado} onAbrir={abrirFicha} />
                 : vista === "cobertura"
                   ? <VistaCobertura estado={estado} onAbrir={abrirFicha} />
-                  : <Diagrama estado={estado} seleccionado={seleccionado} centrarEn={vista === "diagrama" ? coincidenciaBuscador : ""} onAbrir={abrirFicha} onSeleccionar={setSeleccionado} onConectar={asignarRapido} onReenlazar={reenlazar} onReordenar={reordenar} onRestablecerOrden={restablecerOrden} hayOrden={Object.keys(estado.orden).length > 0} onAviso={mensaje => mostrarAviso(mensaje, "error")} onCopiar={copiarTexto} />}
+                  : <Diagrama estado={estado} seleccionado={seleccionado} centrarEn={vista === "diagrama" ? coincidenciaBuscador : ""} onAbrir={abrirFicha} onSeleccionar={setSeleccionado} onConectar={asignarRapido} onDesconectar={borrarEnlace} onReenlazar={reenlazar} onReordenar={reordenar} onRestablecerOrden={restablecerOrden} hayOrden={Object.keys(estado.orden).length > 0} guardando={guardando} onAviso={mensaje => mostrarAviso(mensaje, "error")} onCopiar={copiarTexto} />}
           </div>
         </section>
       </section>

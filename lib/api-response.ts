@@ -28,5 +28,8 @@ export function apiErrorResponse(error: unknown, fallback: string) {
   if (error instanceof InvalidJsonError) {
     return noStoreJson({ error: "El cuerpo de la solicitud no contiene JSON válido." }, { status: 400 });
   }
+  // El cliente sólo recibe el texto genérico para no filtrar credenciales ni
+  // nombres internos, así que el error real tiene que quedar en el servidor.
+  console.error(fallback, error);
   return noStoreJson({ error: fallback }, { status: 500 });
 }

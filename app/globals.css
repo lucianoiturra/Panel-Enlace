@@ -166,6 +166,27 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offs
 .net-diagram{display:flex;flex-direction:column}
 .net-diagram-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .net-diagram-hint{margin:0;color:var(--muted);font-size:10px}
+.net-connect-panel{display:flex;align-items:stretch;gap:18px;margin-top:10px;border-block:1px solid var(--line);background:#f7f8f9}
+.net-connect-step{display:flex;align-items:center;gap:10px;min-width:290px;padding:10px 14px}
+.net-connect-step>span{display:grid;place-items:center;width:24px;height:24px;flex:0 0 24px;border-radius:50%;background:var(--ink);color:#fff;font:700 10px var(--font-mono)}
+.net-connect-step>div{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px}
+.net-connect-step strong{font-size:12px;line-height:1.3}
+.net-connect-step small{color:var(--muted);font-size:10px;line-height:1.4}
+.net-connect-step>.secondary{padding:7px 10px}
+.net-connect-current{display:flex;align-items:center;gap:10px;min-width:0;padding:8px 14px 8px 18px;border-left:1px solid var(--line)}
+.net-connect-title{flex:0 0 auto;color:var(--green);font:700 9px var(--font-mono);letter-spacing:.08em}
+.net-connect-current>p{margin:0;color:var(--muted);font-size:10px}
+.net-connect-links{display:flex;align-items:stretch;gap:5px;min-width:0;overflow-x:auto;padding:2px}
+.net-connect-links>div{display:flex;align-items:center;gap:8px;min-width:max-content;padding:5px 6px 5px 9px;background:var(--surface);border-radius:4px}
+.net-connect-links span{display:flex;flex-direction:column;gap:2px}
+.net-connect-links strong{font-size:10px}
+.net-connect-links small{color:var(--muted);font:700 8px var(--font-mono);text-transform:uppercase}
+.net-connect-links button{border:0;background:#f8e7e9;color:#762c36;border-radius:4px;padding:6px 8px;font-size:9px;font-weight:800}
+.net-connect-links button:hover{background:#efd0d5}
+.net-connect-links button:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+.net-connect-links button:disabled{cursor:wait;opacity:.55}
+.net-diagram:fullscreen{width:100vw;height:100vh;padding:12px;background:var(--surface)}
+.net-diagram:fullscreen .net-diagram-canvas{flex:1;height:auto;min-height:0}
 .net-diagram-canvas{height:min(70vh,640px);background:#f7f8f9;border-block:1px solid var(--line);overflow:hidden;touch-action:none;cursor:grab}
 .net-diagram-canvas:active{cursor:grabbing}
 .net-diagram-canvas svg{width:100%;height:100%;display:block}
@@ -203,6 +224,8 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offs
    manijas invisibles por todo el lienzo robándole los clics a las tarjetas. */
 .net-d-manija{fill:var(--surface);stroke:var(--ok);stroke-width:2.5;cursor:grab;opacity:0;pointer-events:none;transition:opacity .12s}
 .net-d-link.editable:hover .net-d-manija{opacity:1;pointer-events:auto}
+.net-diagram-canvas.conectando .net-d-link.editable .net-d-manija{opacity:.82;pointer-events:auto}
+.net-diagram-canvas.conectando .net-d-link.editable:hover .net-d-manija{opacity:1}
 /* Mientras se arrastra una punta, las manijas no deben interceptar el puntero:
    el destino se resuelve con elementFromPoint sobre el nodo que hay debajo. */
 .net-diagram-canvas.reenlazando .net-d-manija{pointer-events:none}
@@ -221,6 +244,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offs
 .net-diagram-saltos i{margin-right:5px;color:var(--muted);font-style:normal}
 .net-diagram-motivo{margin:0;color:var(--red);font-size:11px;font-weight:700}
 .net-diagram-canvas.conectando{cursor:crosshair}
+.net-diagram-canvas.conectando [data-endpoint]{cursor:crosshair}
 .net-diagram-bandeja{border-bottom:1px solid var(--line);padding:12px 14px;max-height:210px;overflow:auto}
 .net-diagram-bandeja summary{font-size:11px;font-weight:800;padding:6px 0;cursor:pointer}
 .net-diagram-bandeja .net-chips button.on{background:var(--ok);border-color:var(--ok);color:#fff}
@@ -235,6 +259,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offs
 .net-d-leyenda b{width:1px;height:14px;background:var(--line)}
 .net-d-leyenda .aviso{color:var(--warning)}
 .net-d-leyenda .falla{color:var(--red)}
+@media(max-width:760px){.net-connect-panel{flex-direction:column;gap:0}.net-connect-step{min-width:0}.net-connect-current{align-items:flex-start;flex-direction:column;border-left:0;border-top:1px solid var(--line);padding-left:14px}.net-connect-links{width:100%}}
 @media(max-width:600px){.net-diagram-bar{align-items:stretch}.net-diagram-bar>.net-seg{overflow-x:auto}.net-diagram-hint{width:100%;line-height:1.45}.net-diagram-cadena{align-items:flex-start}.net-diagram-cadena>.secondary{width:100%}.net-diagram-canvas{height:58vh}.net-diagram-bandeja{max-height:240px}.net-d-leyenda{gap:6px 10px;line-height:1.5}}
 @media(prefers-reduced-motion:reduce){.drawer,.room-plan,.station{transition:none}}
 .net-line{display:flex;flex-direction:column;gap:5px;padding:11px 12px;background:#f4f5f6;border-radius:6px}

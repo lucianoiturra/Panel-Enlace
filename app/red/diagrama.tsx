@@ -3,7 +3,7 @@ import DiagramaLeyenda from "./diagrama-leyenda";
 import DiagramaNodos from "./diagrama-nodos";
 import { anclasDeLayout, construirLayout } from "../../lib/red/layout";
 import { cadenaComoTexto, trazarCadena } from "../../lib/red/trazado";
-import { etiquetaEndpoint, type EstadoRed } from "../../lib/red/modelo";
+import { etiquetaEndpoint, validarEnlace, type EstadoRed } from "../../lib/red/modelo";
 import { puntasDelEnlace, type Arista } from "../../lib/red/aristas";
 
 const MARGEN = 90;
@@ -15,10 +15,12 @@ type Props = {
   onAbrir: (id: string) => void;
   onSeleccionar: (id: string) => void;
   onConectar: (a: string, b: string) => void;
+  onDesconectar: (enlaceId: number) => void;
   onReenlazar: (enlaceId: number, fijo: string, destino: string) => void;
   onReordenar: (ids: string[]) => void;
   onRestablecerOrden: () => void;
   hayOrden: boolean;
+  guardando: boolean;
   onAviso: (mensaje: string) => void;
   onCopiar: (texto: string) => void;
 };
@@ -27,7 +29,8 @@ type Vista = { x: number; y: number; escala: number };
 // que va a cambiar de destino cuando la suelte.
 type Reenlace = { enlaceId: number; fijo: string; suelto: string };
 
-export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onSeleccionar, onConectar, onReenlazar, onReordenar, onRestablecerOrden, hayOrden, onAviso, onCopiar }: Props) {
+export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onSeleccionar, onConectar, onDesconectar, onReenlazar, onReordenar, onRestablecerOrden, hayOrden, guardando, onAviso, onCopiar }: Props) {
+  const pantalla = useRef<HTMLDivElement>(null);
   const contenedor = useRef<HTMLDivElement>(null);
   const [vista, setVista] = useState<Vista>({ x: 0, y: 0, escala: 0.6 });
   const [modo, setModo] = useState<"consultar" | "conectar" | "ordenar">("consultar");
@@ -35,6 +38,7 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
   const [abiertas, setAbiertas] = useState<Set<string>>(new Set());
   const [reenlace, setReenlace] = useState<Reenlace | null>(null);
+  const [pantallaCompleta, setPantallaCompleta] = useState(false);
   const arrastre = useRef<{ x: number; y: number; vista: Vista } | null>(null);
   const ultimoMovido = useRef("");
 
@@ -44,11 +48,14 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
   const ruta = useMemo(() => new Set(cadena.camino), [cadena]);
   const corte = useMemo(() => cadena.completa || !cadena.camino.length ? "" : [...cadena.camino].reverse().find(id => anclas.has(id)) ?? "", [cadena, anclas]);
 
-  const puedeSerOrigen = (id: string) => {
-    const puerto = estado.puertos.find(candidato => candidato.id === id);
-    if (puerto) return puerto.estado === "libre" || puerto.estado === "desconocido";
-    return id.startsWith("esp:") || id.startsWith("cub:");
-  };
+  const enlacesOrigen = useMemo(
+    () => origen ? estado.enlaces.filter(enlace => enlace.a === origen || enlace.b === origen) : [],
+    [estado.enlaces, origen],
+  );
+  const estadoOrigen = useMemo(
+    () => estado.puertos.find(puerto => puerto.id === origen)?.estado ?? "",
+    [estado.puertos, origen],
+  );
 
   const alternar = useCallback((id: string) => {
     setAbiertas(actual => {
@@ -83,9 +90,11 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
   }, [layout]);
 
   const alPunto = (id: string) => {
-    if (modo !== "conectar" || !puedeSerOrigen(id)) { onSeleccionar(id); return; }
+    if (modo !== "conectar") { onSeleccionar(id); return; }
     if (!origen) { setOrigen(id); return; }
     if (origen === id) { setOrigen(""); setCursor(null); return; }
+    const validacion = validarEnlace(estado, origen, id);
+    if (!validacion.ok) { onAviso(validacion.error); return; }
     onConectar(origen, id);
     setOrigen("");
     setCursor(null);
@@ -104,6 +113,24 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
   }, [layout]);
 
   useEffect(() => { ajustar(); }, [ajustar]);
+
+  useEffect(() => {
+    const alCambiarPantalla = () => {
+      setPantallaCompleta(document.fullscreenElement === pantalla.current);
+      window.requestAnimationFrame(ajustar);
+    };
+    document.addEventListener("fullscreenchange", alCambiarPantalla);
+    return () => document.removeEventListener("fullscreenchange", alCambiarPantalla);
+  }, [ajustar]);
+
+  const alternarPantallaCompleta = async () => {
+    try {
+      if (document.fullscreenElement === pantalla.current) await document.exitFullscreen();
+      else await pantalla.current?.requestFullscreen();
+    } catch {
+      onAviso("El navegador no permitió abrir el diagrama en pantalla completa.");
+    }
+  };
 
   const centrarNodo = useCallback((id: string) => {
     const ancla = anclas.get(id);
@@ -217,7 +244,7 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
   }, [layout]);
 
   return (
-    <div className="net-diagram">
+    <div className="net-diagram" ref={pantalla}>
       <div className="net-diagram-bar">
         <div className="net-seg" role="group" aria-label="Modo del diagrama">
           <button className={modo === "consultar" ? "on" : ""} aria-pressed={modo === "consultar"} onClick={() => { setModo("consultar"); setOrigen(""); setCursor(null); }}>CONSULTAR</button>
@@ -229,6 +256,7 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
           <button onClick={() => setVista(actual => ({ ...actual, escala: Math.max(actual.escala / 1.25, 0.1) }))} aria-label="Alejar">−</button>
           <button onClick={ajustar}>AJUSTAR A LA VISTA</button>
           <button onClick={() => setAbiertas(new Set())} disabled={!abiertas.size}>CERRAR TODO</button>
+          <button onClick={() => void alternarPantallaCompleta()} aria-pressed={pantallaCompleta}>{pantallaCompleta ? "SALIR DE PANTALLA COMPLETA" : "PANTALLA COMPLETA"}</button>
           {modo === "ordenar" && <button onClick={onRestablecerOrden} disabled={!hayOrden}>RESTABLECER ORDEN</button>}
         </div>
         <p className="net-diagram-hint">{reenlace
@@ -236,11 +264,36 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
           : origen
             ? `Conectando desde ${etiquetaEndpoint(estado, origen)} · clic en el destino, esc para cancelar`
             : modo === "conectar"
-              ? "Clic en un puerto libre para empezar un enlace, o arrastra la punta de una línea para llevarla a otro destino."
+              ? "Clic en cualquier puerto o destino para administrarlo. Los equipos con varios puertos se abren con un clic."
               : modo === "ordenar"
                 ? "Usa las flechas para mover racks, equipos y destinos. El orden se guarda solo y vale para todos."
                 : "Clic en un nodo resalta su ruta hasta el ISP. Doble clic abre la ficha."}</p>
       </div>
+
+      {modo === "conectar" && <section className={`net-connect-panel ${origen ? "has-origin" : ""}`} aria-label="Administrar conexiones" aria-live="polite">
+        <div className="net-connect-step">
+          <span aria-hidden="true">{origen ? "2" : "1"}</span>
+          <div>
+            <strong>{origen ? etiquetaEndpoint(estado, origen) : "Selecciona el primer punto"}</strong>
+            <small>{origen
+              ? `Ahora elige el destino en el diagrama${estadoOrigen ? ` · puerto ${estadoOrigen}` : ""}.`
+              : "Puede estar libre, ocupado o sin verificar."}</small>
+          </div>
+          {origen && <button type="button" className="secondary" onClick={() => { setOrigen(""); setCursor(null); }}>Cancelar</button>}
+        </div>
+        {origen && <div className="net-connect-current">
+          <span className="net-connect-title">CONEXIONES ACTUALES · {enlacesOrigen.length}</span>
+          {enlacesOrigen.length
+            ? <div className="net-connect-links">{enlacesOrigen.map(enlace => {
+                const otro = enlace.a === origen ? enlace.b : enlace.a;
+                return <div key={enlace.id}>
+                  <span><strong>{etiquetaEndpoint(estado, otro)}</strong><small>{enlace.tipo}</small></span>
+                  <button type="button" onClick={() => onDesconectar(enlace.id)} disabled={guardando || enlace.id < 1}>{enlace.id < 1 ? "Guardando…" : "Desconectar"}</button>
+                </div>;
+              })}</div>
+            : <p>Este punto todavía no tiene conexiones documentadas.</p>}
+        </div>}
+      </section>}
 
       {seleccionado && <div className="net-diagram-cadena">
         <span className="net-label">{cadena.completa ? "RUTA HASTA EL ISP" : "RUTA INCOMPLETA"}</span>

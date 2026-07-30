@@ -188,7 +188,7 @@ export default function DiagramaNodos({
               className="net-d-manija"
               cx={punto.x}
               cy={punto.y}
-              r={7}
+              r={9}
               onPointerDown={evento => { evento.stopPropagation(); onTomarPunta(arista, fijo, evento); }}
             ><title>Arrastra esta punta para reconectar el enlace</title></circle>;
           })}
