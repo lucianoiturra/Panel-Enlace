@@ -1674,7 +1674,7 @@ Al final de `app/globals.css`, en el mismo estilo compacto del archivo:
 .net-card-name{font-size:12px;font-weight:800;line-height:1.25}
 .net-card-port{font:700 9px var(--font-mono);color:var(--green)}.net-card-port.none{color:#9a6d00}
 .net-card-extra{font-size:9px;color:var(--muted)}
-.net-card.operativo{border-color:#a8cbbb}.net-card\.solo-wifi,.net-card.solo-wifi{border-color:#d7b969;background:#fffaf0}.net-card.sin-internet{border-color:#d9a5ac;background:#fff7f8}.net-card.sin-verificar{border-style:dashed}
+.net-card.operativo{border-color:#a8cbbb}.net-card.solo-wifi{border-color:#d7b969;background:#fffaf0}.net-card.sin-internet{border-color:#d9a5ac;background:#fff7f8}.net-card.sin-verificar{border-style:dashed}
 @media(max-width:600px){.net-tabs{margin-left:0}.net-tabs a{padding:7px 9px}.net-grid{grid-template-columns:repeat(auto-fill,minmax(148px,1fr))}}
 ```
 
@@ -2230,13 +2230,17 @@ export default function Captura({ estado, sesion, puertoInicial, onCerrar, onAsi
     else setIndiceEndpoint(indice => Math.min(indice + 1, Math.max(pendientes.length - 1, 0)));
   };
 
-  const confirmar = () => {
-    const elegida = opciones[resaltado];
+  // Recibe el índice como argumento y no lo lee del estado: al hacer clic con el mouse,
+  // setResaltado() todavía no se ha aplicado y confirmar() asignaría la opción anterior.
+  const confirmarOpcion = (indice: number) => {
+    const elegida = opciones[indice];
     if (!elegida) return;
     if (sentido === "puerto") { if (!puertoActual) return; onAsignar(elegida.id, puertoActual.id); }
     else { if (!endpointActual) return; onAsignar(endpointActual.id, elegida.id); }
     avanzar();
   };
+
+  const confirmar = () => confirmarOpcion(resaltado);
 
   const alTeclear = (evento: React.KeyboardEvent<HTMLInputElement>) => {
     if (evento.key === "Enter") { evento.preventDefault(); confirmar(); }
@@ -2286,7 +2290,7 @@ export default function Captura({ estado, sesion, puertoInicial, onCerrar, onAsi
             <label htmlFor="captura-campo">{sentido === "puerto" ? "¿Qué llega a este puerto?" : "¿A qué puerto llega su roseta?"}</label>
             <input id="captura-campo" ref={campo} value={texto} autoComplete="off" onChange={event => setTexto(event.target.value)} onKeyDown={alTeclear} placeholder={sentido === "puerto" ? "Ej: 3 básico b, cubículo 12" : "Ej: r2/pp1/15"} />
             {opciones.length > 0 && <ul className="net-capture-ac" role="listbox">
-              {opciones.map((opcion, indice) => <li key={opcion.id} role="option" aria-selected={indice === resaltado} className={indice === resaltado ? "hl" : ""} onMouseDown={event => { event.preventDefault(); setResaltado(indice); confirmar(); }}>
+              {opciones.map((opcion, indice) => <li key={opcion.id} role="option" aria-selected={indice === resaltado} className={indice === resaltado ? "hl" : ""} onMouseDown={event => { event.preventDefault(); setResaltado(indice); confirmarOpcion(indice); }}>
                 <span>{opcion.principal}</span><small>{opcion.secundario}</small>{opcion.aviso && <em>{opcion.aviso}</em>}
               </li>)}
             </ul>}
