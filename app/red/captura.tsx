@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { aliasCubiculo, calza, normalizar } from "../../lib/red/busqueda";
 import { etiquetaPuerto, etiquetasEstadoPuerto, puertosDeEndpoint, type EstadoRed } from "../../lib/red/modelo";
 
 export type FilaSesion = { enlaceId: number; texto: string };
@@ -19,7 +20,13 @@ export default function Captura({ estado, sesion, puertoInicial, onCerrar, onAsi
   const [sentido, setSentido] = useState<"puerto" | "endpoint">("puerto");
   const equipos = useMemo(() => estado.equipos.filter(equipo => equipo.puertos > 0), [estado.equipos]);
   const [equipoId, setEquipoId] = useState(() => puertoInicial ? estado.puertos.find(puerto => puerto.id === puertoInicial)?.equipo ?? "" : "");
-  const [indicePuerto, setIndicePuerto] = useState(0);
+  const [indicePuerto, setIndicePuerto] = useState(() => {
+    if (!puertoInicial) return 0;
+    const puerto = estado.puertos.find(candidato => candidato.id === puertoInicial);
+    if (!puerto) return 0;
+    const hermanos = estado.puertos.filter(candidato => candidato.equipo === puerto.equipo).sort((a, b) => a.n - b.n);
+    return Math.max(hermanos.findIndex(candidato => candidato.id === puertoInicial), 0);
+  });
   const [indiceEndpoint, setIndiceEndpoint] = useState(0);
   const [texto, setTexto] = useState("");
   const [resaltado, setResaltado] = useState(0);
@@ -37,18 +44,20 @@ export default function Captura({ estado, sesion, puertoInicial, onCerrar, onAsi
   const pendientes = useMemo(() => candidatos.filter(candidato => !candidato.puerto), [candidatos]);
   const endpointActual = pendientes[indiceEndpoint];
 
-  const normalizar = (valor: string) => valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   const coincidencias = useMemo(() => {
-    const buscado = normalizar(texto.trim());
-    if (!buscado) return [] as Candidato[];
-    return candidatos.filter(candidato => normalizar(candidato.nombre).includes(buscado)).slice(0, 6);
+    const consulta = texto.trim();
+    if (!consulta) return [] as Candidato[];
+    const numero = aliasCubiculo(consulta);
+    const porAlias = numero === null ? [] : candidatos.filter(candidato => candidato.id === `cub:${numero}`);
+    const porNombre = candidatos.filter(candidato => calza(candidato.nombre, consulta) && !porAlias.includes(candidato));
+    return [...porAlias, ...porNombre].slice(0, 6);
   }, [candidatos, texto]);
 
   const coincidenciasPuerto = useMemo(() => {
-    const buscado = normalizar(texto.trim().replace(/\s+/g, ""));
+    const buscado = normalizar(texto).replace(/\s+/g, "");
     if (!buscado) return [] as { id: string; etiqueta: string; estado: string }[];
     return estado.puertos
-      .filter(puerto => puerto.n > 0 && normalizar(etiquetaPuerto(estado, puerto.id).replace(/[\s/]/g, "")).includes(buscado.replace(/[/]/g, "")))
+      .filter(puerto => puerto.n > 0 && normalizar(etiquetaPuerto(estado, puerto.id)).replace(/\s+/g, "").includes(buscado))
       .slice(0, 6)
       .map(puerto => ({ id: puerto.id, etiqueta: etiquetaPuerto(estado, puerto.id), estado: etiquetasEstadoPuerto[puerto.estado] }));
   }, [estado, texto]);
@@ -112,14 +121,15 @@ export default function Captura({ estado, sesion, puertoInicial, onCerrar, onAsi
               <div className="net-capture-big">{sentido === "puerto" ? (puertoActual ? etiquetaPuerto(estado, puertoActual.id) : "Sin puertos") : (endpointActual ? endpointActual.nombre : "No queda nada pendiente")}</div>
               <div className="net-capture-where">{sentido === "puerto"
                 ? `${estado.equipos.find(equipo => equipo.id === equipoActivo)?.etiqueta ?? ""} · ${puertoActual ? etiquetasEstadoPuerto[puertoActual.estado] : ""}`
-                : (endpointActual ? `${endpointActual.grupo} · sin puerto asignado` : "Los 101 puntos tienen puerto")}</div>
+                : (endpointActual ? `${endpointActual.grupo} · sin puerto asignado` : `Los ${candidatos.length} puntos tienen puerto`)}</div>
             </div>
             <div className="net-capture-prog"><b>{sesion.length}</b> asignados en esta sesión<span>{sentido === "puerto" ? `${asignadosDelEquipo} de ${puertosDelEquipo.length} ocupados en este equipo` : `${pendientes.length} pendientes`}</span></div>
           </div>
 
           <div className="net-capture-field">
             <label htmlFor="captura-campo">{sentido === "puerto" ? "¿Qué llega a este puerto?" : "¿A qué puerto llega su roseta?"}</label>
-            <input id="captura-campo" ref={campo} value={texto} autoComplete="off" onChange={event => { setTexto(event.target.value); setResaltado(0); }} onKeyDown={alTeclear} placeholder={sentido === "puerto" ? "Ej: 3 básico b, cubículo 12" : "Ej: r2/pp1/15"} />
+            <input id="captura-campo" ref={campo} value={texto} autoComplete="off" onChange={event => { setTexto(event.target.value); setResaltado(0); }} onKeyDown={alTeclear} placeholder={sentido === "puerto" ? "Ej: 3 basico b · cub 12" : "Ej: r2/pp1/p15"} />
+            {texto.trim() && !opciones.length && <p className="net-capture-vacio" role="status">Sin coincidencias para «{texto.trim()}». Revisa el nombre o marca el puerto sin uso.</p>}
             {opciones.length > 0 && <ul className="net-capture-ac" role="listbox">
               {opciones.map((opcion, indice) => <li key={opcion.id} role="option" aria-selected={indice === resaltado} className={indice === resaltado ? "hl" : ""} onMouseDown={event => { event.preventDefault(); setResaltado(indice); confirmarOpcion(indice); }}>
                 <span>{opcion.principal}</span><small>{opcion.secundario}</small>{opcion.aviso && <em>{opcion.aviso}</em>}

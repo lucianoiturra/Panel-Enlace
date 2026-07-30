@@ -31,6 +31,7 @@ export default function PaginaRed() {
   const [filtro, setFiltro] = useState<EstadoEspacio | "todos">("todos");
   const [consulta, setConsulta] = useState("");
   const [seleccionado, setSeleccionado] = useState("");
+  const [fichaAbierta, setFichaAbierta] = useState("");
   const [ultimaSync, setUltimaSync] = useState<Date | null>(null);
   const [aviso, setAviso] = useState("");
   const [tipoAviso, setTipoAviso] = useState<"success" | "error">("success");
@@ -60,7 +61,8 @@ export default function PaginaRed() {
     }
   };
 
-  const cadena = useMemo(() => trazarCadena(estado, seleccionado), [estado, seleccionado]);
+  const cadenaFicha = useMemo(() => trazarCadena(estado, fichaAbierta), [estado, fichaAbierta]);
+  const abrirFicha = (id: string) => { setSeleccionado(id); setFichaAbierta(id); };
 
   const pedir = async (url: string, opciones: RequestInit, respaldo: string) => {
     const response = await fetch(url, opciones);
@@ -83,29 +85,29 @@ export default function PaginaRed() {
   };
 
   const guardarCampos = (cambios: { estado?: string; nota?: string }) => conGuardado(async () => {
-    const tipo = seleccionado.startsWith("esp:") ? "espacio" : "puerto";
-    await pedir("/api/red", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tipo, id: seleccionado, ...cambios }) }, "No fue posible guardar los cambios.");
+    const tipo = fichaAbierta.startsWith("esp:") ? "espacio" : "puerto";
+    await pedir("/api/red", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tipo, id: fichaAbierta, ...cambios }) }, "No fue posible guardar los cambios.");
   }, "Cambio guardado.");
 
   const crearEnlace = (puertoId: string, nota: string) => conGuardado(async () => {
-    await pedir("/api/red/enlaces", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ a: seleccionado, b: puertoId, nota }) }, "No fue posible crear el enlace.");
+    await pedir("/api/red/enlaces", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ a: fichaAbierta, b: puertoId, nota }) }, "No fue posible crear el enlace.");
   }, "Puerto asignado.");
 
   const borrarEnlace = (id: number) => conGuardado(async () => {
     await pedir(`/api/red/enlaces?id=${id}`, { method: "DELETE" }, "No fue posible quitar el enlace.");
   }, "Enlace quitado.");
 
-  const asignarRapido = (endpointId: string, puertoId: string) => {
+  const asignarRapido = (a: string, b: string) => {
     const provisional = -Date.now();
-    const texto = `${etiquetaEndpoint(estado, endpointId)} → ${etiquetaPuerto(estado, puertoId)}`;
+    const texto = `${etiquetaEndpoint(estado, a)} → ${etiquetaEndpoint(estado, b)}`;
     setEstado(actual => ({
       ...actual,
-      enlaces: [...actual.enlaces, { id: provisional, a: endpointId, b: puertoId, tipo: "roseta", nota: "" }],
-      puertos: actual.puertos.map(puerto => puerto.id === puertoId && puerto.estado === "libre" ? { ...puerto, estado: "ocupado" } : puerto),
+      enlaces: [...actual.enlaces, { id: provisional, a, b, tipo: "roseta", nota: "" }],
+      puertos: actual.puertos.map(puerto => (puerto.id === a || puerto.id === b) && puerto.estado === "libre" ? { ...puerto, estado: "ocupado" } : puerto),
     }));
     void (async () => {
       try {
-        const response = await pedir("/api/red/enlaces", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ a: endpointId, b: puertoId }) }, "No fue posible asignar el puerto.");
+        const response = await pedir("/api/red/enlaces", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ a, b }) }, "No fue posible asignar el puerto.");
         const { enlace } = await response.json() as { enlace: Enlace };
         setEstado(actual => ({ ...actual, enlaces: actual.enlaces.map(candidato => candidato.id === provisional ? enlace : candidato) }));
         setSesion(actual => [{ enlaceId: enlace.id, texto }, ...actual]);
@@ -151,24 +153,24 @@ export default function PaginaRed() {
   useEffect(() => {
     const temporizador = window.setTimeout(() => {
       const inicial = new URLSearchParams(window.location.search).get("endpoint") ?? "";
-      if (/^(pto|esp|cub):/.test(inicial)) setSeleccionado(inicial);
+      if (/^(pto|esp|cub):/.test(inicial)) { setSeleccionado(inicial); setFichaAbierta(inicial); }
     }, 0);
     return () => window.clearTimeout(temporizador);
   }, []);
 
   useEffect(() => {
-    if (!seleccionado) return;
-    const alTeclear = (evento: KeyboardEvent) => { if (evento.key === "Escape") { evento.preventDefault(); setSeleccionado(""); } };
+    if (!fichaAbierta) return;
+    const alTeclear = (evento: KeyboardEvent) => { if (evento.key === "Escape") { evento.preventDefault(); setFichaAbierta(""); } };
     window.addEventListener("keydown", alTeclear);
     return () => window.removeEventListener("keydown", alTeclear);
-  }, [seleccionado]);
+  }, [fichaAbierta]);
 
   useEffect(() => {
-    if (!seleccionado) return;
+    if (!fichaAbierta) return;
     const anterior = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = anterior; };
-  }, [seleccionado]);
+  }, [fichaAbierta]);
 
   const conteos = useMemo(() => Object.fromEntries(estadosEspacio.map(valor => [valor, estado.espacios.filter(espacio => espacio.estado === valor).length])) as Record<EstadoEspacio, number>, [estado.espacios]);
 
@@ -214,6 +216,15 @@ export default function PaginaRed() {
     mostrarAviso("Cadena copiada.");
   };
 
+  const copiarTexto = (texto: string) => void (async () => {
+    try {
+      await navigator.clipboard.writeText(texto);
+      mostrarAviso("Cadena copiada.");
+    } catch {
+      mostrarAviso("No fue posible copiar la cadena.", "error");
+    }
+  })();
+
   return (
     <main>
       <header className="topbar">
@@ -245,21 +256,21 @@ export default function PaginaRed() {
               <label className="search"><span aria-hidden="true">⌕</span><span className="sr-only">Buscar espacio, cubículo o puerto</span><input value={consulta} aria-label="Buscar espacio, cubículo o puerto" onChange={event => setConsulta(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && coincidenciaBuscador) setSeleccionado(coincidenciaBuscador); }} placeholder="Buscar espacio, cubículo o puerto" /></label>
             </div>
           </div>
-          {coincidenciaBuscador && <div className="net-quick"><span className="net-quick-chain">{cadenaComoTexto(cadenaBuscador)}</span><div className="net-quick-actions"><button className="secondary" type="button" onClick={() => void copiarCadenaBuscador()}>Copiar</button><button className="secondary" type="button" onClick={() => setSeleccionado(coincidenciaBuscador)}>Abrir ficha</button></div></div>}
+          {coincidenciaBuscador && <div className="net-quick"><span className="net-quick-chain">{cadenaComoTexto(cadenaBuscador)}</span><div className="net-quick-actions"><button className="secondary" type="button" onClick={() => void copiarCadenaBuscador()}>Copiar</button><button className="secondary" type="button" onClick={() => abrirFicha(coincidenciaBuscador)}>Abrir ficha</button></div></div>}
           <div className={cargando ? "net-body is-loading" : "net-body"}>
             {vista === "espacios"
-              ? <VistaEspacios espacios={espaciosVisibles} puertosDe={puertosDe} etiquetaDePuerto={etiquetaDePuerto} cubiculos={estado.cubiculos} seleccionado={seleccionado} onAbrir={setSeleccionado} />
+              ? <VistaEspacios espacios={espaciosVisibles} puertosDe={puertosDe} etiquetaDePuerto={etiquetaDePuerto} cubiculos={estado.cubiculos} seleccionado={seleccionado} onAbrir={abrirFicha} />
               : vista === "racks"
-                ? <VistaRacks estado={estado} rackActivo={rackVisible} onRack={setRackActivo} formato={formatoRacks} onFormato={setFormatoRacks} seleccionado={seleccionado} onAbrir={setSeleccionado} />
+                ? <VistaRacks estado={estado} rackActivo={rackVisible} onRack={setRackActivo} formato={formatoRacks} onFormato={setFormatoRacks} seleccionado={seleccionado} onAbrir={abrirFicha} />
                 : vista === "cobertura"
-                  ? <VistaCobertura estado={estado} onAbrir={setSeleccionado} />
-                  : <Diagrama estado={estado} seleccionado={seleccionado} centrarEn={vista === "diagrama" ? coincidenciaBuscador : ""} onAbrir={setSeleccionado} />}
+                  ? <VistaCobertura estado={estado} onAbrir={abrirFicha} />
+                  : <Diagrama estado={estado} seleccionado={seleccionado} centrarEn={vista === "diagrama" ? coincidenciaBuscador : ""} onAbrir={abrirFicha} onSeleccionar={setSeleccionado} onConectar={asignarRapido} onCopiar={copiarTexto} />}
           </div>
         </section>
       </section>
 
-      {seleccionado && <Ficha key={seleccionado} estado={estado} endpointId={seleccionado} cadena={cadena} guardando={guardando} onCerrar={() => setSeleccionado("")} onGuardarCampos={guardarCampos} onCrearEnlace={crearEnlace} onBorrarEnlace={borrarEnlace} />}
-      {seleccionado && <button className="backdrop" onClick={() => setSeleccionado("")} aria-label="Cerrar ficha" />}
+      {fichaAbierta && <Ficha key={fichaAbierta} estado={estado} endpointId={fichaAbierta} cadena={cadenaFicha} guardando={guardando} onCerrar={() => setFichaAbierta("")} onGuardarCampos={guardarCampos} onCrearEnlace={crearEnlace} onBorrarEnlace={borrarEnlace} />}
+      {fichaAbierta && <button className="backdrop" onClick={() => setFichaAbierta("")} aria-label="Cerrar ficha" />}
       {capturaAbierta && <Captura estado={estado} sesion={sesion} puertoInicial={seleccionado.startsWith("pto:") ? seleccionado : ""} onCerrar={() => setCapturaAbierta(false)} onAsignar={asignarRapido} onMarcarLibre={marcarLibre} onDeshacer={deshacerAsignacion} />}
       {aviso && <div className={`toast ${tipoAviso}`} role={tipoAviso === "error" ? "alert" : "status"} aria-live="polite">{aviso}</div>}
     </main>

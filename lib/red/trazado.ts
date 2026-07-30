@@ -1,7 +1,7 @@
 import { etiquetaEndpoint, numeroCubiculo, prefijoDe, type EstadoRed, type TipoEquipo } from "./modelo.ts";
 
 export type Salto = { id: string; etiqueta: string; tipo: "espacio" | "cubiculo" | "puerto" | "equipo" };
-export type Cadena = { saltos: Salto[]; completa: boolean; motivo?: string };
+export type Cadena = { saltos: Salto[]; completa: boolean; motivo?: string; camino: string[]; alcanzables: Set<string> };
 
 const TOPE_SALTOS = 2000;
 const conChasis: TipoEquipo[] = ["switch", "router", "firewall", "ap", "isp"];
@@ -67,7 +67,7 @@ export const trazarCadena = (estado: EstadoRed, origenId: string): Cadena => {
   const existe = prefijoDe(origenId) === "cub"
     ? estado.cubiculos.some(cubiculo => cubiculo.id === numeroCubiculo(origenId))
     : estado.puertos.some(puerto => puerto.id === origenId) || estado.espacios.some(espacio => espacio.id === origenId);
-  if (!existe) return { saltos: [], completa: false, motivo: "El punto de origen no existe." };
+  if (!existe) return { saltos: [], completa: false, motivo: "El punto de origen no existe.", camino: [], alcanzables: new Set() };
 
   const adyacencia = construirAdyacencia(estado);
   const padres = new Map<string, string>([[origenId, ""]]);
@@ -76,10 +76,10 @@ export const trazarCadena = (estado: EstadoRed, origenId: string): Cadena => {
   let destino = "";
   let expansiones = 0;
 
-  while (cola.length && !destino && expansiones < TOPE_SALTOS) {
+  while (cola.length && expansiones < TOPE_SALTOS) {
     const actual = cola.shift()!;
     expansiones += 1;
-    if (esDelIsp(estado, actual)) { destino = actual; break; }
+    if (!destino && esDelIsp(estado, actual)) destino = actual;
     for (const vecino of adyacencia.get(actual) ?? []) {
       if (padres.has(vecino)) continue;
       padres.set(vecino, actual);
@@ -102,8 +102,9 @@ export const trazarCadena = (estado: EstadoRed, origenId: string): Cadena => {
   const camino: string[] = [];
   for (let nodo = final; nodo; nodo = padres.get(nodo) ?? "") camino.unshift(nodo);
   const saltos = presentar(estado, camino);
-  if (destino) return { saltos, completa: true };
-  return { saltos, completa: false, motivo: motivoIncompleto(estado, origenId, final) };
+  const alcanzables = new Set(padres.keys());
+  if (destino) return { saltos, completa: true, camino, alcanzables };
+  return { saltos, completa: false, motivo: motivoIncompleto(estado, origenId, final), camino, alcanzables };
 };
 
 export const cadenaComoTexto = (cadena: Cadena) => {

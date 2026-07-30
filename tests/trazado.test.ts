@@ -81,3 +81,37 @@ test("cadenaComoTexto marca la cadena incompleta", () => {
   const cadena = trazarCadena(fixture(), "esp:4-basico-a");
   assert.match(cadenaComoTexto(cadena), /[Ss]in puerto asignado/);
 });
+
+test("camino conserva los puertos que los saltos colapsan", () => {
+  const cadena = trazarCadena(fixture(), "esp:3-basico-b");
+  assert.equal(cadena.camino.includes("pto:R2-SW1-p24"), true);
+  assert.equal(cadena.camino.includes("pto:R3-SW1-p28"), true);
+  assert.equal(cadena.camino.some(id => id.startsWith("eq:")), true);
+  assert.equal(cadena.camino[0], "esp:3-basico-b");
+  assert.equal(cadena.camino[cadena.camino.length - 1], "pto:ISP-p0");
+});
+
+test("alcanzables cubre todo lo visitado, no solo la ruta", () => {
+  const estado = fixture();
+  estado.enlaces.push({ id: 6, a: "esp:secretaria", b: "pto:R2-PP1-p15", tipo: "roseta", nota: "" });
+  estado.enlaces.push({ id: 7, a: "pto:R2-PP1-p15", b: "pto:R2-SW1-p24", tipo: "patch", nota: "" });
+  const cadena = trazarCadena(estado, "esp:3-basico-b");
+  assert.equal(cadena.completa, true);
+  assert.equal(cadena.alcanzables.has("esp:secretaria"), true);
+  assert.equal(cadena.camino.includes("esp:secretaria"), false);
+});
+
+test("alcanzables excluye el ISP cuando el parcheo no está documentado", () => {
+  const estado = fixture();
+  estado.enlaces = estado.enlaces.filter(enlace => enlace.id !== 5);
+  const cadena = trazarCadena(estado, "esp:3-basico-b");
+  assert.equal(cadena.completa, false);
+  assert.equal(cadena.alcanzables.has("pto:ISP-p0"), false);
+  assert.equal(cadena.alcanzables.has("pto:R3-SW1-p28"), true);
+});
+
+test("un endpoint inexistente devuelve camino y alcanzables vacíos", () => {
+  const cadena = trazarCadena(fixture(), "esp:no-existe");
+  assert.deepEqual(cadena.camino, []);
+  assert.equal(cadena.alcanzables.size, 0);
+});
