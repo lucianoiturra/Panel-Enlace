@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import DiagramaLeyenda from "./diagrama-leyenda";
 import DiagramaNodos from "./diagrama-nodos";
 import { anclasDeLayout, construirLayout } from "../../lib/red/layout";
 import { cadenaComoTexto, trazarCadena } from "../../lib/red/trazado";
@@ -162,6 +163,7 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
           </g>
         </svg>
       </div>
+      <DiagramaLeyenda />
 
       {layout.bandeja.length > 0 && <div className="net-diagram-bandeja">
         <span className="net-label">SIN PUERTO ASIGNADO · {layout.bandeja.length}</span>

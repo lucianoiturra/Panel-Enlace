@@ -201,7 +201,18 @@ button { cursor:pointer; }
 .net-diagram-bandeja{border-bottom:1px solid var(--line);padding:12px 14px;max-height:210px;overflow:auto}
 .net-diagram-bandeja summary{font-size:11px;font-weight:800;padding:6px 0;cursor:pointer}
 .net-diagram-bandeja .net-chips button.on{background:var(--ok);border-color:var(--ok);color:#fff}
-@media(max-width:600px){.net-diagram-bar{align-items:stretch}.net-diagram-bar>.net-seg{overflow-x:auto}.net-diagram-hint{width:100%;line-height:1.45}.net-diagram-cadena{align-items:flex-start}.net-diagram-cadena>.secondary{width:100%}.net-diagram-canvas{height:58vh}.net-diagram-bandeja{max-height:240px}}
+.net-d-leyenda{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:9px 14px;border-bottom:1px solid var(--line);background:#f7f8f9;font-size:10px;color:var(--muted)}
+.net-d-leyenda span{display:flex;align-items:center;gap:5px;white-space:nowrap}
+.net-d-leyenda i{display:inline-block;width:16px;height:12px;border-radius:2px;border:1px solid #c2c9d2}
+.net-d-leyenda i.pt.ocupado{background:var(--green);border-color:var(--green)}
+.net-d-leyenda i.pt.libre{background:var(--surface)}
+.net-d-leyenda i.pt.desconocido{background:#fdf6e4;border-color:var(--warning);border-style:dashed}
+.net-d-leyenda i.pt.dañado{background:#f6dfe2;border-color:var(--red)}
+.net-d-leyenda i.ln{height:0;border:0;border-top:3px solid;border-radius:0}
+.net-d-leyenda b{width:1px;height:14px;background:var(--line)}
+.net-d-leyenda .aviso{color:var(--warning)}
+.net-d-leyenda .falla{color:var(--red)}
+@media(max-width:600px){.net-diagram-bar{align-items:stretch}.net-diagram-bar>.net-seg{overflow-x:auto}.net-diagram-hint{width:100%;line-height:1.45}.net-diagram-cadena{align-items:flex-start}.net-diagram-cadena>.secondary{width:100%}.net-diagram-canvas{height:58vh}.net-diagram-bandeja{max-height:240px}.net-d-leyenda{gap:6px 10px;line-height:1.5}}
 @media(prefers-reduced-motion:reduce){.drawer,.room-plan,.station{transition:none}}
 .net-line{display:flex;flex-direction:column;gap:5px;padding:11px 12px;background:#f4f5f6;border-radius:6px}
 .net-line>span{font:700 9px var(--font-mono);letter-spacing:.11em;color:var(--green)}
