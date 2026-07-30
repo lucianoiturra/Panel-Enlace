@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { anclasDeLayout, type Arista, type Layout, type Nodo } from "../../lib/red/layout";
+import { anclasDeLayout, type Layout, type Nodo } from "../../lib/red/layout";
+import type { Arista } from "../../lib/red/aristas";
 
 export type PropsNodos = {
   layout: Layout;
@@ -24,19 +25,10 @@ export default function DiagramaNodos({ layout, escala, ruta, alcance, seleccion
   const anclas = useMemo(() => anclasDeLayout(layout), [layout]);
   const tipografia = 13 / escala;
 
-  // Ancho medio de un carácter como fracción del tamaño de fuente, para recortar la etiqueta al
-  // ancho del nodo. Sin esto una hoja de 190 unidades imprime nombres de 400 y pisa a su vecina.
-  const ANCHO_CARACTER = 0.55;
-  const recortar = (etiqueta: string, ancho: number) => {
-    const caben = Math.floor(ancho / (tipografia * ANCHO_CARACTER));
-    if (caben >= etiqueta.length) return etiqueta;
-    return caben < 2 ? "" : `${etiqueta.slice(0, caben - 1)}…`;
-  };
-
   const interactivo = (nodo: Nodo) => nodo.clase !== "equipo";
   const nivel = (id: string) => ruta.has(id) ? "ruta" : alcance.has(id) ? "alcance" : "";
   const nivelArista = (arista: Arista) => ruta.has(arista.a) && ruta.has(arista.b) ? "ruta" : alcance.has(arista.a) && alcance.has(arista.b) ? "alcance" : "";
-  const clasesNodo = (nodo: Nodo) => ["net-d-nodo", nodo.clase, nivel(nodo.id), nodo.isla ? "isla" : "", seleccionado === nodo.id ? "sel" : "", origen === nodo.id ? "origen" : ""].filter(Boolean).join(" ");
+  const clasesNodo = (nodo: Nodo) => ["net-d-nodo", nodo.clase, nivel(nodo.id), nodo.sinRuta ? "sin-ruta" : "", seleccionado === nodo.id ? "sel" : "", origen === nodo.id ? "origen" : ""].filter(Boolean).join(" ");
   const alTeclado = (evento: React.KeyboardEvent<SVGRectElement>, id: string, abrir = false) => {
     if (evento.key !== "Enter" && evento.key !== " ") return;
     evento.preventDefault();
@@ -51,7 +43,7 @@ export default function DiagramaNodos({ layout, escala, ruta, alcance, seleccion
         const a = anclas.get(arista.a);
         const b = anclas.get(arista.b);
         if (!a || !b) return null;
-        return <path key={arista.id} className={`net-d-link ${nivelArista(arista)}`} d={curva(a, b)} stroke={COLOR_ENLACE[arista.tipo] ?? "#68717e"} strokeWidth={arista.tipo === "uplink" ? 5 : 3} />;
+        return <path key={arista.clave} className={`net-d-link ${nivelArista(arista)}`} d={curva(a, b)} stroke={COLOR_ENLACE[arista.tipo] ?? "#68717e"} strokeWidth={arista.tipo === "uplink" ? 5 : 3} />;
       })}
 
       {cortada && <g className="net-d-corte" transform={`translate(${cortada.x} ${cortada.y})`}>
@@ -61,12 +53,10 @@ export default function DiagramaNodos({ layout, escala, ruta, alcance, seleccion
 
       {layout.nodos.map(nodo => <g key={nodo.id} className={clasesNodo(nodo)} transform={`translate(${nodo.x} ${nodo.y})`}>
         <title>{nodo.etiqueta}</title>
-        {/* La caja de un equipo con puertos es un contenedor, no un destino: su id `eq:` no es un
-            endpoint trazable y cada puerto llega a un lugar distinto. Se selecciona el puerto. */}
         <rect width={nodo.w} height={nodo.h} rx={6} role={interactivo(nodo) ? "button" : undefined} tabIndex={interactivo(nodo) ? 0 : undefined} aria-label={interactivo(nodo) ? `${nodo.etiqueta}. Enter para seleccionar; doble clic para abrir la ficha.` : undefined} onKeyDown={interactivo(nodo) ? evento => alTeclado(evento, nodo.id) : undefined} onClick={interactivo(nodo) ? () => onPunto(nodo.id) : undefined} onDoubleClick={interactivo(nodo) ? () => onFicha(nodo.id) : undefined} />
-        <text className="net-d-nombre" x={nodo.w / 2} y={-8 / escala} style={{ fontSize: `${tipografia}px` }}>{recortar(nodo.etiqueta, nodo.w)}</text>
+        <text className="net-d-nombre" x={nodo.w / 2} y={-8 / escala} style={{ fontSize: `${tipografia}px` }}>{nodo.codigo}</text>
         {nodo.puertos.map(puerto => <g key={puerto.id} className={`net-d-pt ${puerto.estado} ${nivel(puerto.id)} ${seleccionado === puerto.id ? "sel" : ""} ${origen === puerto.id ? "origen" : ""}`}>
-          <rect x={puerto.x} y={puerto.y} width={puerto.w} height={puerto.h} rx={3} role="button" tabIndex={0} aria-label={`Puerto ${puerto.n}, ${puerto.estado}. Enter para seleccionar; doble clic para abrir la ficha.`} onKeyDown={evento => alTeclado(evento, puerto.id)} onClick={event => { event.stopPropagation(); onPunto(puerto.id); }} onDoubleClick={event => { event.stopPropagation(); onFicha(puerto.id); }} />
+          <rect x={puerto.x} y={puerto.y} width={puerto.w} height={puerto.h} rx={3} role="button" tabIndex={0} aria-label={`Puerto ${puerto.n}, ${puerto.estado}. Enter para seleccionar; doble clic para abrir la ficha.`} onKeyDown={evento => alTeclado(evento, puerto.id)} onClick={evento => { evento.stopPropagation(); onPunto(puerto.id); }} onDoubleClick={evento => { evento.stopPropagation(); onFicha(puerto.id); }} />
           <text x={puerto.x + puerto.w / 2} y={puerto.y + puerto.h / 2 + 4 / escala} style={{ fontSize: `${Math.min(tipografia, puerto.w * 0.6)}px` }}>{puerto.n}</text>
         </g>)}
       </g>)}

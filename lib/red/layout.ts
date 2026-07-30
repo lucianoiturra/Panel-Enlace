@@ -1,32 +1,36 @@
-import { puertosDeEndpoint, type EstadoPuerto, type EstadoRed, type TipoEnlace, type TipoEquipo } from "./modelo.ts";
+import { aristasParaDibujar, type Arista } from "./aristas.ts";
+import { puertosDeEndpoint, type EstadoPuerto, type EstadoRed, type TipoEquipo } from "./modelo.ts";
 
-export const ANCHO_PUERTO = 34;
-export const ALTO_EQUIPO = 62;
-export const ANCHO_HOJA = 190;
-export const ALTO_HOJA = 46;
-export const SEPARACION = 26;
-export const ALTO_CAPA = 200;
-export const ZONA_BORDE = "borde";
 export const TIPOGRAFIA = 15;
 // Ancho medio de un carácter como fracción del tamaño de fuente. Antes servía para
 // recortar la etiqueta al nodo; ahora dimensiona el nodo según su etiqueta.
 export const ANCHO_CARACTER = 0.55;
 export const ANCHO_MINIMO = 120;
 export const RELLENO = 16;
+export const ALTO_TARJETA = 44;
+export const SEPARACION = 26;
+export const SEPARACION_FILA = 54;
+export const SEPARACION_ZONA = 60;
+export const RELLENO_ZONA = 16;
+export const ALTO_TITULO_ZONA = 24;
+export const ZONA_BORDE = "borde";
 
+export type ResumenPuertos = { total: number; ocupados: number; libres: number; dañados: number; sinVerificar: number };
 export type ClaseNodo = "equipo" | "aparato" | "espacio" | "cubiculo";
 export type PuertoNodo = { id: string; n: number; estado: EstadoPuerto; x: number; y: number; w: number; h: number };
-export type Nodo = { id: string; clase: ClaseNodo; etiqueta: string; capa: number; x: number; y: number; w: number; h: number; puertos: PuertoNodo[]; isla: boolean };
-export type Arista = { id: number; a: string; b: string; nodoA: string; nodoB: string; tipo: TipoEnlace };
+export type Nodo = {
+  id: string; clase: ClaseNodo; codigo: string; etiqueta: string;
+  zona: string; fila: number;
+  x: number; y: number; w: number; h: number;
+  abierta: boolean; idsPuerto: string[]; puertos: PuertoNodo[];
+  resumen: ResumenPuertos | null; sinRuta: boolean;
+};
+export type Zona = { id: string; nombre: string; x: number; y: number; w: number; h: number };
 export type FichaBandeja = { id: string; etiqueta: string; grupo: string };
-export type Layout = { nodos: Nodo[]; aristas: Arista[]; bandeja: FichaBandeja[]; ancho: number; alto: number };
-export type ResumenPuertos = { total: number; ocupados: number; libres: number; dañados: number; sinVerificar: number };
+export type Layout = { zonas: Zona[]; nodos: Nodo[]; aristas: Arista[]; bandeja: FichaBandeja[]; ancho: number; alto: number };
 
-const CAPAS: Record<TipoEquipo, number> = { isp: 0, firewall: 1, router: 1, switch: 2, patchpanel: 3, ap: 4 };
-const CAPA_HOJA = 4;
+const FILA_BORDE: TipoEquipo[] = ["isp", "firewall", "router"];
 const GRUPOS = { sala: "Salas", oficina: "Oficinas", otro: "Otros" } as const;
-
-export const capaDeEquipo = (tipo: TipoEquipo) => CAPAS[tipo];
 
 export const anchoDeTexto = (texto: string) =>
   Math.max(ANCHO_MINIMO, Math.round(texto.length * TIPOGRAFIA * ANCHO_CARACTER) + RELLENO);
@@ -81,126 +85,96 @@ export const ordenDeZonas = (estado: EstadoRed): string[] => {
   return [ZONA_BORDE, ...orden];
 };
 
-const agregarVecino = (mapa: Map<string, string[]>, desde: string, hasta: string) => {
-  const vecinos = mapa.get(desde);
-  if (vecinos) vecinos.push(hasta);
-  else mapa.set(desde, [hasta]);
-};
+const filaDeEquipo = (tipo: TipoEquipo) => (FILA_BORDE.includes(tipo) ? 0 : tipo === "switch" ? 0 : 1);
 
-const nodosDeEquipos = (estado: EstadoRed): Nodo[] => estado.equipos.map(equipo => {
+const nodoDeEquipo = (estado: EstadoRed, equipo: EstadoRed["equipos"][number]): Nodo => {
   const puertos = estado.puertos.filter(puerto => puerto.equipo === equipo.id).sort((a, b) => a.n - b.n);
-  const conPuertos = equipo.puertos > 0;
-  const ancho = conPuertos ? Math.max(puertos.length, 1) * ANCHO_PUERTO + 12 : ANCHO_HOJA;
+  const conRejilla = equipo.puertos > 0;
+  const codigo = codigoDeEquipo(equipo.id);
   return {
-    id: conPuertos ? `eq:${equipo.id}` : puertos[0]?.id ?? `eq:${equipo.id}`,
-    clase: conPuertos ? "equipo" : "aparato",
-    etiqueta: conPuertos ? `${equipo.id.replace("-", "/")} · ${equipo.etiqueta}` : equipo.etiqueta,
-    capa: capaDeEquipo(equipo.tipo),
-    x: 0,
-    y: 0,
-    w: ancho,
-    h: conPuertos ? ALTO_EQUIPO : ALTO_HOJA,
-    puertos: conPuertos ? puertos.map((puerto, indice) => ({ id: puerto.id, n: puerto.n, estado: puerto.estado, x: 6 + indice * ANCHO_PUERTO, y: 20, w: ANCHO_PUERTO - 4, h: ALTO_EQUIPO - 28 })) : [],
-    isla: false,
+    id: conRejilla ? `eq:${equipo.id}` : puertos[0]?.id ?? `eq:${equipo.id}`,
+    clase: conRejilla ? "equipo" : "aparato",
+    codigo,
+    etiqueta: `${codigo} · ${equipo.etiqueta}`,
+    zona: FILA_BORDE.includes(equipo.tipo) ? ZONA_BORDE : equipo.rack || ZONA_BORDE,
+    fila: filaDeEquipo(equipo.tipo),
+    x: 0, y: 0, w: anchoDeTexto(codigo), h: ALTO_TARJETA,
+    abierta: false,
+    idsPuerto: puertos.map(puerto => puerto.id),
+    puertos: [],
+    resumen: conRejilla ? resumenDePuertos(estado, equipo.id) : null,
+    sinRuta: false,
   };
-});
-
-const nodosDeHojas = (estado: EstadoRed): Nodo[] => {
-  const hoja = (id: string, etiqueta: string, clase: ClaseNodo): Nodo => ({ id, clase, etiqueta, capa: CAPA_HOJA, x: 0, y: 0, w: ANCHO_HOJA, h: ALTO_HOJA, puertos: [], isla: false });
-  return [
-    ...estado.espacios.filter(espacio => puertosDeEndpoint(estado, espacio.id).length).map(espacio => hoja(espacio.id, espacio.nombre, "espacio")),
-    ...estado.cubiculos.filter(cubiculo => puertosDeEndpoint(estado, `cub:${cubiculo.id}`).length).map(cubiculo => hoja(`cub:${cubiculo.id}`, `Cubículo ${cubiculo.id}`, "cubiculo")),
-  ];
 };
+
+const nombreDeZona = (estado: EstadoRed, idZona: string) =>
+  idZona === ZONA_BORDE ? "Borde · salida a internet" : estado.racks.find(rack => rack.id === idZona)?.nombre ?? idZona;
 
 const bandejaDe = (estado: EstadoRed): FichaBandeja[] => [
-  ...estado.espacios.filter(espacio => !puertosDeEndpoint(estado, espacio.id).length).map(espacio => ({ id: espacio.id, etiqueta: espacio.nombre, grupo: GRUPOS[espacio.categoria] })),
-  ...estado.cubiculos.filter(cubiculo => !puertosDeEndpoint(estado, `cub:${cubiculo.id}`).length).map(cubiculo => ({ id: `cub:${cubiculo.id}`, etiqueta: `Cubículo ${cubiculo.id}`, grupo: "Cubículos" })),
+  ...estado.espacios.filter(espacio => !puertosDeEndpoint(estado, espacio.id).length)
+    .map(espacio => ({ id: espacio.id, etiqueta: espacio.nombre, grupo: GRUPOS[espacio.categoria] })),
+  ...estado.cubiculos.filter(cubiculo => !puertosDeEndpoint(estado, `cub:${cubiculo.id}`).length)
+    .map(cubiculo => ({ id: `cub:${cubiculo.id}`, etiqueta: `Cubículo ${cubiculo.id}`, grupo: "Cubículos" })),
 ];
 
-export const construirLayout = (estado: EstadoRed): Layout => {
-  const nodos = [...nodosDeEquipos(estado), ...nodosDeHojas(estado)];
+export const construirLayout = (estado: EstadoRed, abiertas: Set<string> = new Set()): Layout => {
+  const orden = ordenDeZonas(estado);
+  const nodos = estado.equipos
+    .filter(equipo => equipo.tipo !== "ap")
+    .map(equipo => nodoDeEquipo(estado, equipo));
 
-  const nodoDePunto = new Map<string, string>();
-  for (const nodo of nodos) {
-    nodoDePunto.set(nodo.id, nodo.id);
-    for (const puerto of nodo.puertos) nodoDePunto.set(puerto.id, nodo.id);
-  }
-
-  const aristas: Arista[] = [];
-  for (const enlace of estado.enlaces) {
-    const nodoA = nodoDePunto.get(enlace.a);
-    const nodoB = nodoDePunto.get(enlace.b);
-    if (!nodoA || !nodoB) continue;
-    aristas.push({ id: enlace.id, a: enlace.a, b: enlace.b, nodoA, nodoB, tipo: enlace.tipo });
-  }
-
-  const vecinos = new Map<string, string[]>();
-  for (const arista of aristas) {
-    if (arista.nodoA === arista.nodoB) continue;
-    agregarVecino(vecinos, arista.nodoA, arista.nodoB);
-    agregarVecino(vecinos, arista.nodoB, arista.nodoA);
-  }
-
-  const capas = [0, 1, 2, 3, 4];
-  const porId = new Map(nodos.map(nodo => [nodo.id, nodo]));
-  const centros = new Map<string, number>();
-  const filas = capas.map(capa => nodos.filter(nodo => nodo.capa === capa));
-
-  const clave = (nodo: Nodo) => {
-    const arriba = (vecinos.get(nodo.id) ?? [])
-      .map(id => porId.get(id))
-      .filter(vecino => vecino && vecino.capa === nodo.capa - 1)
-      .map(vecino => centros.get(vecino!.id) ?? Number.MAX_SAFE_INTEGER);
-    return arriba.length ? Math.min(...arriba) : Number.MAX_SAFE_INTEGER;
-  };
-
-  let ancho = 0;
-  for (const fila of filas) {
-    fila.sort((a, b) => clave(a) - clave(b) || (a.id < b.id ? -1 : 1));
-    let x = 0;
-    for (const nodo of fila) {
-      nodo.x = x;
-      nodo.y = nodo.capa * ALTO_CAPA;
-      centros.set(nodo.id, x + nodo.w / 2);
-      x += nodo.w + SEPARACION;
-    }
-    ancho = Math.max(ancho, Math.max(x - SEPARACION, 0));
-  }
-
-  for (const fila of filas) {
-    if (!fila.length) continue;
-    const anchoFila = fila[fila.length - 1].x + fila[fila.length - 1].w;
-    const corrimiento = (ancho - anchoFila) / 2;
-    for (const nodo of fila) {
-      nodo.x += corrimiento;
-      centros.set(nodo.id, nodo.x + nodo.w / 2);
-    }
-  }
-
-  const raiz = nodos.find(nodo => nodo.capa === 0);
-  if (raiz) {
-    const vistos = new Set([raiz.id]);
-    const cola = [raiz.id];
-    while (cola.length) {
-      const actual = cola.shift()!;
-      for (const vecino of vecinos.get(actual) ?? []) {
-        if (vistos.has(vecino)) continue;
-        vistos.add(vecino);
-        cola.push(vecino);
+  const zonas: Zona[] = [];
+  let x = 0;
+  let altoBorde = 0;
+  let anchoLienzo = 0;
+  for (const idZona of orden) {
+    const dentro = nodos.filter(nodo => nodo.zona === idZona);
+    if (!dentro.length) continue;
+    const esBorde = idZona === ZONA_BORDE;
+    const xZona = esBorde ? 0 : x;
+    const yZona = esBorde ? 0 : altoBorde + SEPARACION_ZONA;
+    let ancho = 0;
+    let alto = ALTO_TITULO_ZONA;
+    for (const fila of [0, 1]) {
+      const cartas = dentro.filter(nodo => nodo.fila === fila).sort((a, b) => (a.id < b.id ? -1 : 1));
+      if (!cartas.length) continue;
+      let cursor = xZona + RELLENO_ZONA;
+      for (const carta of cartas) {
+        carta.x = cursor;
+        carta.y = yZona + alto;
+        cursor += carta.w + SEPARACION;
       }
+      ancho = Math.max(ancho, cursor - SEPARACION - xZona - RELLENO_ZONA);
+      alto += ALTO_TARJETA + SEPARACION_FILA;
     }
-    for (const nodo of nodos) nodo.isla = !vistos.has(nodo.id);
+    const w = ancho + RELLENO_ZONA * 2;
+    zonas.push({ id: idZona, nombre: nombreDeZona(estado, idZona), x: xZona, y: yZona, w, h: alto });
+    anchoLienzo = Math.max(anchoLienzo, xZona + w);
+    if (esBorde) altoBorde = alto;
+    else x += w + SEPARACION_ZONA;
   }
 
-  return { nodos, aristas, bandeja: bandejaDe(estado), ancho, alto: (capas.length - 1) * ALTO_CAPA + ALTO_EQUIPO };
+  return {
+    zonas,
+    nodos,
+    aristas: aristasParaDibujar(estado, abiertas),
+    bandeja: bandejaDe(estado),
+    ancho: anchoLienzo,
+    alto: Math.max(...zonas.map(zona => zona.y + zona.h), 0),
+  };
 };
 
 export const anclasDeLayout = (layout: Layout) => {
   const anclas = new Map<string, { x: number; y: number }>();
   for (const nodo of layout.nodos) {
-    anclas.set(nodo.id, { x: nodo.x + nodo.w / 2, y: nodo.y + nodo.h / 2 });
-    for (const puerto of nodo.puertos) anclas.set(puerto.id, { x: nodo.x + puerto.x + puerto.w / 2, y: nodo.y + puerto.y + puerto.h / 2 });
+    const centro = { x: nodo.x + nodo.w / 2, y: nodo.y + nodo.h / 2 };
+    anclas.set(nodo.id, centro);
+    // Una tarjeta cerrada no dibuja sus puertos, pero trazarCadena() sí devuelve
+    // ids de puerto: sin esta caída al centro la ruta no ilumina nada.
+    for (const id of nodo.idsPuerto) anclas.set(id, centro);
+    for (const puerto of nodo.puertos) {
+      anclas.set(puerto.id, { x: nodo.x + puerto.x + puerto.w / 2, y: nodo.y + puerto.y + puerto.h / 2 });
+    }
   }
   return anclas;
 };

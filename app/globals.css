@@ -170,11 +170,11 @@ button { cursor:pointer; }
 .net-d-nodo.espacio>rect,.net-d-nodo.cubiculo>rect{fill:var(--surface)}
 .net-d-nodo.alcance>rect{stroke:#8da8c2}
 .net-d-nodo.ruta>rect{stroke:var(--ink);stroke-width:3}
-.net-d-nodo.isla>rect{stroke-dasharray:6 4;stroke:var(--red)}
+.net-d-nodo.sin-ruta>rect{stroke-dasharray:6 4;stroke:var(--red)}
 .net-d-nodo.sel>rect{stroke:var(--ink);stroke-width:3}
 .net-d-nodo.origen>rect{stroke:var(--ok);stroke-width:3}
 .net-d-nombre{fill:var(--ink);font-weight:700;dominant-baseline:auto;text-anchor:middle;pointer-events:none}
-.net-d-nodo.isla .net-d-nombre{fill:var(--red)}
+.net-d-nodo.sin-ruta .net-d-nombre{fill:var(--red)}
 .net-d-pt rect{fill:var(--surface);stroke:#c2c9d2;stroke-width:1}
 .net-d-pt.ocupado rect{fill:var(--green);stroke:var(--green)}
 .net-d-pt.desconocido rect{fill:#f1f3f5;stroke-dasharray:3 2}
