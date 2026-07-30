@@ -151,6 +151,17 @@ export const trazarCadena = (estado: EstadoRed, origenId: string): Cadena => {
     ? estado.cubiculos.some(cubiculo => cubiculo.id === numeroCubiculo(origenId))
     : estado.puertos.some(puerto => puerto.id === origenId) || estado.espacios.some(espacio => espacio.id === origenId);
   if (!existe) return { saltos: [], completa: false, motivo: "El punto de origen no existe.", camino: [], caminos: [], alcanzables: new Set() };
+  if (prefijoDe(origenId) === "pto" && !estado.enlaces.some(enlace => enlace.a === origenId || enlace.b === origenId)) {
+    const camino = [origenId];
+    return {
+      saltos: presentar(estado, camino),
+      completa: false,
+      motivo: "El puerto no tiene conexiones registradas.",
+      camino,
+      caminos: [camino],
+      alcanzables: new Set(camino),
+    };
+  }
 
   const adyacencia = construirAdyacencia(estado);
   const padres = new Map<string, string>([[origenId, ""]]);

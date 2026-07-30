@@ -43,6 +43,7 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
   const ultimoMovido = useRef("");
 
   const cadena = useMemo(() => trazarCircuito(estado, seleccionado), [estado, seleccionado]);
+  const sinTramo = !cadena.completa && cadena.saltos.length <= 1;
   const ruta = useMemo(() => new Set(cadena.caminos.flat()), [cadena]);
   const gruposCadena = useMemo(() => agruparCadenaPorEquipo(estado, cadena), [cadena, estado]);
   const ordenPuertosRuta = useMemo(() => {
@@ -332,8 +333,8 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
       </section>}
 
       {seleccionado && <div className="net-diagram-cadena">
-        <span className="net-label">{cadena.caminos.length > 1 ? `CIRCUITO · ${cadena.caminos.length} RAMALES` : cadena.completa ? "DEL ISP AL DESTINO" : "TRAMO DOCUMENTADO"}</span>
-        <div className="net-diagram-saltos" aria-label="Orden del circuito">
+        <span className="net-label">{cadena.caminos.length > 1 ? `CIRCUITO · ${cadena.caminos.length} RAMALES` : cadena.completa ? "DEL ISP AL DESTINO" : sinTramo ? "SIN CONEXIONES REGISTRADAS" : "TRAMO DOCUMENTADO"}</span>
+        {!sinTramo && <div className="net-diagram-saltos" aria-label="Orden del circuito">
           {gruposCadena.map((grupo, indice) => <div className="net-diagram-step" key={`${grupo.clave}:${indice}`}>
             {indice > 0 && <i aria-hidden="true">→</i>}
             <button type="button" onClick={() => { onSeleccionar(grupo.ids[0]); centrarNodo(grupo.ids[0]); }}>
@@ -341,9 +342,9 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
               {grupo.detalle && <small>{grupo.detalle}</small>}
             </button>
           </div>)}
-        </div>
+        </div>}
         {!cadena.completa && <p className="net-diagram-motivo">{cadena.motivo}</p>}
-        <button className="secondary" type="button" onClick={() => onCopiar(cadenaComoTexto(cadena))}>Copiar</button>
+        {!sinTramo && <button className="secondary" type="button" onClick={() => onCopiar(cadenaComoTexto(cadena))}>Copiar</button>}
         <button className="net-diagram-clear" type="button" onClick={() => onSeleccionar("")}>Limpiar selección</button>
       </div>}
 

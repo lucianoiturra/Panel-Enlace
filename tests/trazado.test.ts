@@ -38,7 +38,25 @@ test("un puerto sin enlaces reporta cadena incompleta sin lanzar", () => {
   const cadena = trazarCadena(fixture(), "pto:R2-PP1-p16");
   assert.equal(cadena.completa, false);
   assert.equal(cadena.saltos.length, 1);
-  assert.match(cadena.motivo ?? "", /no tiene enlaces/);
+  assert.match(cadena.motivo ?? "", /no tiene conexiones registradas/);
+});
+
+test("un puerto libre de switch no salta internamente hacia otros puertos conectados", () => {
+  const estado = fixture();
+  estado.puertos.push({ id: "pto:R2-SW1-p7", equipo: "R2-SW1", n: 7, estado: "libre", nota: "" });
+  const cadena = trazarCircuito(estado, "pto:R2-SW1-p7");
+  assert.equal(cadena.completa, false);
+  assert.deepEqual(cadena.saltos.map(salto => salto.id), ["pto:R2-SW1-p7"]);
+  assert.deepEqual(cadena.camino, ["pto:R2-SW1-p7"]);
+  assert.match(cadena.motivo ?? "", /no tiene conexiones registradas/);
+});
+
+test("después de limpiar todos los enlaces ningún puerto inventa un tramo por el chasis", () => {
+  const estado = fixture();
+  estado.enlaces = [];
+  const cadena = trazarCircuito(estado, "pto:R2-SW1-p11");
+  assert.deepEqual(cadena.saltos.map(salto => salto.id), ["pto:R2-SW1-p11"]);
+  assert.equal(cadena.alcanzables.size, 1);
 });
 
 test("un espacio sin roseta reporta cadena incompleta", () => {

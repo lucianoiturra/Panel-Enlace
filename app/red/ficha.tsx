@@ -112,6 +112,7 @@ export default function Ficha({ estado, endpointId, cadena, guardando, onCerrar,
       : false;
 
   const titulo = etiquetaEndpoint(estado, endpointId);
+  const sinTramo = !cadena.completa && cadena.saltos.length <= 1;
   const subtitulo = espacio ? `${espacio.categoria === "sala" ? "Sala de clases" : "Oficina u otro espacio"}${espacio.ubicacion ? ` · ${espacio.ubicacion}` : ""}`
     : puerto ? `${equipo?.etiqueta ?? puerto.equipo}${equipo?.rack ? ` · rack ${equipo.rack}` : ""}`
     : cubiculo ? `Sala de Enlace · ${cubiculo.inventoryCode || "sin código de inventario"}` : "";
@@ -125,10 +126,10 @@ export default function Ficha({ estado, endpointId, cadena, guardando, onCerrar,
 
       <div className="drawer-body">
         <div className="net-chain">
-          <span className="net-label">{cadena.completa ? "DEL ISP AL DESTINO" : "TRAMO DOCUMENTADO"}</span>
-          {cadena.saltos.length ? <ol>{saltosDesdeIsp(cadena).map(salto => <li key={salto.id}><b>{salto.etiqueta}</b></li>)}</ol> : null}
+          <span className="net-label">{cadena.completa ? "DEL ISP AL DESTINO" : sinTramo ? "SIN CONEXIONES REGISTRADAS" : "TRAMO DOCUMENTADO"}</span>
+          {!sinTramo && cadena.saltos.length ? <ol>{saltosDesdeIsp(cadena).map(salto => <li key={salto.id}><b>{salto.etiqueta}</b></li>)}</ol> : null}
           {!cadena.completa && <p className="net-chain-warn">{cadena.motivo}</p>}
-          <button className="secondary" type="button" onClick={() => void copiar()}>{copiado ? "Copiado" : "Copiar cadena"}</button>
+          {!sinTramo && <button className="secondary" type="button" onClick={() => void copiar()}>{copiado ? "Copiado" : "Copiar cadena"}</button>}
           {errorCopia && <p className="net-chain-warn" role="alert">{errorCopia}</p>}
         </div>
 
