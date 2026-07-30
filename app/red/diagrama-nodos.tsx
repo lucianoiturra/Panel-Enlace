@@ -11,6 +11,7 @@ import { claveDePar, type Arista } from "../../lib/red/aristas";
 export type PropsNodos = {
   layout: Layout;
   ruta: Set<string>;
+  ordenPuertosRuta: Map<string, number>;
   paresRuta: Set<string>;
   seleccionado: string;
   origen: string;
@@ -59,6 +60,7 @@ const manija = (desde: Punto, hacia: Punto): Punto => {
 export default function DiagramaNodos({
   layout,
   ruta,
+  ordenPuertosRuta,
   paresRuta,
   seleccionado,
   origen,
@@ -236,6 +238,10 @@ export default function DiagramaNodos({
             onDoubleClick={evento => { evento.stopPropagation(); onFicha(puerto.id); }}
           />
           <text x={puerto.x + puerto.w / 2} y={puerto.y + puerto.h / 2 + 5}>{puerto.n}</text>
+          {ordenPuertosRuta.has(puerto.id) && <g className="net-d-paso" transform={`translate(${puerto.x + 2} ${puerto.y + 1})`}>
+            <circle r={8} />
+            <text y={3.5}>{ordenPuertosRuta.get(puerto.id)}</text>
+          </g>}
         </g>)}
       </g>)}
 

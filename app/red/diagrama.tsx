@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import DiagramaLeyenda from "./diagrama-leyenda";
 import DiagramaNodos from "./diagrama-nodos";
 import { anclasDeLayout, construirLayout } from "../../lib/red/layout";
-import { cadenaComoTexto, saltosDesdeIsp, trazarCircuito } from "../../lib/red/trazado";
+import { agruparCadenaPorEquipo, cadenaComoTexto, saltosDesdeIsp, trazarCircuito } from "../../lib/red/trazado";
 import { etiquetaEndpoint, validarEnlace, type EstadoRed } from "../../lib/red/modelo";
 import { claveDePar, nodoDeExtremo, puntasDelEnlace, type Arista } from "../../lib/red/aristas";
 
@@ -43,17 +43,25 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
   const ultimoMovido = useRef("");
 
   const cadena = useMemo(() => trazarCircuito(estado, seleccionado), [estado, seleccionado]);
-  const ruta = useMemo(() => new Set(cadena.camino), [cadena]);
+  const ruta = useMemo(() => new Set(cadena.caminos.flat()), [cadena]);
+  const gruposCadena = useMemo(() => agruparCadenaPorEquipo(estado, cadena), [cadena, estado]);
+  const ordenPuertosRuta = useMemo(() => {
+    const orden = new Map<string, number>();
+    for (const salto of saltosDesdeIsp(cadena)) {
+      if (salto.id.startsWith("pto:") && !orden.has(salto.id)) orden.set(salto.id, orden.size + 1);
+    }
+    return orden;
+  }, [cadena]);
   const equiposDeRuta = useMemo(() => {
     const ids = new Set<string>();
-    for (const id of cadena.camino) {
+    for (const id of cadena.caminos.flat()) {
       if (id.startsWith("eq:")) { ids.add(id); continue; }
       const puerto = estado.puertos.find(candidato => candidato.id === id);
       const equipo = estado.equipos.find(candidato => candidato.id === puerto?.equipo);
       if (equipo?.puertos) ids.add(`eq:${equipo.id}`);
     }
     return ids;
-  }, [cadena.camino, estado.equipos, estado.puertos]);
+  }, [cadena.caminos, estado.equipos, estado.puertos]);
   const abiertasEfectivas = useMemo(() => {
     if (!seleccionado || modo !== "consultar") return abiertas;
     return new Set([...abiertas, ...equiposDeRuta]);
@@ -62,16 +70,18 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
   const anclas = useMemo(() => anclasDeLayout(layout), [layout]);
   const paresRuta = useMemo(() => {
     const pares = new Set<string>();
-    for (let indice = 1; indice < cadena.camino.length; indice += 1) {
-      const a = cadena.camino[indice - 1];
-      const b = cadena.camino[indice];
-      pares.add(claveDePar(a, b));
-      const colapsadoA = nodoDeExtremo(estado, a);
-      const colapsadoB = nodoDeExtremo(estado, b);
-      if (colapsadoA !== colapsadoB) pares.add(claveDePar(colapsadoA, colapsadoB));
+    for (const camino of cadena.caminos) {
+      for (let indice = 1; indice < camino.length; indice += 1) {
+        const a = camino[indice - 1];
+        const b = camino[indice];
+        pares.add(claveDePar(a, b));
+        const colapsadoA = nodoDeExtremo(estado, a);
+        const colapsadoB = nodoDeExtremo(estado, b);
+        if (colapsadoA !== colapsadoB) pares.add(claveDePar(colapsadoA, colapsadoB));
+      }
     }
     return pares;
-  }, [cadena.camino, estado]);
+  }, [cadena.caminos, estado]);
   const corte = useMemo(() => cadena.completa || !cadena.camino.length ? "" : [...cadena.camino].reverse().find(id => anclas.has(id)) ?? "", [cadena, anclas]);
 
   const enlacesOrigen = useMemo(
@@ -322,9 +332,15 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
       </section>}
 
       {seleccionado && <div className="net-diagram-cadena">
-        <span className="net-label">{cadena.completa ? "DEL ISP AL DESTINO" : "TRAMO DOCUMENTADO"}</span>
-        <div className="net-diagram-saltos">
-          {saltosDesdeIsp(cadena).map((salto, indice) => <button key={salto.id} type="button" onClick={() => { onSeleccionar(salto.id); centrarNodo(salto.id); }}>{indice > 0 && <i aria-hidden="true">→</i>}{salto.etiqueta}</button>)}
+        <span className="net-label">{cadena.caminos.length > 1 ? `CIRCUITO · ${cadena.caminos.length} RAMALES` : cadena.completa ? "DEL ISP AL DESTINO" : "TRAMO DOCUMENTADO"}</span>
+        <div className="net-diagram-saltos" aria-label="Orden del circuito">
+          {gruposCadena.map((grupo, indice) => <div className="net-diagram-step" key={`${grupo.clave}:${indice}`}>
+            {indice > 0 && <i aria-hidden="true">→</i>}
+            <button type="button" onClick={() => { onSeleccionar(grupo.ids[0]); centrarNodo(grupo.ids[0]); }}>
+              <b>{grupo.etiqueta}</b>
+              {grupo.detalle && <small>{grupo.detalle}</small>}
+            </button>
+          </div>)}
         </div>
         {!cadena.completa && <p className="net-diagram-motivo">{cadena.motivo}</p>}
         <button className="secondary" type="button" onClick={() => onCopiar(cadenaComoTexto(cadena))}>Copiar</button>
@@ -335,7 +351,7 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
         <svg role="img" aria-label="Diagrama de la red del colegio">
           <g className={`net-d-lienzo ${seleccionado ? "sel-activa" : ""}`} transform={`translate(${vista.x} ${vista.y}) scale(${vista.escala})`}>
             {anclaPendiente && cursor && <line className="net-d-enlace-pendiente" x1={anclaPendiente.x} y1={anclaPendiente.y} x2={cursor.x} y2={cursor.y} />}
-            <DiagramaNodos layout={layout} ruta={ruta} paresRuta={paresRuta} seleccionado={seleccionado} origen={origen} corte={corte} editable={modo === "conectar"} reenlazando={Boolean(reenlace)} ordenando={modo === "ordenar"} onMover={mover} onPunto={alPunto} onFicha={onAbrir} onAlternar={alternar} onTomarPunta={tomarPunta} />
+            <DiagramaNodos layout={layout} ruta={ruta} ordenPuertosRuta={ordenPuertosRuta} paresRuta={paresRuta} seleccionado={seleccionado} origen={origen} corte={corte} editable={modo === "conectar"} reenlazando={Boolean(reenlace)} ordenando={modo === "ordenar"} onMover={mover} onPunto={alPunto} onFicha={onAbrir} onAlternar={alternar} onTomarPunta={tomarPunta} />
           </g>
         </svg>
       </div>

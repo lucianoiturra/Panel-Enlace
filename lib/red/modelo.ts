@@ -3,7 +3,7 @@ export type EstadoPuerto = "libre" | "ocupado" | "desconocido" | "dañado";
 export type EstadoEspacio = "operativo" | "solo-wifi" | "sin-internet" | "sin-verificar";
 export type CategoriaEspacio = "sala" | "oficina" | "otro";
 export type TipoEnlace = "patch" | "uplink" | "roseta" | "borde";
-export type TipoBitacora = "enlace-creado" | "enlace-borrado" | "estado-espacio" | "estado-puerto" | "nota" | "revisar" | "recurso-creado" | "recurso-editado";
+export type TipoBitacora = "enlace-creado" | "enlace-borrado" | "enlaces-limpiados" | "estado-espacio" | "estado-puerto" | "nota" | "revisar" | "recurso-creado" | "recurso-editado";
 
 export const tiposEquipo: TipoEquipo[] = ["switch", "patchpanel", "router", "firewall", "ap", "isp"];
 export const estadosPuerto: EstadoPuerto[] = ["libre", "ocupado", "desconocido", "dañado"];

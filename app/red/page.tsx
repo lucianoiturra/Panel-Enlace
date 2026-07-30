@@ -9,6 +9,7 @@ import Diagrama from "./diagrama";
 import Ficha from "./ficha";
 import Captura, { type FilaSesion } from "./captura";
 import NuevoRecurso, { type RecursoNuevo } from "./nuevo-recurso";
+import LimpiarConexiones from "./limpiar-conexiones";
 import { cadenaComoTexto, trazarCircuito } from "../../lib/red/trazado";
 import { estadosEspacio, etiquetaEndpoint, etiquetaPuerto, etiquetasEstadoEspacio, puertosDeEndpoint, type Enlace, type EstadoEspacio, type EstadoRed } from "../../lib/red/modelo";
 
@@ -43,6 +44,7 @@ export default function PaginaRed() {
   const [formatoRacks, setFormatoRacks] = useState<"tiras" | "lista">("tiras");
   const [capturaAbierta, setCapturaAbierta] = useState(false);
   const [nuevoAbierto, setNuevoAbierto] = useState(false);
+  const [limpiezaAbierta, setLimpiezaAbierta] = useState(false);
   const [sesion, setSesion] = useState<FilaSesion[]>([]);
   const rackVisible = rackActivo || estado.racks[0]?.id || "";
 
@@ -144,6 +146,20 @@ export default function PaginaRed() {
   const borrarEnlace = (id: number) => conGuardado(async () => {
     await pedir(`/api/red/enlaces?id=${id}`, { method: "DELETE" }, "No fue posible quitar el enlace.");
   }, "Enlace quitado.");
+
+  const limpiarConexiones = () => {
+    if (guardando || !estado.enlaces.length) return;
+    void conGuardado(async () => {
+      await pedir("/api/red/enlaces?todos=1", {
+        method: "DELETE",
+        headers: { "X-Confirmar-Limpieza": "LIMPIAR" },
+      }, "No fue posible limpiar las conexiones.");
+      setSeleccionado("");
+      setFichaAbierta("");
+      setSesion([]);
+      setLimpiezaAbierta(false);
+    }, "Todas las conexiones fueron eliminadas. Puedes comenzar desde cero.");
+  };
 
   // Primero se crea el enlace nuevo y solo después se borra el viejo: al revés,
   // si el destino ya estuviera ocupado o el POST fallara, el cable original se
@@ -310,7 +326,7 @@ export default function PaginaRed() {
 
       <section className="shell">
         {errorCarga && <div className="error-banner" role="alert"><span>{errorCarga}</span><button type="button" onClick={() => void cargar()} disabled={cargando}>{cargando ? "Reintentando…" : "Reintentar"}</button></div>}
-        <div className="workspace-head"><div><h1>Red del colegio</h1><p className="subtitle">{estado.racks.length} racks · {estado.puertos.filter(puerto => puerto.n > 0).length} puertos · {estado.espacios.length} espacios · {estado.cubiculos.length} cubículos.</p></div><div className="workspace-actions"><button className="secondary toolbar-action" onClick={() => setNuevoAbierto(true)}>Agregar elemento</button><button className="secondary toolbar-action" onClick={() => setCapturaAbierta(true)}>Captura rápida</button></div></div>
+        <div className="workspace-head"><div><h1>Red del colegio</h1><p className="subtitle">{estado.racks.length} racks · {estado.puertos.filter(puerto => puerto.n > 0).length} puertos · {estado.espacios.length} espacios · {estado.cubiculos.length} cubículos.</p></div><div className="workspace-actions"><button className="secondary toolbar-action" onClick={() => setNuevoAbierto(true)}>Agregar elemento</button><button className="secondary toolbar-action" onClick={() => setCapturaAbierta(true)}>Captura rápida</button><details className="workspace-menu"><summary>Más acciones</summary><div><button type="button" className="danger-link" disabled={!estado.enlaces.length || guardando} onClick={evento => { evento.currentTarget.closest("details")?.removeAttribute("open"); setLimpiezaAbierta(true); }}>Limpiar todas las conexiones <small>{estado.enlaces.length} registradas</small></button></div></details></div></div>
 
         <section className="status-rail" aria-label="Filtros y pendientes de la red">
           <div className="status-filters">
@@ -349,6 +365,7 @@ export default function PaginaRed() {
       {fichaAbierta && <button className="backdrop" onClick={() => setFichaAbierta("")} aria-label="Cerrar ficha" />}
       {capturaAbierta && <Captura estado={estado} sesion={sesion} puertoInicial={seleccionado.startsWith("pto:") ? seleccionado : ""} onCerrar={() => setCapturaAbierta(false)} onAsignar={asignarRapido} onMarcarLibre={marcarLibre} onDeshacer={deshacerAsignacion} />}
       {nuevoAbierto && <NuevoRecurso guardando={guardando} onCerrar={() => setNuevoAbierto(false)} onCrear={crearRecurso} />}
+      {limpiezaAbierta && <LimpiarConexiones cantidad={estado.enlaces.length} guardando={guardando} onCerrar={() => setLimpiezaAbierta(false)} onLimpiar={limpiarConexiones} />}
       {aviso && <div className={`toast ${tipoAviso}`} role={tipoAviso === "error" ? "alert" : "status"} aria-live="polite">{aviso}</div>}
     </main>
   );

@@ -50,7 +50,33 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const id = Number(new URL(request.url).searchParams.get("id"));
+    const url = new URL(request.url);
+    if (url.searchParams.get("todos") === "1") {
+      if (request.headers.get("x-confirmar-limpieza") !== "LIMPIAR") {
+        return noStoreJson({ error: "Falta la confirmación para limpiar las conexiones." }, { status: 400 });
+      }
+      const db = await getDb();
+      const cantidad = await db.transaction(async (tx) => {
+        const estado = await leerEstado(tx);
+        const total = estado.enlaces.length;
+        if (!total) return 0;
+
+        await tx.delete(netEnlaces);
+        await tx.update(netPuertos).set({ estado: "libre" }).where(eq(netPuertos.estado, "ocupado"));
+        await tx.insert(netBitacora).values({
+          fecha: new Date().toISOString(),
+          tipo: "enlaces-limpiados",
+          objetivo: "red",
+          antes: `${total} conexiones`,
+          despues: "0 conexiones",
+          nota: "Limpieza global confirmada por el usuario.",
+        });
+        return total;
+      });
+      return noStoreJson({ ok: true, cantidad });
+    }
+
+    const id = Number(url.searchParams.get("id"));
     if (!Number.isInteger(id) || id < 1) return noStoreJson({ error: "Enlace inválido." }, { status: 400 });
     const db = await getDb();
     const removed = await db.transaction(async (tx) => {

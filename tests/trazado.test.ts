@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { fixture } from "./fixture-red.ts";
-import { cadenaComoTexto, origenDeCircuito, trazarCadena, trazarCircuito } from "../lib/red/trazado.ts";
+import { agruparCadenaPorEquipo, cadenaComoTexto, origenDeCircuito, trazarCadena, trazarCircuito } from "../lib/red/trazado.ts";
 
 test("traza la cadena completa desde un espacio hasta el ISP", () => {
   const cadena = trazarCadena(fixture(), "esp:3-basico-b");
@@ -10,17 +10,19 @@ test("traza la cadena completa desde un espacio hasta el ISP", () => {
     "3° Básico B",
     "R2/PP1 p14",
     "R2/SW1 p11",
+    "R2/SW1 p24",
     "R3/SW1 p02",
+    "R3/SW1 p28",
     "MikroTik",
     "Proveedores de Servicios de Internet",
   ]);
 });
 
-test("colapsa los saltos internos del chasis a un puerto por equipo", () => {
+test("conserva los puertos de entrada y salida de cada equipo", () => {
   const cadena = trazarCadena(fixture(), "esp:3-basico-b");
   const ids = cadena.saltos.map(salto => salto.id);
-  assert.equal(ids.includes("pto:R2-SW1-p24"), false);
-  assert.equal(ids.includes("pto:R3-SW1-p28"), false);
+  assert.equal(ids.includes("pto:R2-SW1-p24"), true);
+  assert.equal(ids.includes("pto:R3-SW1-p28"), true);
   assert.equal(ids.some(id => id.startsWith("eq:")), false);
 });
 
@@ -74,7 +76,19 @@ test("traza desde un cubículo", () => {
 
 test("cadenaComoTexto une los saltos con flechas", () => {
   const cadena = trazarCadena(fixture(), "esp:3-basico-b");
-  assert.equal(cadenaComoTexto(cadena), "Proveedores de Servicios de Internet → MikroTik → R3/SW1 p02 → R2/SW1 p11 → R2/PP1 p14 → 3° Básico B");
+  assert.equal(cadenaComoTexto(cadena), "Proveedores de Servicios de Internet → MikroTik → R3/SW1 p28 → R3/SW1 p02 → R2/SW1 p24 → R2/SW1 p11 → R2/PP1 p14 → 3° Básico B");
+});
+
+test("agrupa visualmente entrada y salida de cada switch en orden desde el ISP", () => {
+  const estado = fixture();
+  const cadena = trazarCadena(estado, "esp:3-basico-b");
+  const grupos = agruparCadenaPorEquipo(estado, cadena);
+  const r3 = grupos.find(grupo => grupo.clave === "equipo:R3-SW1");
+  const r2 = grupos.find(grupo => grupo.clave === "equipo:R2-SW1");
+  assert.deepEqual(r3?.ids, ["pto:R3-SW1-p28", "pto:R3-SW1-p02"]);
+  assert.equal(r3?.detalle, "entrada p28 → salida p2");
+  assert.deepEqual(r2?.ids, ["pto:R2-SW1-p24", "pto:R2-SW1-p11"]);
+  assert.equal(r2?.detalle, "entrada p24 → salida p11");
 });
 
 test("cadenaComoTexto marca la cadena incompleta", () => {
@@ -82,7 +96,7 @@ test("cadenaComoTexto marca la cadena incompleta", () => {
   assert.match(cadenaComoTexto(cadena), /[Ss]in puerto asignado/);
 });
 
-test("camino conserva los puertos que los saltos colapsan", () => {
+test("camino conserva también los nodos virtuales internos", () => {
   const cadena = trazarCadena(fixture(), "esp:3-basico-b");
   assert.equal(cadena.camino.includes("pto:R2-SW1-p24"), true);
   assert.equal(cadena.camino.includes("pto:R3-SW1-p28"), true);
@@ -124,7 +138,7 @@ test("una ruta incompleta se detiene en la troncal y no salta a otra sala", () =
   estado.enlaces.push({ id: 6, a: "pto:R3-SW1-p28", b: "pto:AP-OTRA-SALA-p0", tipo: "roseta", nota: "" });
   const cadena = trazarCadena(estado, "esp:3-basico-b");
   assert.equal(cadena.completa, false);
-  assert.equal(cadena.saltos.at(-1)?.id, "pto:R3-SW1-p02");
+  assert.equal(cadena.saltos.at(-1)?.id, "pto:R3-SW1-p28");
   assert.equal(cadena.saltos.some(salto => salto.id === "pto:AP-OTRA-SALA-p0"), false);
 });
 
@@ -163,4 +177,34 @@ test("si falta el último parcheo sigue los uplinks hacia el rack de borde", () 
   assert.equal(cadena.completa, false);
   assert.equal(cadena.saltos.at(-1)?.id, "pto:R1-SW1-p23");
   assert.match(cadena.motivo ?? "", /R1\/SW1 p23/);
+});
+
+test("seleccionar Fortinet conserva a la vez su lado ISP y su lado de distribución", () => {
+  const estado = fixture();
+  estado.equipos.push(
+    { id: "FORTINET", rack: "", tipo: "firewall", etiqueta: "Fortinet FortiGate", modelo: "", puertos: 0, color: "", x: 0, y: 0, nota: "" },
+    { id: "R1-PP1", rack: "R2", tipo: "patchpanel", etiqueta: "Patch 1", modelo: "", puertos: 24, color: "", x: 0, y: 0, nota: "" },
+  );
+  estado.puertos.push(
+    { id: "pto:FORTINET-p0", equipo: "FORTINET", n: 0, estado: "ocupado", nota: "" },
+    { id: "pto:R1-PP1-p23", equipo: "R1-PP1", n: 23, estado: "ocupado", nota: "" },
+  );
+  estado.enlaces.push(
+    { id: 6, a: "pto:FORTINET-p0", b: "pto:ISP-p0", tipo: "borde", nota: "" },
+    { id: 7, a: "pto:FORTINET-p0", b: "pto:R1-PP1-p23", tipo: "borde", nota: "" },
+  );
+  const circuito = trazarCircuito(estado, "pto:FORTINET-p0");
+  assert.deepEqual(circuito.saltos.map(salto => salto.id), [
+    "pto:R1-PP1-p23",
+    "pto:FORTINET-p0",
+    "pto:ISP-p0",
+  ]);
+  assert.equal(circuito.caminos.some(camino => camino.includes("pto:R1-PP1-p23") && camino.includes("pto:ISP-p0")), true);
+});
+
+test("un puerto de salida del switch alcanza el ISP por otro puerto del mismo chasis", () => {
+  const circuito = trazarCircuito(fixture(), "pto:R2-SW1-p11");
+  assert.equal(circuito.completa, true);
+  assert.equal(circuito.camino.includes("pto:R2-SW1-p24"), true);
+  assert.equal(circuito.camino.at(-1), "pto:ISP-p0");
 });

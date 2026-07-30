@@ -1,7 +1,8 @@
 import { etiquetaEndpoint, numeroCubiculo, prefijoDe, type EstadoRed, type TipoEquipo } from "./modelo.ts";
 
 export type Salto = { id: string; etiqueta: string; tipo: "espacio" | "cubiculo" | "puerto" | "equipo" };
-export type Cadena = { saltos: Salto[]; completa: boolean; motivo?: string; camino: string[]; alcanzables: Set<string> };
+export type Cadena = { saltos: Salto[]; completa: boolean; motivo?: string; camino: string[]; caminos: string[][]; alcanzables: Set<string> };
+export type GrupoCadena = { clave: string; ids: string[]; etiqueta: string; detalle: string };
 
 const TOPE_SALTOS = 2000;
 const conChasis: TipoEquipo[] = ["switch", "router", "firewall", "ap", "isp"];
@@ -48,8 +49,6 @@ const presentar = (estado: EstadoRed, camino: string[]): Salto[] => {
   const saltos: Salto[] = [];
   for (const id of camino) {
     if (id.startsWith("eq:")) continue;
-    const anterior = saltos[saltos.length - 1];
-    if (anterior && id.startsWith("pto:") && anterior.id.startsWith("pto:") && equipoDe(id) === equipoDe(anterior.id)) continue;
     const equipo = estado.equipos.find(candidato => candidato.id === equipoDe(id));
     saltos.push({ id, etiqueta: etiquetaEndpoint(estado, id), tipo: equipo && !equipo.puertos ? "equipo" : tipoDeSalto(id) });
   }
@@ -151,7 +150,7 @@ export const trazarCadena = (estado: EstadoRed, origenId: string): Cadena => {
   const existe = prefijoDe(origenId) === "cub"
     ? estado.cubiculos.some(cubiculo => cubiculo.id === numeroCubiculo(origenId))
     : estado.puertos.some(puerto => puerto.id === origenId) || estado.espacios.some(espacio => espacio.id === origenId);
-  if (!existe) return { saltos: [], completa: false, motivo: "El punto de origen no existe.", camino: [], alcanzables: new Set() };
+  if (!existe) return { saltos: [], completa: false, motivo: "El punto de origen no existe.", camino: [], caminos: [], alcanzables: new Set() };
 
   const adyacencia = construirAdyacencia(estado);
   const padres = new Map<string, string>([[origenId, ""]]);
@@ -204,16 +203,71 @@ export const trazarCadena = (estado: EstadoRed, origenId: string): Cadena => {
   for (let nodo = final; nodo; nodo = padres.get(nodo) ?? "") camino.unshift(nodo);
   const saltos = presentar(estado, camino);
   const alcanzables = new Set(padres.keys());
-  if (destino) return { saltos, completa: true, camino, alcanzables };
+  if (destino) return { saltos, completa: true, camino, caminos: [camino], alcanzables };
   const ultimoVisible = saltos[saltos.length - 1]?.id ?? final;
-  return { saltos, completa: false, motivo: motivoIncompleto(estado, origenId, ultimoVisible), camino, alcanzables };
+  return { saltos, completa: false, motivo: motivoIncompleto(estado, origenId, ultimoVisible), camino, caminos: [camino], alcanzables };
 };
 
-export const trazarCircuito = (estado: EstadoRed, seleccionado: string) =>
-  trazarCadena(estado, origenDeCircuito(estado, seleccionado));
+const esExtremoFisico = (estado: EstadoRed, id: string) => {
+  const puerto = estado.puertos.find(candidato => candidato.id === id);
+  const equipo = estado.equipos.find(candidato => candidato.id === puerto?.equipo);
+  return Boolean(puerto && equipo?.tipo === "patchpanel");
+};
+
+// El punto seleccionado puede estar en medio del circuito. Primero buscamos su
+// extremo de usuario sin atravesar otro switch; si no existe, usamos una punta
+// física directa (el caso Fortinet ↔ patch panel). Así el camino conserva ambos
+// lados sin convertir un uplink en todos los ramales que cuelgan del switch.
+export const trazarCircuito = (estado: EstadoRed, seleccionado: string): Cadena => {
+  const base = trazarCadena(estado, seleccionado);
+  if (!seleccionado || !base.camino.length) return base;
+  const destino = origenDeCircuito(estado, seleccionado);
+  if (destino !== seleccionado) {
+    const desdeDestino = trazarCadena(estado, destino);
+    if (desdeDestino.camino.includes(seleccionado)) return desdeDestino;
+  }
+  const puntaFisica = estado.enlaces
+    .flatMap(enlace => enlace.a === seleccionado ? [enlace.b] : enlace.b === seleccionado ? [enlace.a] : [])
+    .find(id => esExtremoFisico(estado, id));
+  if (!puntaFisica) return base;
+  const desdePunta = trazarCadena(estado, puntaFisica);
+  return desdePunta.camino.includes(seleccionado) ? desdePunta : base;
+};
 
 export const saltosDesdeIsp = (cadena: Cadena) =>
   cadena.completa ? [...cadena.saltos].reverse() : cadena.saltos;
+
+// Dos puertos consecutivos del mismo equipo se leen como una transición. Así
+// queda explícito cuál recibe el flujo y por cuál continúa.
+export const agruparCadenaPorEquipo = (estado: EstadoRed, cadena: Cadena): GrupoCadena[] => {
+  const grupos: GrupoCadena[] = [];
+  for (const salto of saltosDesdeIsp(cadena)) {
+    const puerto = estado.puertos.find(candidato => candidato.id === salto.id);
+    const equipo = estado.equipos.find(candidato => candidato.id === puerto?.equipo);
+    const anterior = grupos[grupos.length - 1];
+    if (puerto && equipo?.puertos && anterior?.clave === `equipo:${equipo.id}`) {
+      anterior.ids.push(salto.id);
+      const numeros = anterior.ids
+        .map(id => estado.puertos.find(candidato => candidato.id === id)?.n)
+        .filter((n): n is number => n !== undefined);
+      anterior.detalle = numeros.length === 2 && cadena.completa
+        ? `entrada p${numeros[0]} → salida p${numeros[1]}`
+        : numeros.map(n => `p${n}`).join(" → ");
+      continue;
+    }
+    if (puerto && equipo?.puertos) {
+      grupos.push({
+        clave: `equipo:${equipo.id}`,
+        ids: [salto.id],
+        etiqueta: equipo.id.replace("-", "/"),
+        detalle: `p${puerto.n}`,
+      });
+      continue;
+    }
+    grupos.push({ clave: salto.id, ids: [salto.id], etiqueta: salto.etiqueta, detalle: "" });
+  }
+  return grupos;
+};
 
 export const cadenaComoTexto = (cadena: Cadena) => {
   const ruta = saltosDesdeIsp(cadena).map(salto => salto.etiqueta).join(" → ");
