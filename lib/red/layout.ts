@@ -1,4 +1,4 @@
-import { aristasParaDibujar, type Arista } from "./aristas.ts";
+import { aristasParaDibujar, nodoDeExtremo, type Arista } from "./aristas.ts";
 import { puertosDeEndpoint, type EstadoPuerto, type EstadoRed, type TipoEquipo } from "./modelo.ts";
 
 export const TIPOGRAFIA = 15;
@@ -13,6 +13,8 @@ export const SEPARACION_FILA = 54;
 export const SEPARACION_ZONA = 60;
 export const RELLENO_ZONA = 16;
 export const ALTO_TITULO_ZONA = 24;
+export const ALTO_DESTINO = 30;
+export const SEPARACION_DESTINO = 6;
 export const ZONA_BORDE = "borde";
 
 export type ResumenPuertos = { total: number; ocupados: number; libres: number; dañados: number; sinVerificar: number };
@@ -110,18 +112,87 @@ const nodoDeEquipo = (estado: EstadoRed, equipo: EstadoRed["equipos"][number]): 
 const nombreDeZona = (estado: EstadoRed, idZona: string) =>
   idZona === ZONA_BORDE ? "Borde · salida a internet" : estado.racks.find(rack => rack.id === idZona)?.nombre ?? idZona;
 
+// El equipo del que cuelga un destino: el primer puerto al que está enlazado.
+const padreDeDestino = (estado: EstadoRed, endpointId: string) => {
+  const puerto = puertosDeEndpoint(estado, endpointId)[0];
+  if (!puerto) return "";
+  const equipo = estado.equipos.find(candidato => candidato.id === puerto.equipo);
+  return equipo ? (equipo.puertos > 0 ? `eq:${equipo.id}` : puerto.id) : "";
+};
+
+const alcanzablesDesdeIsp = (estado: EstadoRed): Set<string> => {
+  const isp = estado.equipos.find(equipo => equipo.tipo === "isp");
+  const arranque = estado.puertos.find(puerto => puerto.equipo === isp?.id);
+  const vistos = new Set<string>();
+  if (!arranque) return vistos;
+  const vecinos = new Map<string, string[]>();
+  const unir = (a: string, b: string) => vecinos.set(a, [...(vecinos.get(a) ?? []), b]);
+  for (const enlace of estado.enlaces) {
+    const a = nodoDeExtremo(estado, enlace.a);
+    const b = nodoDeExtremo(estado, enlace.b);
+    if (a === b) continue;
+    unir(a, b);
+    unir(b, a);
+  }
+  const cola = [nodoDeExtremo(estado, arranque.id)];
+  while (cola.length) {
+    const actual = cola.shift()!;
+    if (vistos.has(actual)) continue;
+    vistos.add(actual);
+    for (const vecino of vecinos.get(actual) ?? []) if (!vistos.has(vecino)) cola.push(vecino);
+  }
+  return vistos;
+};
+
+const destinosDe = (estado: EstadoRed, padres: Map<string, Nodo>): Nodo[] => {
+  const hoja = (id: string, texto: string, clase: ClaseNodo): Nodo | null => {
+    const padre = padres.get(padreDeDestino(estado, id));
+    if (!padre) return null;
+    return {
+      id, clase, codigo: texto, etiqueta: texto,
+      zona: padre.zona, fila: 2,
+      x: 0, y: 0, w: anchoDeTexto(texto), h: ALTO_DESTINO,
+      abierta: false, idsPuerto: [], puertos: [], resumen: null, sinRuta: false,
+    };
+  };
+  const apDe = (equipo: EstadoRed["equipos"][number]) => {
+    const puerto = estado.puertos.find(candidato => candidato.equipo === equipo.id);
+    if (!puerto || !puertosDeEndpoint(estado, puerto.id).length) return null;
+    return hoja(puerto.id, `${codigoDeEquipo(equipo.id)} · ${equipo.etiqueta}`, "aparato");
+  };
+  return [
+    ...estado.espacios.filter(espacio => puertosDeEndpoint(estado, espacio.id).length)
+      .map(espacio => hoja(espacio.id, espacio.nombre, "espacio")),
+    ...estado.cubiculos.filter(cubiculo => puertosDeEndpoint(estado, `cub:${cubiculo.id}`).length)
+      .map(cubiculo => hoja(`cub:${cubiculo.id}`, `Cubículo ${cubiculo.id}`, "cubiculo")),
+    ...estado.equipos.filter(equipo => equipo.tipo === "ap").map(apDe),
+  ].filter((nodo): nodo is Nodo => Boolean(nodo));
+};
+
 const bandejaDe = (estado: EstadoRed): FichaBandeja[] => [
   ...estado.espacios.filter(espacio => !puertosDeEndpoint(estado, espacio.id).length)
     .map(espacio => ({ id: espacio.id, etiqueta: espacio.nombre, grupo: GRUPOS[espacio.categoria] })),
   ...estado.cubiculos.filter(cubiculo => !puertosDeEndpoint(estado, `cub:${cubiculo.id}`).length)
     .map(cubiculo => ({ id: `cub:${cubiculo.id}`, etiqueta: `Cubículo ${cubiculo.id}`, grupo: "Cubículos" })),
+  ...estado.equipos.filter(equipo => equipo.puertos === 0 && equipo.tipo === "ap")
+    .filter(equipo => {
+      const puerto = estado.puertos.find(candidato => candidato.equipo === equipo.id);
+      return !puerto || !puertosDeEndpoint(estado, puerto.id).length;
+    })
+    .map(equipo => ({
+      id: estado.puertos.find(candidato => candidato.equipo === equipo.id)?.id ?? `eq:${equipo.id}`,
+      etiqueta: `${codigoDeEquipo(equipo.id)} · ${equipo.etiqueta}`,
+      grupo: "Equipos sin enlace",
+    })),
 ];
 
 export const construirLayout = (estado: EstadoRed, abiertas: Set<string> = new Set()): Layout => {
   const orden = ordenDeZonas(estado);
-  const nodos = estado.equipos
+  const equipos = estado.equipos
     .filter(equipo => equipo.tipo !== "ap")
     .map(equipo => nodoDeEquipo(estado, equipo));
+  const porId = new Map(equipos.map(nodo => [nodo.id, nodo]));
+  const nodos = [...equipos, ...destinosDe(estado, porId)];
 
   const zonas: Zona[] = [];
   let x = 0;
@@ -147,12 +218,41 @@ export const construirLayout = (estado: EstadoRed, abiertas: Set<string> = new S
       ancho = Math.max(ancho, cursor - SEPARACION - xZona - RELLENO_ZONA);
       alto += ALTO_TARJETA + SEPARACION_FILA;
     }
+
+    // Fila 2: una columna por equipo padre, ordenadas por la x del padre.
+    const columnas = new Map<string, Nodo[]>();
+    for (const destino of dentro.filter(nodo => nodo.fila === 2)) {
+      const padre = padreDeDestino(estado, destino.id);
+      columnas.set(padre, [...(columnas.get(padre) ?? []), destino]);
+    }
+    const ordenadas = [...columnas.entries()].sort(([a], [b]) => (porId.get(a)?.x ?? 0) - (porId.get(b)?.x ?? 0));
+    let cursor = xZona + RELLENO_ZONA;
+    let altoFila = 0;
+    for (const [, pila] of ordenadas) {
+      const anchoColumna = Math.max(...pila.map(destino => destino.w));
+      let y = yZona + alto;
+      for (const destino of pila) {
+        destino.x = cursor;
+        destino.y = y;
+        y += ALTO_DESTINO + SEPARACION_DESTINO;
+      }
+      altoFila = Math.max(altoFila, y - (yZona + alto));
+      cursor += anchoColumna + SEPARACION;
+    }
+    if (ordenadas.length) {
+      ancho = Math.max(ancho, cursor - SEPARACION - xZona - RELLENO_ZONA);
+      alto += altoFila;
+    }
+
     const w = ancho + RELLENO_ZONA * 2;
     zonas.push({ id: idZona, nombre: nombreDeZona(estado, idZona), x: xZona, y: yZona, w, h: alto });
     anchoLienzo = Math.max(anchoLienzo, xZona + w);
     if (esBorde) altoBorde = alto;
     else x += w + SEPARACION_ZONA;
   }
+
+  const alcanzables = alcanzablesDesdeIsp(estado);
+  for (const nodo of nodos) nodo.sinRuta = !alcanzables.has(nodo.id);
 
   return {
     zonas,

@@ -64,9 +64,14 @@ test("dos tarjetas de la misma zona y fila no se solapan", () => {
   const layout = construirLayout(real());
   for (const zona of layout.zonas) {
     for (const fila of [0, 1, 2]) {
-      const cartas = layout.nodos.filter(nodo => nodo.zona === zona.id && nodo.fila === fila).sort((a, b) => a.x - b.x);
-      for (let i = 1; i < cartas.length; i += 1) {
-        assert.ok(cartas[i].x >= cartas[i - 1].x + cartas[i - 1].w, `se solapan en ${zona.id} fila ${fila}`);
+      const cartas = layout.nodos.filter(nodo => nodo.zona === zona.id && nodo.fila === fila);
+      for (let i = 0; i < cartas.length; i += 1) {
+        for (let j = i + 1; j < cartas.length; j += 1) {
+          const a = cartas[i];
+          const b = cartas[j];
+          const separadas = a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y;
+          assert.ok(separadas, `${a.id} y ${b.id} se solapan en ${zona.id} fila ${fila}`);
+        }
       }
     }
   }
@@ -93,4 +98,63 @@ test("cada tarjeta cabe dentro de su zona", () => {
 
 test("el layout trae las aristas ya agregadas", () => {
   assert.equal(construirLayout(real()).aristas.length, 16);
+});
+
+test("un espacio con puerto cuelga de su panel, en la fila de destinos", () => {
+  const layout = construirLayout(real());
+  const destino = layout.nodos.find(nodo => nodo.id === "esp:utp-e-basica");
+  assert.equal(destino?.zona, "R2");
+  assert.equal(destino?.fila, 2);
+  assert.equal(destino?.clase, "espacio");
+  assert.equal(destino?.codigo, "UTP E. Básica");
+});
+
+test("dos destinos del mismo panel se apilan en la misma columna", () => {
+  const layout = construirLayout(real());
+  const uno = layout.nodos.find(nodo => nodo.id === "esp:utp-e-basica");
+  const otro = layout.nodos.find(nodo => nodo.id === "esp:pie-administrativo");
+  assert.ok(uno && otro);
+  assert.equal(uno.x, otro.x, "comparten columna");
+  assert.notEqual(uno.y, otro.y, "no comparten fila");
+});
+
+test("un AP enlazado es un destino y uno sin enlace va a la bandeja", () => {
+  const layout = construirLayout(real());
+  const ids = layout.nodos.map(nodo => nodo.id);
+  assert.equal(ids.includes("pto:AP-sala-de-profesores-p0"), true);
+  assert.equal(ids.includes("pto:AP-wifi-direccion-p0"), false);
+  const ficha = layout.bandeja.find(item => item.id === "pto:AP-wifi-direccion-p0");
+  assert.equal(ficha?.grupo, "Equipos sin enlace");
+  assert.equal(ficha?.etiqueta, "AP/wifi-direccion · Wifi Dirección");
+});
+
+test("R3/PP2 se queda en su rack aunque no tenga enlaces, marcado sin ruta", () => {
+  const layout = construirLayout(real());
+  const panel = layout.nodos.find(nodo => nodo.id === "eq:R3-PP2");
+  assert.equal(panel?.zona, "R3");
+  assert.equal(panel?.sinRuta, true);
+  assert.equal(layout.bandeja.some(ficha => ficha.id === "eq:R3-PP2"), false);
+});
+
+test("FORTINET y MIKROTIK quedan en la banda de borde, sin ruta", () => {
+  const layout = construirLayout(real());
+  for (const id of ["pto:FORTINET-p0", "pto:MIKROTIK-p0"]) {
+    const nodo = layout.nodos.find(candidato => candidato.id === id);
+    assert.equal(nodo?.zona, ZONA_BORDE, `${id} está en el borde`);
+    assert.equal(nodo?.sinRuta, true, `${id} no alcanza al ISP`);
+  }
+  assert.equal(layout.nodos.find(nodo => nodo.id === "eq:R2-SW1")?.sinRuta, false);
+});
+
+test("la zona se ensancha al destino más ancho que cuelga de ella", () => {
+  const layout = construirLayout(real());
+  const zona = layout.zonas.find(candidata => candidata.id === "R2");
+  const destino = layout.nodos.find(nodo => nodo.id === "esp:pie-administrativo");
+  assert.ok(zona && destino);
+  assert.ok(destino.x + destino.w <= zona.x + zona.w);
+  assert.equal(destino.w, anchoDeTexto("PIE Administrativo"));
+});
+
+test("con todo cerrado el lienzo sigue sin pasar de 1400 de ancho", () => {
+  assert.ok(construirLayout(real()).ancho <= 1400);
 });
