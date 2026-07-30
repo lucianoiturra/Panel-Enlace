@@ -6,6 +6,7 @@ export const ANCHO_HOJA = 190;
 export const ALTO_HOJA = 46;
 export const SEPARACION = 26;
 export const ALTO_CAPA = 200;
+export const ZONA_BORDE = "borde";
 
 export type ClaseNodo = "equipo" | "aparato" | "espacio" | "cubiculo";
 export type PuertoNodo = { id: string; n: number; estado: EstadoPuerto; x: number; y: number; w: number; h: number };
@@ -19,6 +20,42 @@ const CAPA_HOJA = 4;
 const GRUPOS = { sala: "Salas", oficina: "Oficinas", otro: "Otros" } as const;
 
 export const capaDeEquipo = (tipo: TipoEquipo) => CAPAS[tipo];
+
+export const ordenDeZonas = (estado: EstadoRed): string[] => {
+  const equipos = new Map(estado.equipos.map(equipo => [equipo.id, equipo]));
+  const puertos = new Map(estado.puertos.map(puerto => [puerto.id, puerto]));
+  const rackDe = (extremo: string) => equipos.get(puertos.get(extremo)?.equipo ?? "")?.rack ?? "";
+
+  const racks = new Set(estado.equipos.map(equipo => equipo.rack).filter(Boolean));
+  const vecinos = new Map<string, Set<string>>();
+  const unir = (a: string, b: string) => {
+    if (!vecinos.has(a)) vecinos.set(a, new Set());
+    vecinos.get(a)!.add(b);
+  };
+
+  let arranque = "";
+  for (const enlace of estado.enlaces) {
+    const a = rackDe(enlace.a);
+    const b = rackDe(enlace.b);
+    if (enlace.tipo === "borde" && !arranque) arranque = a || b;
+    if (enlace.tipo !== "uplink" || !a || !b || a === b) continue;
+    unir(a, b);
+    unir(b, a);
+  }
+
+  const orden: string[] = [];
+  const vistos = new Set<string>();
+  const cola = racks.has(arranque) ? [arranque] : [];
+  while (cola.length) {
+    const actual = cola.shift()!;
+    if (vistos.has(actual)) continue;
+    vistos.add(actual);
+    orden.push(actual);
+    for (const vecino of [...(vecinos.get(actual) ?? [])].sort()) if (!vistos.has(vecino)) cola.push(vecino);
+  }
+  for (const rack of [...racks].sort()) if (!vistos.has(rack)) orden.push(rack);
+  return [ZONA_BORDE, ...orden];
+};
 
 const agregarVecino = (mapa: Map<string, string[]>, desde: string, hasta: string) => {
   const vecinos = mapa.get(desde);

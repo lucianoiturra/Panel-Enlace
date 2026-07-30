@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { fixture } from "./fixture-red.ts";
 import semilla from "../lib/red/semilla.json" with { type: "json" };
-import { anclasDeLayout, capaDeEquipo, construirLayout } from "../lib/red/layout.ts";
+import { anclasDeLayout, capaDeEquipo, construirLayout, ordenDeZonas } from "../lib/red/layout.ts";
 import { puertosDeEndpoint, type EstadoRed } from "../lib/red/modelo.ts";
 
 test("capaDeEquipo ordena los tipos de arriba hacia abajo", () => {
@@ -110,4 +110,15 @@ test("con la semilla real la bandeja contiene todos los puntos sin puerto", () =
   assert.equal(layout.bandeja.length, sinPuerto.length);
   assert.ok(layout.bandeja.length > 0);
   assert.equal(layout.nodos.some(nodo => layout.bandeja.some(ficha => ficha.id === nodo.id)), false);
+});
+
+test("las zonas salen en el orden de la cadena de uplinks, no por id", () => {
+  const estado = { ...semilla, bitacora: [], cubiculos: [] } as unknown as EstadoRed;
+  assert.deepEqual(ordenDeZonas(estado), ["borde", "R1", "R2", "R3"]);
+});
+
+test("un rack sin uplink que lo alcance va al final, por id", () => {
+  const estado = { ...semilla, bitacora: [], cubiculos: [] } as unknown as EstadoRed;
+  estado.equipos = [...estado.equipos, { id: "R0-SW1", rack: "R0", tipo: "switch", etiqueta: "Suelto", modelo: "", puertos: 8, color: "", x: 0, y: 0, nota: "" }];
+  assert.deepEqual(ordenDeZonas(estado), ["borde", "R1", "R2", "R3", "R0"]);
 });
