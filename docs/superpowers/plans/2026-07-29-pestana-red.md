@@ -13,7 +13,7 @@
 
 ## Global Constraints
 
-- **Node ≥ 22.13.0** (`package.json` → `engines`). Las pruebas usan `node --experimental-strip-types`, verificado en 22.14.
+- **Node ≥ 22.13.0** (`package.json` → `engines`). Las pruebas usan `node --experimental-strip-types`, verificado en 22.14. El runner recibe un **patrón de archivos**, no un directorio: `--test "tests/*.test.ts"`. Pasarle `--test tests` falla con `MODULE_NOT_FOUND` porque Node intenta cargar el directorio como módulo. Node expande el patrón por su cuenta, así que también funciona dentro de un script de npm en Windows.
 - **Todo el texto de interfaz va en español**, con el tono de `PRODUCT.md`: claro, directo, sin adornos. Sin emojis en la interfaz.
 - **Nunca devolver PINs** en ninguna respuesta de `/api/red*`: la proyección de cubículos es `id`, `status`, `ip`, `mac`, `inventoryCode` y nada más.
 - **Las lecturas de base se ejecutan en secuencia**, nunca con `Promise.all`: el cliente `postgres` corre con `max: 1` por el transaction pooler (ver comentario en `app/api/room/route.ts:49`).
@@ -86,7 +86,7 @@ En `tsconfig.json`, agregar la opción dentro de `compilerOptions` (es legal por
 En `package.json`, reemplazar la línea 12:
 
 ```json
-    "test": "npm run build && node --experimental-strip-types --test tests",
+    "test": "npm run build && node --experimental-strip-types --test tests/*.test.ts",
 ```
 
 - [ ] **Step 2: Escribir el fixture de pruebas**
@@ -220,7 +220,7 @@ test("validarEnlace rechaza el duplicado en cualquiera de los dos órdenes", () 
 
 - [ ] **Step 4: Correr las pruebas para verificar que fallan**
 
-Run: `node --experimental-strip-types --test tests`
+Run: `node --experimental-strip-types --test "tests/*.test.ts"`
 Expected: FAIL — `Cannot find module` para `../lib/red/modelo.ts`.
 
 - [ ] **Step 5: Escribir el módulo**
@@ -325,7 +325,7 @@ export const tipoEnlaceSugerido = (estado: EstadoRed, a: string, b: string): Tip
 
 - [ ] **Step 6: Correr las pruebas para verificar que pasan**
 
-Run: `node --experimental-strip-types --test tests`
+Run: `node --experimental-strip-types --test "tests/*.test.ts"`
 Expected: PASS — 9 pruebas.
 
 - [ ] **Step 7: Confirmar que el proyecto sigue compilando**
@@ -571,7 +571,7 @@ export const cadenaComoTexto = (cadena: Cadena) => {
 
 - [ ] **Step 4: Correr las pruebas para verificar que pasan**
 
-Run: `node --experimental-strip-types --test tests`
+Run: `node --experimental-strip-types --test "tests/*.test.ts"`
 Expected: PASS — las 9 de Task 1 más 10 de trazado.
 
 - [ ] **Step 5: Commit**
@@ -878,7 +878,7 @@ test("cada enlace de la semilla apunta a endpoints que existen", () => {
 
 - [ ] **Step 4: Correr las pruebas**
 
-Run: `node --experimental-strip-types --test tests`
+Run: `node --experimental-strip-types --test "tests/*.test.ts"`
 Expected: PASS — las 19 anteriores más 3 de semilla.
 
 Los cuatro enlaces `roseta` son las 2 asignaciones documentadas más los 2 APs que el canvas sí dejó conectados a un puerto (Sala Multicopiado en el 22 y Sala de Profesores en el 24); los otros 2 APs quedan sin enlace. Si el conteo de `roseta` no da 4, revisar que los slugs `esp:utp-e-basica` y `esp:pie-administrativo` coincidan con los generados — el conversor lanza con un mensaje explícito si no.
