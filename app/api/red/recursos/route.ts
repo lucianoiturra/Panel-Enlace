@@ -1,19 +1,21 @@
 import { eq, inArray } from "drizzle-orm";
 import { getDb } from "../../../../db";
-import { netBitacora, netCategorias, netEnlaces, netEquipos, netEspacios, netOrden, netPuertos } from "../../../../db/schema";
+import { netBitacora, netCategorias, netEnlaces, netEspacios, netOrden, netPuertos } from "../../../../db/schema";
 import { leerEstado } from "../route";
 import { registrarEspacioBorrado } from "../../../../lib/red/siembra";
 import { CATEGORIA_POR_DEFECTO, etiquetaEndpoint, idDisponible, planEliminarEspacio, slugificar, type CategoriaEspacio } from "../../../../lib/red/modelo";
 import { apiErrorResponse, noStoreJson, readJson } from "../../../../lib/api-response";
 
-type TipoRecurso = "espacio" | "ap";
+// Los equipos —AP incluidos— viven en /api/red/equipos. Esta ruta quedó solo con
+// espacios: tener dos caminos que escriban net_equipos con validaciones
+// distintas era la forma segura de que una de las dos se quedara atrás.
+type TipoRecurso = "espacio";
 type Payload = {
   tipo?: TipoRecurso;
   id?: string;
   nombre?: string;
   ubicacion?: string;
   categoria?: CategoriaEspacio;
-  modelo?: string;
 };
 
 type Tx = Parameters<Parameters<Awaited<ReturnType<typeof getDb>>["transaction"]>[0]>[0];
@@ -35,59 +37,28 @@ const categoriaValida = async (tx: Tx, valor: unknown): Promise<CategoriaEspacio
 export async function POST(request: Request) {
   try {
     const payload = await readJson<Payload>(request);
-    const tipo = payload.tipo === "espacio" || payload.tipo === "ap" ? payload.tipo : "";
     const nombre = limpiar(payload.nombre, 120);
-    if (!tipo) return noStoreJson({ error: "Tipo de elemento inválido." }, { status: 400 });
+    if (payload.tipo !== "espacio") return noStoreJson({ error: "Tipo de elemento inválido." }, { status: 400 });
     if (!nombre) return noStoreJson({ error: "Escribe un nombre." }, { status: 400 });
 
     const db = await getDb();
     const resultado = await db.transaction(async (tx) => {
-      const fecha = new Date().toISOString();
-      if (tipo === "espacio") {
-        const existentes = new Set((await tx.select({ id: netEspacios.id }).from(netEspacios)).map(fila => fila.id));
-        const id = idDisponible(`esp:${slug(nombre)}`, existentes);
-        await tx.insert(netEspacios).values({
-          id,
-          nombre,
-          ubicacion: limpiar(payload.ubicacion, 160),
-          categoria: await categoriaValida(tx, payload.categoria),
-          estado: "sin-verificar",
-          x: 0,
-          y: 0,
-          nota: "",
-        });
-        await tx.insert(netBitacora).values({
-          fecha, tipo: "recurso-creado", objetivo: id, antes: "", despues: nombre, nota: "Espacio agregado",
-        });
-        return { id };
-      }
-
-      const existentes = new Set((await tx.select({ id: netEquipos.id }).from(netEquipos)).map(fila => fila.id));
-      const equipoId = idDisponible(`AP-${slug(nombre)}`, existentes);
-      const endpointId = `pto:${equipoId}-p0`;
-      await tx.insert(netEquipos).values({
-        id: equipoId,
-        rack: "",
-        tipo: "ap",
-        etiqueta: nombre,
-        modelo: limpiar(payload.modelo, 120),
-        puertos: 0,
-        color: "",
+      const existentes = new Set((await tx.select({ id: netEspacios.id }).from(netEspacios)).map(fila => fila.id));
+      const id = idDisponible(`esp:${slug(nombre)}`, existentes);
+      await tx.insert(netEspacios).values({
+        id,
+        nombre,
+        ubicacion: limpiar(payload.ubicacion, 160),
+        categoria: await categoriaValida(tx, payload.categoria),
+        estado: "sin-verificar",
         x: 0,
         y: 0,
-        nota: limpiar(payload.ubicacion, 160),
-      });
-      await tx.insert(netPuertos).values({
-        id: endpointId,
-        equipo: equipoId,
-        n: 0,
-        estado: "desconocido",
         nota: "",
       });
       await tx.insert(netBitacora).values({
-        fecha, tipo: "recurso-creado", objetivo: endpointId, antes: "", despues: nombre, nota: "AP agregado",
+        fecha: new Date().toISOString(), tipo: "recurso-creado", objetivo: id, antes: "", despues: nombre, nota: "Espacio agregado",
       });
-      return { id: endpointId };
+      return { id };
     });
     return noStoreJson(resultado, { status: 201 });
   } catch (error) {
@@ -98,38 +69,22 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const payload = await readJson<Payload>(request);
-    const tipo = payload.tipo === "espacio" || payload.tipo === "ap" ? payload.tipo : "";
     const id = limpiar(payload.id, 120);
     const nombre = limpiar(payload.nombre, 120);
-    if (!tipo || !id) return noStoreJson({ error: "Elemento inválido." }, { status: 400 });
+    if (payload.tipo !== "espacio" || !id) return noStoreJson({ error: "Elemento inválido." }, { status: 400 });
     if (!nombre) return noStoreJson({ error: "El nombre no puede quedar vacío." }, { status: 400 });
 
     const db = await getDb();
     const resultado = await db.transaction(async (tx) => {
-      const fecha = new Date().toISOString();
-      if (tipo === "espacio") {
-        const [actual] = await tx.select().from(netEspacios).where(eq(netEspacios.id, id)).limit(1);
-        if (!actual) return false;
-        await tx.update(netEspacios).set({
-          nombre,
-          ubicacion: limpiar(payload.ubicacion, 160),
-          categoria: await categoriaValida(tx, payload.categoria),
-        }).where(eq(netEspacios.id, id));
-        await tx.insert(netBitacora).values({
-          fecha, tipo: "recurso-editado", objetivo: id, antes: actual.nombre, despues: nombre, nota: "Datos del espacio",
-        });
-        return true;
-      }
-
-      const [actual] = await tx.select().from(netEquipos).where(eq(netEquipos.id, id)).limit(1);
-      if (!actual || actual.tipo !== "ap") return false;
-      await tx.update(netEquipos).set({
-        etiqueta: nombre,
-        modelo: limpiar(payload.modelo, 120),
-        nota: limpiar(payload.ubicacion, 160),
-      }).where(eq(netEquipos.id, id));
+      const [actual] = await tx.select().from(netEspacios).where(eq(netEspacios.id, id)).limit(1);
+      if (!actual) return false;
+      await tx.update(netEspacios).set({
+        nombre,
+        ubicacion: limpiar(payload.ubicacion, 160),
+        categoria: await categoriaValida(tx, payload.categoria),
+      }).where(eq(netEspacios.id, id));
       await tx.insert(netBitacora).values({
-        fecha, tipo: "recurso-editado", objetivo: `pto:${id}-p0`, antes: actual.etiqueta, despues: nombre, nota: "Datos del AP",
+        fecha: new Date().toISOString(), tipo: "recurso-editado", objetivo: id, antes: actual.nombre, despues: nombre, nota: "Datos del espacio",
       });
       return true;
     });
