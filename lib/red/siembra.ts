@@ -3,11 +3,13 @@ import type { getDb } from "../../db";
 import { appMetadata, netBitacora, netCategorias, netEnlaces, netEquipos, netEspacios, netPuertos, netRacks } from "../../db/schema";
 import semilla from "./semilla.json" with { type: "json" };
 import { CATEGORIAS_BASE, ordenCanonico } from "./modelo.ts";
+import { limpiarNotaRack } from "./inventario.ts";
 
 type Db = Awaited<ReturnType<typeof getDb>>;
 type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 const MARCA = "red_semilla_version";
 const BORRADOS = "red_espacios_borrados";
+const NOTAS = "red_notas_racks_v1";
 
 // Los espacios que el usuario elimina se anotan acá para que la siembra no los
 // reponga. Sin esta lista, regenerar semilla.json desde el canvas cambia el hash
@@ -28,6 +30,28 @@ export async function registrarEspacioBorrado(tx: Tx, id: string) {
   borrados.add(id);
   await tx.insert(appMetadata).values({ key: BORRADOS, value: JSON.stringify([...borrados]) })
     .onConflictDoUpdate({ target: appMetadata.key, set: { value: JSON.stringify([...borrados]) } });
+}
+
+// Va aparte de sembrarRed y con su propia marca porque no depende de la versión
+// de la semilla: sembrarRed retorna temprano cuando ya está aplicada, y una base
+// que venía sembrada de antes igual necesita que le limpien las notas una vez.
+export async function limpiarNotasRacks(db: Db) {
+  await db.transaction(async (tx) => {
+    const [marca] = await tx.select().from(appMetadata).where(eq(appMetadata.key, NOTAS)).limit(1);
+    if (marca?.value === "1") return;
+
+    for (const rack of await tx.select().from(netRacks)) {
+      const { notas, segmento } = limpiarNotaRack(rack.notas);
+      const rescatado = segmento && !rack.segmento ? segmento : "";
+      if (notas === rack.notas && !rescatado) continue;
+      await tx.update(netRacks)
+        .set({ notas, ...(rescatado ? { segmento: rescatado } : {}) })
+        .where(eq(netRacks.id, rack.id));
+    }
+
+    await tx.insert(appMetadata).values({ key: NOTAS, value: "1" })
+      .onConflictDoUpdate({ target: appMetadata.key, set: { value: "1" } });
+  });
 }
 
 export async function sembrarRed(db: Db) {

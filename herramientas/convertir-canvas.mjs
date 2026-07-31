@@ -32,6 +32,7 @@ const notasRack = new Map(gruposRack.map(grupo => [idRack(grupo), []]));
 const racks = gruposRack.map(grupo => ({
   id: idRack(grupo), nombre: grupo.label.replace(/\n/g, " ").trim(),
   ubicacion: (grupo.label.split(/[-|]/)[1] ?? "").trim(),
+  segmento: "",
   x: grupo.x, y: grupo.y, w: grupo.width, h: grupo.height, notas: "",
 }));
 
@@ -149,13 +150,9 @@ for (const edge of canvas.edges) {
     revisar.push({ objetivo: b, nota: `edge sin significado claro desde el grupo "${desde.label.split("\n")[0]}" en el canvas` });
     continue;
   }
-  if (desde.type === "group" || hasta.type === "group") {
-    const grupo = desde.type === "group" ? desde : hasta;
-    const otro = desde.type === "group" ? hasta : desde;
-    const notas = notasRack.get(idRack(grupo));
-    const texto = otro.type === "group" ? otro.label : (otro.text ?? otro.file ?? "");
-    if (notas) notas.push(`relación dibujada en el canvas hacia: ${texto.split("\n")[0]}`);
-  }
+  // Un edge que toca un grupo no dice nada que la nota del rack pueda usar: el
+  // canvas los dibuja para agrupar visualmente, no para documentar un enlace.
+  // Volcarlos en notas fue lo que llenó los tres racks de líneas inservibles.
 }
 
 for (const nodo of textos.filter(texto => /Segmento IP/i.test(texto.text ?? ""))) {

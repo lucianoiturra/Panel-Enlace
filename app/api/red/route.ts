@@ -1,7 +1,7 @@
 import { asc, desc, eq, or } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { cubicles, netBitacora, netCategorias, netEnlaces, netEquipos, netEspacios, netOrden, netPuertos, netRacks } from "../../../db/schema";
-import { sembrarRed } from "../../../lib/red/siembra";
+import { limpiarNotasRacks, sembrarRed } from "../../../lib/red/siembra";
 import { estadosEspacio, estadosPuerto, prefijoDe, type EstadoRed } from "../../../lib/red/modelo";
 import { apiErrorResponse, noStoreJson, readJson } from "../../../lib/api-response";
 
@@ -26,6 +26,7 @@ export async function GET() {
   try {
     const db = await getDb();
     await sembrarRed(db);
+    await limpiarNotasRacks(db);
     return noStoreJson(await leerEstado(db));
   } catch (error) {
     return apiErrorResponse(error, "No fue posible cargar la red.");
