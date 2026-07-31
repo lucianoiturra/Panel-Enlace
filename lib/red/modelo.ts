@@ -1,14 +1,15 @@
 export type TipoEquipo = "switch" | "patchpanel" | "router" | "firewall" | "ap" | "isp";
 export type EstadoPuerto = "libre" | "ocupado" | "desconocido" | "dañado";
 export type EstadoEspacio = "operativo" | "solo-wifi" | "sin-internet" | "sin-verificar";
-export type CategoriaEspacio = "sala" | "oficina" | "otro";
+// Los tipos de espacio se administran desde la interfaz y viven en net_categorias,
+// así que aquí son un id libre y no una unión cerrada.
+export type CategoriaEspacio = string;
 export type TipoEnlace = "patch" | "uplink" | "roseta" | "borde";
-export type TipoBitacora = "enlace-creado" | "enlace-borrado" | "enlaces-limpiados" | "estado-espacio" | "estado-puerto" | "nota" | "revisar" | "recurso-creado" | "recurso-editado";
+export type TipoBitacora = "enlace-creado" | "enlace-borrado" | "enlaces-limpiados" | "estado-espacio" | "estado-puerto" | "nota" | "revisar" | "recurso-creado" | "recurso-editado" | "recurso-borrado" | "categoria-creada" | "categoria-editada" | "categoria-borrada";
 
 export const tiposEquipo: TipoEquipo[] = ["switch", "patchpanel", "router", "firewall", "ap", "isp"];
 export const estadosPuerto: EstadoPuerto[] = ["libre", "ocupado", "desconocido", "dañado"];
 export const estadosEspacio: EstadoEspacio[] = ["operativo", "solo-wifi", "sin-internet", "sin-verificar"];
-export const categoriasEspacio: CategoriaEspacio[] = ["sala", "oficina", "otro"];
 export const tiposEnlace: TipoEnlace[] = ["patch", "uplink", "roseta", "borde"];
 
 export type Rack = { id: string; nombre: string; ubicacion: string; x: number; y: number; w: number; h: number; notas: string };
@@ -18,7 +19,19 @@ export type Espacio = { id: string; nombre: string; ubicacion: string; categoria
 export type Enlace = { id: number; a: string; b: string; tipo: TipoEnlace; nota: string };
 export type EntradaBitacora = { id: number; fecha: string; tipo: TipoBitacora; objetivo: string; antes: string; despues: string; nota: string };
 export type Cubiculo = { id: number; status: string; ip: string; mac: string; inventoryCode: string };
-export type EstadoRed = { racks: Rack[]; equipos: Equipo[]; puertos: Puerto[]; espacios: Espacio[]; enlaces: Enlace[]; bitacora: EntradaBitacora[]; cubiculos: Cubiculo[]; orden: Record<string, number> };
+export type Categoria = { id: CategoriaEspacio; nombre: string; orden: number; fija: boolean };
+export type EstadoRed = { racks: Rack[]; equipos: Equipo[]; puertos: Puerto[]; espacios: Espacio[]; enlaces: Enlace[]; bitacora: EntradaBitacora[]; cubiculos: Cubiculo[]; categorias: Categoria[]; orden: Record<string, number> };
+
+// Semillas de net_categorias. Son renombrables pero no se pueden borrar: si se
+// vaciara la tabla, los espacios quedarían apuntando a un tipo inexistente y los
+// selectores de la ficha no tendrían ninguna opción que ofrecer.
+export const CATEGORIAS_BASE: Categoria[] = [
+  { id: "sala", nombre: "Sala", orden: 0, fija: true },
+  { id: "oficina", nombre: "Oficina", orden: 1, fija: true },
+  { id: "otro", nombre: "Otro espacio", orden: 2, fija: true },
+];
+
+export const CATEGORIA_POR_DEFECTO = "sala";
 
 export const etiquetasEstadoEspacio: Record<EstadoEspacio, string> = {
   operativo: "Operativo",
@@ -102,3 +115,72 @@ export const puertosDeEndpoint = (estado: EstadoRed, endpointId: string) => enla
   .filter(otro => prefijoDe(otro) === "pto")
   .map(id => estado.puertos.find(puerto => puerto.id === id))
   .filter((puerto): puerto is Puerto => Boolean(puerto));
+
+export const slugificar = (valor: string, respaldo = "nuevo") => valor
+  .normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "")
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, "-")
+  .replace(/^-|-$/g, "")
+  .slice(0, 70) || respaldo;
+
+export const idDisponible = (base: string, existentes: Set<string>) => {
+  if (!existentes.has(base)) return base;
+  for (let numero = 2; numero < 1000; numero += 1) {
+    const candidato = `${base}-${numero}`;
+    if (!existentes.has(candidato)) return candidato;
+  }
+  return `${base}-${Date.now()}`;
+};
+
+export const ordenarCategorias = (categorias: Categoria[]) => [...categorias]
+  .sort((una, otra) => una.orden - otra.orden || una.nombre.localeCompare(otra.nombre, "es"));
+
+export const etiquetaCategoria = (estado: EstadoRed, id: CategoriaEspacio) =>
+  estado.categorias.find(categoria => categoria.id === id)?.nombre ?? id;
+
+export const espaciosDeCategoria = (estado: EstadoRed, id: CategoriaEspacio) =>
+  estado.espacios.filter(espacio => espacio.categoria === id);
+
+// El nombre es lo que se ve; el slug es solo su identificador interno. Dos tipos
+// con el mismo nombre serían indistinguibles en los selectores, así que se
+// rechaza el duplicado aunque el slug quedara libre.
+export const validarNombreCategoria = (
+  categorias: Categoria[],
+  nombre: string,
+  exceptoId = "",
+): { ok: true; nombre: string } | { ok: false; error: string } => {
+  const limpio = nombre.trim().slice(0, 60);
+  if (!limpio) return { ok: false, error: "Escribe un nombre para el tipo." };
+  if (!slugificar(limpio, "")) return { ok: false, error: "El nombre necesita al menos una letra o número." };
+  const normalizado = limpio.toLocaleLowerCase("es");
+  const repetido = categorias.some(categoria => categoria.id !== exceptoId && categoria.nombre.toLocaleLowerCase("es") === normalizado);
+  if (repetido) return { ok: false, error: "Ya existe un tipo con ese nombre." };
+  return { ok: true, nombre: limpio };
+};
+
+export type PlanEliminarEspacio =
+  | { ok: true; enlaces: number[]; puertosALiberar: string[] }
+  | { ok: false; error: string };
+
+// Qué se lleva por delante borrar un espacio. La ruta ejecuta este plan y la
+// ficha lo usa para decir cuántas conexiones se van a perder, así que el cálculo
+// vive acá y no duplicado en los dos lados.
+export const planEliminarEspacio = (estado: EstadoRed, id: string): PlanEliminarEspacio => {
+  if (prefijoDe(id) !== "esp") return { ok: false, error: "Ese identificador no corresponde a un espacio." };
+  if (id === ID_SALA_COMPUTACION) {
+    return { ok: false, error: "La Sala de Computación no se puede eliminar: es el espacio que agrupa los cubículos." };
+  }
+  if (!estado.espacios.some(espacio => espacio.id === id)) return { ok: false, error: "Ese espacio ya no existe." };
+
+  const enlaces = enlacesDe(estado, id);
+  const ids = new Set(enlaces.map(enlace => enlace.id));
+  const puertosALiberar = enlaces
+    .map(enlace => (enlace.a === id ? enlace.b : enlace.a))
+    .filter(otro => prefijoDe(otro) === "pto")
+    .filter(puertoId => estado.puertos.find(puerto => puerto.id === puertoId)?.estado === "ocupado")
+    // Un puerto que también sirve a otro enlace sigue ocupado después del borrado.
+    .filter(puertoId => !estado.enlaces.some(otro => !ids.has(otro.id) && (otro.a === puertoId || otro.b === puertoId)));
+
+  return { ok: true, enlaces: [...ids], puertosALiberar: [...new Set(puertosALiberar)] };
+};

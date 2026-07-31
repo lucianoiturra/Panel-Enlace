@@ -40,5 +40,10 @@ export const fixture = (): EstadoRed => ({
     { id: 12, status: "operational", ip: "192.168.20.112", mac: "1C-83-41-1C-7D-A7", inventoryCode: "AF-2026-012" },
     { id: 13, status: "pending", ip: "", mac: "", inventoryCode: "" },
   ],
+  categorias: [
+    { id: "sala", nombre: "Sala", orden: 0, fija: true },
+    { id: "oficina", nombre: "Oficina", orden: 1, fija: true },
+    { id: "otro", nombre: "Otro espacio", orden: 2, fija: true },
+  ],
   orden: {},
 });

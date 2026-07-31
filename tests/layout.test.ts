@@ -5,9 +5,9 @@ import {
   anchoDeTexto, anclasDeLayout, codigoDeEquipo, construirLayout, ordenDeZonas, ordenarPor, resumenDePuertos,
   ANCHO_MINIMO, ANCHO_PUERTO, COLUMNAS_PUERTO, ZONA_BORDE,
 } from "../lib/red/layout.ts";
-import type { EstadoRed } from "../lib/red/modelo.ts";
+import { CATEGORIAS_BASE, type EstadoRed } from "../lib/red/modelo.ts";
 
-const real = (): EstadoRed => ({ ...semilla, bitacora: [], cubiculos: [], orden: {} } as unknown as EstadoRed);
+const real = (): EstadoRed => ({ ...semilla, bitacora: [], cubiculos: [], categorias: CATEGORIAS_BASE, orden: {} } as unknown as EstadoRed);
 
 test("las zonas salen en el orden de la cadena de uplinks, no por id", () => {
   assert.deepEqual(ordenDeZonas(real()), [ZONA_BORDE, "R1", "R2", "R3"]);

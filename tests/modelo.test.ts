@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { fixture } from "./fixture-red.ts";
-import { etiquetaEndpoint, etiquetaPuerto, existeEndpoint, ordenCanonico, prefijoDe, validarEnlace } from "../lib/red/modelo.ts";
+import { etiquetaCategoria, etiquetaEndpoint, etiquetaPuerto, existeEndpoint, ID_SALA_COMPUTACION, idDisponible, ordenCanonico, planEliminarEspacio, prefijoDe, slugificar, validarEnlace, validarNombreCategoria } from "../lib/red/modelo.ts";
 
 test("prefijoDe reconoce los tres prefijos y rechaza el resto", () => {
   assert.equal(prefijoDe("pto:R2-PP1-p14"), "pto");
@@ -87,4 +87,88 @@ test("validarEnlace rechaza relaciones sin un puerto físico", () => {
 
   const entreCubiculoYEspacio = validarEnlace(estado, "cub:12", "esp:4-basico-a");
   assert.equal(entreCubiculoYEspacio.ok, false);
+});
+
+test("slugificar quita acentos y colapsa lo que no sea alfanumérico", () => {
+  assert.equal(slugificar("Laboratorio de Ciencias"), "laboratorio-de-ciencias");
+  assert.equal(slugificar("  Área ñoña  "), "area-nona");
+  assert.equal(slugificar("¿?¡!"), "nuevo");
+  assert.equal(slugificar("¿?¡!", ""), "");
+});
+
+test("idDisponible agrega sufijo solo cuando el id base ya está tomado", () => {
+  assert.equal(idDisponible("sala", new Set()), "sala");
+  assert.equal(idDisponible("sala", new Set(["sala"])), "sala-2");
+  assert.equal(idDisponible("sala", new Set(["sala", "sala-2"])), "sala-3");
+});
+
+test("validarNombreCategoria rechaza el vacío y lo que no deja slug", () => {
+  const categorias = fixture().categorias;
+  assert.equal(validarNombreCategoria(categorias, "   ").ok, false);
+  const simbolos = validarNombreCategoria(categorias, "¿?");
+  assert.equal(simbolos.ok, false);
+  assert.match(simbolos.ok === false ? simbolos.error : "", /letra o número/);
+});
+
+test("validarNombreCategoria rechaza el nombre repetido sin importar mayúsculas", () => {
+  const categorias = fixture().categorias;
+  const repetido = validarNombreCategoria(categorias, "  sala  ");
+  assert.equal(repetido.ok, false);
+  assert.match(repetido.ok === false ? repetido.error : "", /Ya existe/);
+});
+
+test("validarNombreCategoria deja renombrar una categoría a su propio nombre", () => {
+  const categorias = fixture().categorias;
+  assert.deepEqual(validarNombreCategoria(categorias, "Sala", "sala"), { ok: true, nombre: "Sala" });
+  assert.deepEqual(validarNombreCategoria(categorias, " Laboratorio ", "sala"), { ok: true, nombre: "Laboratorio" });
+});
+
+test("etiquetaCategoria cae al id cuando el tipo ya no existe", () => {
+  const estado = fixture();
+  assert.equal(etiquetaCategoria(estado, "oficina"), "Oficina");
+  assert.equal(etiquetaCategoria(estado, "fantasma"), "fantasma");
+});
+
+test("planEliminarEspacio protege la Sala de Computación", () => {
+  const estado = fixture();
+  estado.espacios.push({ id: ID_SALA_COMPUTACION, nombre: "Sala de Computación", ubicacion: "", categoria: "sala", estado: "operativo", x: 0, y: 0, nota: "" });
+  const plan = planEliminarEspacio(estado, ID_SALA_COMPUTACION);
+  assert.equal(plan.ok, false);
+  assert.match(plan.ok === false ? plan.error : "", /no se puede eliminar/i);
+});
+
+test("planEliminarEspacio rechaza ids que no son espacios o que ya no están", () => {
+  const estado = fixture();
+  assert.equal(planEliminarEspacio(estado, "pto:R2-PP1-p14").ok, false);
+  assert.equal(planEliminarEspacio(estado, "esp:no-existe").ok, false);
+});
+
+test("planEliminarEspacio lista los enlaces del espacio y libera su puerto", () => {
+  const estado = fixture();
+  // Un puerto de roseta que solo sirve a esta sala: al borrarla queda libre.
+  estado.espacios.push({ id: "esp:vecina", nombre: "Vecina", ubicacion: "", categoria: "sala", estado: "operativo", x: 0, y: 0, nota: "" });
+  estado.puertos.push({ id: "pto:R2-PP1-p20", equipo: "R2-PP1", n: 20, estado: "ocupado", nota: "" });
+  estado.enlaces.push({ id: 9, a: "esp:vecina", b: "pto:R2-PP1-p20", tipo: "roseta", nota: "" });
+
+  const plan = planEliminarEspacio(estado, "esp:vecina");
+  assert.equal(plan.ok, true);
+  if (!plan.ok) return;
+  assert.deepEqual(plan.enlaces, [9]);
+  assert.deepEqual(plan.puertosALiberar, ["pto:R2-PP1-p20"]);
+});
+
+// El panel sigue parcheado al switch aunque la sala desaparezca: liberar ese
+// puerto dejaría el enlace 2 apuntando a un puerto marcado como libre.
+test("planEliminarEspacio no libera un puerto que sigue sirviendo a otro enlace", () => {
+  const estado = fixture();
+  const plan = planEliminarEspacio(estado, "esp:3-basico-b");
+  assert.equal(plan.ok, true);
+  if (!plan.ok) return;
+  assert.deepEqual(plan.enlaces, [1]);
+  assert.deepEqual(plan.puertosALiberar, []);
+});
+
+test("planEliminarEspacio acepta un espacio sin conexiones", () => {
+  const estado = fixture();
+  assert.deepEqual(planEliminarEspacio(estado, "esp:secretaria"), { ok: true, enlaces: [], puertosALiberar: [] });
 });

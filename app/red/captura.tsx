@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { aliasCubiculo, calza, normalizar } from "../../lib/red/busqueda";
-import { etiquetaPuerto, etiquetasEstadoPuerto, puertosDeEndpoint, type EstadoRed } from "../../lib/red/modelo";
+import { etiquetaCategoria, etiquetaPuerto, etiquetasEstadoPuerto, puertosDeEndpoint, type EstadoRed } from "../../lib/red/modelo";
 import { useDialogFocus } from "../use-dialog-focus";
 
 export type FilaSesion = { enlaceId: number; texto: string };
@@ -39,7 +39,7 @@ export default function Captura({ estado, sesion, puertoInicial, onCerrar, onAsi
   const puertoActual = puertosDelEquipo[indicePuerto];
 
   const candidatos = useMemo<Candidato[]>(() => [
-    ...estado.espacios.map(espacio => ({ id: espacio.id, nombre: espacio.nombre, grupo: espacio.categoria === "sala" ? "SALA" : "OFICINA", puerto: puertosDeEndpoint(estado, espacio.id).map(puerto => etiquetaPuerto(estado, puerto.id)).join(" · ") })),
+    ...estado.espacios.map(espacio => ({ id: espacio.id, nombre: espacio.nombre, grupo: etiquetaCategoria(estado, espacio.categoria).toLocaleUpperCase("es"), puerto: puertosDeEndpoint(estado, espacio.id).map(puerto => etiquetaPuerto(estado, puerto.id)).join(" · ") })),
     ...estado.cubiculos.map(cubiculo => ({ id: `cub:${cubiculo.id}`, nombre: `Cubículo ${cubiculo.id}`, grupo: "CUBÍCULO", puerto: puertosDeEndpoint(estado, `cub:${cubiculo.id}`).map(puerto => etiquetaPuerto(estado, puerto.id)).join(" · ") })),
   ], [estado]);
 

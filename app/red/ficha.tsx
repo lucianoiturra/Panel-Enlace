@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { cadenaComoTexto, saltosDesdeIsp, type Cadena } from "../../lib/red/trazado";
-import { categoriasEspacio, estadosEspacio, estadosPuerto, etiquetaEndpoint, etiquetaPuerto, etiquetasEstadoEspacio, etiquetasEstadoPuerto, numeroCubiculo, prefijoDe, type CategoriaEspacio, type EstadoRed } from "../../lib/red/modelo";
+import { CATEGORIA_POR_DEFECTO, estadosEspacio, estadosPuerto, etiquetaCategoria, etiquetaEndpoint, etiquetaPuerto, etiquetasEstadoEspacio, etiquetasEstadoPuerto, numeroCubiculo, planEliminarEspacio, prefijoDe, type CategoriaEspacio, type EstadoRed } from "../../lib/red/modelo";
 import type { RecursoNuevo } from "./nuevo-recurso";
 import { useDialogFocus } from "../use-dialog-focus";
 
@@ -15,9 +15,10 @@ type Props = {
   onGuardarRecurso: (cambios: RecursoNuevo & { id: string }) => Promise<void>;
   onCrearEnlace: (puertoId: string, nota: string) => Promise<void>;
   onBorrarEnlace: (id: number) => Promise<void>;
+  onEliminarEspacio: (id: string) => void;
 };
 
-export default function Ficha({ estado, endpointId, cadena, guardando, onCerrar, onGuardarCampos, onGuardarRecurso, onCrearEnlace, onBorrarEnlace }: Props) {
+export default function Ficha({ estado, endpointId, cadena, guardando, onCerrar, onGuardarCampos, onGuardarRecurso, onCrearEnlace, onBorrarEnlace, onEliminarEspacio }: Props) {
   const dialogRef = useDialogFocus<HTMLElement>(onCerrar);
   const tipo = prefijoDe(endpointId);
   const espacio = estado.espacios.find(candidato => candidato.id === endpointId);
@@ -28,7 +29,7 @@ export default function Ficha({ estado, endpointId, cadena, guardando, onCerrar,
   const [nota, setNota] = useState(espacio?.nota ?? puerto?.nota ?? "");
   const [nombreRecurso, setNombreRecurso] = useState(espacio?.nombre ?? ap?.etiqueta ?? "");
   const [ubicacionRecurso, setUbicacionRecurso] = useState(espacio?.ubicacion ?? ap?.nota ?? "");
-  const [categoriaRecurso, setCategoriaRecurso] = useState<CategoriaEspacio>(espacio?.categoria ?? "sala");
+  const [categoriaRecurso, setCategoriaRecurso] = useState<CategoriaEspacio>(espacio?.categoria ?? CATEGORIA_POR_DEFECTO);
   const [modeloRecurso, setModeloRecurso] = useState(ap?.modelo ?? "");
   const [notaEnlace, setNotaEnlace] = useState("");
   const [destinoElegido, setDestinoElegido] = useState("");
@@ -38,6 +39,7 @@ export default function Ficha({ estado, endpointId, cadena, guardando, onCerrar,
 
   const enlaces = estado.enlaces.filter(enlace => enlace.a === endpointId || enlace.b === endpointId);
   const historial = estado.bitacora.filter(entrada => entrada.objetivo === endpointId);
+  const plan = useMemo(() => planEliminarEspacio(estado, endpointId), [estado, endpointId]);
   const candidatos = useMemo(() => {
     const yaConectados = new Set(enlaces.map(enlace => enlace.a === endpointId ? enlace.b : enlace.a));
     const puertos = estado.puertos
@@ -113,7 +115,7 @@ export default function Ficha({ estado, endpointId, cadena, guardando, onCerrar,
 
   const titulo = etiquetaEndpoint(estado, endpointId);
   const sinTramo = !cadena.completa && cadena.saltos.length <= 1;
-  const subtitulo = espacio ? `${espacio.categoria === "sala" ? "Sala de clases" : "Oficina u otro espacio"}${espacio.ubicacion ? ` · ${espacio.ubicacion}` : ""}`
+  const subtitulo = espacio ? [etiquetaCategoria(estado, espacio.categoria), espacio.ubicacion].filter(Boolean).join(" · ")
     : puerto ? `${equipo?.etiqueta ?? puerto.equipo}${equipo?.rack ? ` · rack ${equipo.rack}` : ""}`
     : cubiculo ? `Sala de Enlace · ${cubiculo.inventoryCode || "sin código de inventario"}` : "";
 
@@ -138,7 +140,7 @@ export default function Ficha({ estado, endpointId, cadena, guardando, onCerrar,
           <label>Nombre<input value={nombreRecurso} maxLength={120} disabled={guardando} onChange={evento => setNombreRecurso(evento.target.value)} /></label>
           <label>Ubicación<input value={ubicacionRecurso} maxLength={160} disabled={guardando} onChange={evento => setUbicacionRecurso(evento.target.value)} placeholder="Ej: segundo piso, ala norte" /></label>
           {espacio
-            ? <label>Tipo<select value={categoriaRecurso} disabled={guardando} onChange={evento => setCategoriaRecurso(evento.target.value as CategoriaEspacio)}>{categoriasEspacio.map(valor => <option key={valor} value={valor}>{valor === "sala" ? "Sala" : valor === "oficina" ? "Oficina" : "Otro espacio"}</option>)}</select></label>
+            ? <label>Tipo<select value={categoriaRecurso} disabled={guardando} onChange={evento => setCategoriaRecurso(evento.target.value)}>{estado.categorias.map(valor => <option key={valor.id} value={valor.id}>{valor.nombre}</option>)}</select></label>
             : <label>Modelo<input value={modeloRecurso} maxLength={120} disabled={guardando} onChange={evento => setModeloRecurso(evento.target.value)} placeholder="Ej: TP-Link EAP225" /></label>}
           <button className="secondary" type="button" disabled={guardando || !recursoModificado || !nombreRecurso.trim()} onClick={() => void guardarDatosRecurso()}>{guardando ? "Guardando…" : "Guardar datos"}</button>
         </section>}
@@ -179,6 +181,14 @@ export default function Ficha({ estado, endpointId, cadena, guardando, onCerrar,
           <span className="net-label">BITÁCORA</span>
           {historial.length ? <ul>{historial.map(entrada => <li key={entrada.id}><b>{new Intl.DateTimeFormat("es-CL", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(entrada.fecha))}</b> {entrada.tipo} {entrada.antes && `· ${entrada.antes} →`} {entrada.despues || entrada.nota}</li>)}</ul> : <p className="empty-state">Sin movimientos registrados.</p>}
         </div>
+
+        {espacio && <div className="net-danger">
+          <span className="net-label">ZONA DE PRECAUCIÓN</span>
+          {plan.ok
+            ? <p>Se elimina el espacio y {plan.enlaces.length ? plan.enlaces.length === 1 ? "su conexión" : `sus ${plan.enlaces.length} conexiones` : "sus datos"}. No se puede deshacer.</p>
+            : <p>{plan.error}</p>}
+          <button type="button" className="danger-button" disabled={guardando || !plan.ok} onClick={() => onEliminarEspacio(espacio.id)}>Eliminar espacio</button>
+        </div>}
       </div>
     </aside>
   );

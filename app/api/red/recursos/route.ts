@@ -1,7 +1,9 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { getDb } from "../../../../db";
-import { netBitacora, netEquipos, netEspacios, netPuertos } from "../../../../db/schema";
-import { categoriasEspacio, type CategoriaEspacio } from "../../../../lib/red/modelo";
+import { netBitacora, netCategorias, netEnlaces, netEquipos, netEspacios, netOrden, netPuertos } from "../../../../db/schema";
+import { leerEstado } from "../route";
+import { registrarEspacioBorrado } from "../../../../lib/red/siembra";
+import { CATEGORIA_POR_DEFECTO, etiquetaEndpoint, idDisponible, planEliminarEspacio, slugificar, type CategoriaEspacio } from "../../../../lib/red/modelo";
 import { apiErrorResponse, noStoreJson, readJson } from "../../../../lib/api-response";
 
 type TipoRecurso = "espacio" | "ap";
@@ -14,28 +16,21 @@ type Payload = {
   modelo?: string;
 };
 
+type Tx = Parameters<Parameters<Awaited<ReturnType<typeof getDb>>["transaction"]>[0]>[0];
+
 const limpiar = (valor: unknown, maximo: number) =>
   typeof valor === "string" ? valor.trim().slice(0, maximo) : "";
 
-const slug = (valor: string) => valor
-  .normalize("NFD")
-  .replace(/[\u0300-\u036f]/g, "")
-  .toLowerCase()
-  .replace(/[^a-z0-9]+/g, "-")
-  .replace(/^-|-$/g, "")
-  .slice(0, 70) || "nuevo";
+const slug = (valor: string) => slugificar(valor);
 
-const idDisponible = (base: string, existentes: Set<string>) => {
-  if (!existentes.has(base)) return base;
-  for (let numero = 2; numero < 1000; numero += 1) {
-    const candidato = `${base}-${numero}`;
-    if (!existentes.has(candidato)) return candidato;
-  }
-  return `${base}-${Date.now()}`;
+// El tipo ya no es una lista fija en el c\u00f3digo: se comprueba contra las filas de
+// net_categorias y, si el que llega no existe, se cae al tipo base.
+const categoriaValida = async (tx: Tx, valor: unknown): Promise<CategoriaEspacio> => {
+  const id = limpiar(valor, 70);
+  if (!id) return CATEGORIA_POR_DEFECTO;
+  const [fila] = await tx.select({ id: netCategorias.id }).from(netCategorias).where(eq(netCategorias.id, id)).limit(1);
+  return fila?.id ?? CATEGORIA_POR_DEFECTO;
 };
-
-const categoriaValida = (valor: unknown): CategoriaEspacio =>
-  categoriasEspacio.includes(valor as CategoriaEspacio) ? valor as CategoriaEspacio : "sala";
 
 export async function POST(request: Request) {
   try {
@@ -55,7 +50,7 @@ export async function POST(request: Request) {
           id,
           nombre,
           ubicacion: limpiar(payload.ubicacion, 160),
-          categoria: categoriaValida(payload.categoria),
+          categoria: await categoriaValida(tx, payload.categoria),
           estado: "sin-verificar",
           x: 0,
           y: 0,
@@ -118,7 +113,7 @@ export async function PATCH(request: Request) {
         await tx.update(netEspacios).set({
           nombre,
           ubicacion: limpiar(payload.ubicacion, 160),
-          categoria: categoriaValida(payload.categoria),
+          categoria: await categoriaValida(tx, payload.categoria),
         }).where(eq(netEspacios.id, id));
         await tx.insert(netBitacora).values({
           fecha, tipo: "recurso-editado", objetivo: id, antes: actual.nombre, despues: nombre, nota: "Datos del espacio",
@@ -142,5 +137,48 @@ export async function PATCH(request: Request) {
     return noStoreJson({ ok: true });
   } catch (error) {
     return apiErrorResponse(error, "No fue posible guardar el elemento.");
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const url = new URL(request.url);
+    if (url.searchParams.get("tipo") !== "espacio") {
+      return noStoreJson({ error: "Solo se pueden eliminar espacios por esta vía." }, { status: 400 });
+    }
+    const id = limpiar(url.searchParams.get("id"), 120);
+    if (!id) return noStoreJson({ error: "Falta el identificador del espacio." }, { status: 400 });
+
+    const db = await getDb();
+    const outcome = await db.transaction(async (tx) => {
+      const estado = await leerEstado(tx);
+      const plan = planEliminarEspacio(estado, id);
+      if (!plan.ok) {
+        const existe = estado.espacios.some(espacio => espacio.id === id);
+        return { error: plan.error, status: existe ? 409 : 404 } as const;
+      }
+
+      const nombre = etiquetaEndpoint(estado, id);
+      if (plan.enlaces.length) await tx.delete(netEnlaces).where(inArray(netEnlaces.id, plan.enlaces));
+      if (plan.puertosALiberar.length) {
+        await tx.update(netPuertos).set({ estado: "libre" }).where(inArray(netPuertos.id, plan.puertosALiberar));
+      }
+      await tx.delete(netOrden).where(eq(netOrden.id, id));
+      await tx.delete(netEspacios).where(eq(netEspacios.id, id));
+      await registrarEspacioBorrado(tx, id);
+      await tx.insert(netBitacora).values({
+        fecha: new Date().toISOString(),
+        tipo: "recurso-borrado",
+        objetivo: id,
+        antes: nombre,
+        despues: "",
+        nota: plan.enlaces.length ? `Espacio eliminado junto con ${plan.enlaces.length} conexiones` : "Espacio eliminado",
+      });
+      return { ok: true, enlaces: plan.enlaces.length } as const;
+    });
+    if ("error" in outcome) return noStoreJson({ error: outcome.error }, { status: outcome.status });
+    return noStoreJson(outcome);
+  } catch (error) {
+    return apiErrorResponse(error, "No fue posible eliminar el espacio.");
   }
 }

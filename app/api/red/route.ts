@@ -1,6 +1,6 @@
 import { asc, desc, eq, or } from "drizzle-orm";
 import { getDb } from "../../../db";
-import { cubicles, netBitacora, netEnlaces, netEquipos, netEspacios, netOrden, netPuertos, netRacks } from "../../../db/schema";
+import { cubicles, netBitacora, netCategorias, netEnlaces, netEquipos, netEspacios, netOrden, netPuertos, netRacks } from "../../../db/schema";
 import { sembrarRed } from "../../../lib/red/siembra";
 import { estadosEspacio, estadosPuerto, prefijoDe, type EstadoRed } from "../../../lib/red/modelo";
 import { apiErrorResponse, noStoreJson, readJson } from "../../../lib/api-response";
@@ -16,9 +16,10 @@ export async function leerEstado(db: ReadDb): Promise<EstadoRed> {
   const enlaces = await db.select({ id: netEnlaces.id, a: netEnlaces.a, b: netEnlaces.b, tipo: netEnlaces.tipo, nota: netEnlaces.nota }).from(netEnlaces).orderBy(asc(netEnlaces.id));
   const bitacora = await db.select().from(netBitacora).orderBy(desc(netBitacora.id)).limit(200);
   const cubiculos = await db.select({ id: cubicles.id, status: cubicles.status, ip: cubicles.ip, mac: cubicles.mac, inventoryCode: cubicles.inventoryCode }).from(cubicles).orderBy(asc(cubicles.id));
+  const categorias = await db.select().from(netCategorias).orderBy(asc(netCategorias.orden), asc(netCategorias.nombre));
   const filasOrden = await db.select().from(netOrden);
   const orden = Object.fromEntries(filasOrden.map(fila => [fila.id, fila.orden]));
-  return { racks, equipos, puertos, espacios, enlaces, bitacora, cubiculos, orden } as EstadoRed;
+  return { racks, equipos, puertos, espacios, enlaces, bitacora, cubiculos, categorias, orden } as EstadoRed;
 }
 
 export async function GET() {

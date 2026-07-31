@@ -101,6 +101,13 @@ export const netEspacios = pgTable("net_espacios", {
   nota: text("nota").notNull().default(""),
 });
 
+export const netCategorias = pgTable("net_categorias", {
+  id: text("id").primaryKey(),
+  nombre: text("nombre").notNull().default(""),
+  orden: integer("orden").notNull().default(0),
+  fija: boolean("fija").notNull().default(false),
+});
+
 export const netEnlaces = pgTable(
   "net_enlaces",
   {

@@ -1,12 +1,12 @@
 import { useMemo } from "react";
-import { estadosPuerto, etiquetaEndpoint, etiquetaPuerto, etiquetasEstadoPuerto, puertosDeEndpoint, type EstadoRed } from "../../lib/red/modelo";
+import { estadosPuerto, etiquetaCategoria, etiquetaEndpoint, etiquetaPuerto, etiquetasEstadoPuerto, puertosDeEndpoint, type EstadoRed } from "../../lib/red/modelo";
 
 type Props = { estado: EstadoRed; onAbrir: (id: string) => void };
 
 export default function VistaCobertura({ estado, onAbrir }: Props) {
   const resumen = useMemo(() => {
     const endpoints = [
-      ...estado.espacios.map(espacio => ({ id: espacio.id, nombre: espacio.nombre, grupo: espacio.categoria === "sala" ? "Salas" : "Oficinas" })),
+      ...estado.espacios.map(espacio => ({ id: espacio.id, nombre: espacio.nombre, grupo: etiquetaCategoria(estado, espacio.categoria) })),
       ...estado.cubiculos.map(cubiculo => ({ id: `cub:${cubiculo.id}`, nombre: `Cubículo ${cubiculo.id}`, grupo: "Cubículos" })),
     ];
     const sinPuerto = endpoints.filter(endpoint => !puertosDeEndpoint(estado, endpoint.id).length);

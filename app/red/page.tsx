@@ -10,10 +10,13 @@ import Ficha from "./ficha";
 import Captura, { type FilaSesion } from "./captura";
 import NuevoRecurso, { type RecursoNuevo } from "./nuevo-recurso";
 import LimpiarConexiones from "./limpiar-conexiones";
+import TiposEspacio from "./tipos-espacio";
+import EliminarEspacio from "./eliminar-espacio";
 import { cadenaComoTexto, trazarCircuito } from "../../lib/red/trazado";
-import { estadosEspacio, etiquetaEndpoint, etiquetaPuerto, etiquetasEstadoEspacio, puertosDeEndpoint, type Enlace, type EstadoEspacio, type EstadoRed } from "../../lib/red/modelo";
+import { criteriosOrden, etiquetasCriterioOrden, type CriterioOrden } from "../../lib/red/agrupar";
+import { estadosEspacio, etiquetaEndpoint, etiquetaPuerto, etiquetasEstadoEspacio, planEliminarEspacio, puertosDeEndpoint, type Enlace, type EstadoEspacio, type EstadoRed } from "../../lib/red/modelo";
 
-const estadoVacio: EstadoRed = { racks: [], equipos: [], puertos: [], espacios: [], enlaces: [], bitacora: [], cubiculos: [], orden: {} };
+const estadoVacio: EstadoRed = { racks: [], equipos: [], puertos: [], espacios: [], enlaces: [], bitacora: [], cubiculos: [], categorias: [], orden: {} };
 
 const cortosEstado: Record<EstadoEspacio, string> = { operativo: "OK", "solo-wifi": "≈", "sin-internet": "×", "sin-verificar": "?" };
 
@@ -45,6 +48,10 @@ export default function PaginaRed() {
   const [capturaAbierta, setCapturaAbierta] = useState(false);
   const [nuevoAbierto, setNuevoAbierto] = useState(false);
   const [limpiezaAbierta, setLimpiezaAbierta] = useState(false);
+  const [tiposAbierto, setTiposAbierto] = useState(false);
+  const [porEliminar, setPorEliminar] = useState("");
+  const [ordenEspacios, setOrdenEspacios] = useState<CriterioOrden>("nombre");
+  const [agrupar, setAgrupar] = useState(false);
   const [sesion, setSesion] = useState<FilaSesion[]>([]);
   const rackVisible = rackActivo || estado.racks[0]?.id || "";
 
@@ -138,6 +145,27 @@ export default function PaginaRed() {
       }
     })();
   };
+
+  // Cierra la ficha antes de recargar: el espacio deja de existir y la ficha
+  // abierta quedaría apuntando a un id que ya no está en el estado.
+  const eliminarEspacio = (id: string) => conGuardado(async () => {
+    await pedir(`/api/red/recursos?tipo=espacio&id=${encodeURIComponent(id)}`, { method: "DELETE" }, "No fue posible eliminar el espacio.");
+    setFichaAbierta("");
+    setSeleccionado("");
+    setPorEliminar("");
+  }, "Espacio eliminado.");
+
+  const crearCategoria = (nombre: string) => conGuardado(async () => {
+    await pedir("/api/red/categorias", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nombre }) }, "No fue posible agregar el tipo.");
+  }, "Tipo agregado.");
+
+  const renombrarCategoria = (id: string, nombre: string) => conGuardado(async () => {
+    await pedir("/api/red/categorias", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, nombre }) }, "No fue posible renombrar el tipo.");
+  }, "Tipo renombrado.");
+
+  const eliminarCategoria = (id: string, reasignar: string) => conGuardado(async () => {
+    await pedir(`/api/red/categorias?id=${encodeURIComponent(id)}&reasignar=${encodeURIComponent(reasignar)}`, { method: "DELETE" }, "No fue posible eliminar el tipo.");
+  }, "Tipo eliminado.");
 
   const crearEnlace = (destinoId: string, nota: string) => conGuardado(async () => {
     await pedir("/api/red/enlaces", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ a: fichaAbierta, b: destinoId, nota }) }, "No fue posible crear la conexión.");
@@ -262,6 +290,15 @@ export default function PaginaRed() {
 
   const conteos = useMemo(() => Object.fromEntries(estadosEspacio.map(valor => [valor, estado.espacios.filter(espacio => espacio.estado === valor).length])) as Record<EstadoEspacio, number>, [estado.espacios]);
 
+  const conteosCategorias = useMemo(() => {
+    const total: Record<string, number> = {};
+    for (const espacio of estado.espacios) total[espacio.categoria] = (total[espacio.categoria] ?? 0) + 1;
+    return total;
+  }, [estado.espacios]);
+
+  const espacioPorEliminar = estado.espacios.find(espacio => espacio.id === porEliminar);
+  const planEliminar = porEliminar ? planEliminarEspacio(estado, porEliminar) : null;
+
   const puertosDe = (id: string) => puertosDeEndpoint(estado, id);
   const etiquetaDePuerto = (id: string) => etiquetaPuerto(estado, id);
 
@@ -280,7 +317,8 @@ export default function PaginaRed() {
       if (filtro !== "todos" && espacio.estado !== filtro) return false;
       if (!texto) return true;
       const puertos = puertosDeEndpoint(estado, espacio.id).map(puerto => etiquetaPuerto(estado, puerto.id)).join(" ");
-      return `${espacio.nombre} ${espacio.ubicacion} ${espacio.categoria} ${puertos}`.toLowerCase().includes(texto);
+      const tipo = estado.categorias.find(categoria => categoria.id === espacio.categoria)?.nombre ?? "";
+      return `${espacio.nombre} ${espacio.ubicacion} ${espacio.categoria} ${tipo} ${puertos}`.toLowerCase().includes(texto);
     });
   }, [estado, filtro, consulta]);
 
@@ -348,10 +386,19 @@ export default function PaginaRed() {
               <label className="search"><span aria-hidden="true">⌕</span><span className="sr-only">Buscar espacio, cubículo o puerto</span><input value={consulta} aria-label="Buscar espacio, cubículo o puerto" onChange={event => setConsulta(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && coincidenciaBuscador) setSeleccionado(coincidenciaBuscador); }} placeholder="Buscar espacio, cubículo o puerto" /></label>
             </div>
           </div>
+          {vista === "espacios" && <div className="net-orden-bar">
+            <label className="net-orden-select">Ordenar por
+              <select value={ordenEspacios} onChange={event => setOrdenEspacios(event.target.value as CriterioOrden)}>
+                {criteriosOrden.map(valor => <option key={valor} value={valor}>{etiquetasCriterioOrden[valor]}</option>)}
+              </select>
+            </label>
+            <button type="button" className={`net-toggle ${agrupar ? "on" : ""}`} aria-pressed={agrupar} onClick={() => setAgrupar(!agrupar)}>Agrupar por tipo</button>
+            <button type="button" className="secondary net-orden-tipos" onClick={() => setTiposAbierto(true)}>Administrar tipos</button>
+          </div>}
           {coincidenciaBuscador && <div className="net-quick"><span className="net-quick-chain">{cadenaComoTexto(cadenaBuscador)}</span><div className="net-quick-actions"><button className="secondary" type="button" onClick={() => void copiarCadenaBuscador()}>Copiar</button><button className="secondary" type="button" onClick={() => abrirFicha(coincidenciaBuscador)}>Abrir ficha</button></div></div>}
           <div className={cargando ? "net-body is-loading" : "net-body"}>
             {vista === "espacios"
-              ? <VistaEspacios espacios={espaciosVisibles} puertosDe={puertosDe} etiquetaDePuerto={etiquetaDePuerto} cubiculos={estado.cubiculos} seleccionado={seleccionado} onAbrir={abrirFicha} />
+              ? <VistaEspacios espacios={espaciosVisibles} categorias={estado.categorias} orden={ordenEspacios} agrupar={agrupar} puertosDe={puertosDe} etiquetaDePuerto={etiquetaDePuerto} cubiculos={estado.cubiculos} seleccionado={seleccionado} onAbrir={abrirFicha} />
               : vista === "racks"
                 ? <VistaRacks estado={estado} rackActivo={rackVisible} onRack={setRackActivo} formato={formatoRacks} onFormato={setFormatoRacks} seleccionado={seleccionado} onAbrir={abrirFicha} />
                 : vista === "cobertura"
@@ -361,11 +408,13 @@ export default function PaginaRed() {
         </section>
       </section>
 
-      {fichaAbierta && <Ficha key={fichaAbierta} estado={estado} endpointId={fichaAbierta} cadena={cadenaFicha} guardando={guardando} onCerrar={() => setFichaAbierta("")} onGuardarCampos={guardarCampos} onGuardarRecurso={guardarRecurso} onCrearEnlace={crearEnlace} onBorrarEnlace={borrarEnlace} />}
+      {fichaAbierta && <Ficha key={fichaAbierta} estado={estado} endpointId={fichaAbierta} cadena={cadenaFicha} guardando={guardando} onCerrar={() => setFichaAbierta("")} onGuardarCampos={guardarCampos} onGuardarRecurso={guardarRecurso} onCrearEnlace={crearEnlace} onBorrarEnlace={borrarEnlace} onEliminarEspacio={setPorEliminar} />}
       {fichaAbierta && <button className="backdrop" onClick={() => setFichaAbierta("")} aria-label="Cerrar ficha" />}
       {capturaAbierta && <Captura estado={estado} sesion={sesion} puertoInicial={seleccionado.startsWith("pto:") ? seleccionado : ""} onCerrar={() => setCapturaAbierta(false)} onAsignar={asignarRapido} onMarcarLibre={marcarLibre} onDeshacer={deshacerAsignacion} />}
-      {nuevoAbierto && <NuevoRecurso guardando={guardando} onCerrar={() => setNuevoAbierto(false)} onCrear={crearRecurso} />}
+      {nuevoAbierto && <NuevoRecurso categorias={estado.categorias} guardando={guardando} onCerrar={() => setNuevoAbierto(false)} onCrear={crearRecurso} />}
       {limpiezaAbierta && <LimpiarConexiones cantidad={estado.enlaces.length} guardando={guardando} onCerrar={() => setLimpiezaAbierta(false)} onLimpiar={limpiarConexiones} />}
+      {tiposAbierto && <TiposEspacio categorias={estado.categorias} conteos={conteosCategorias} guardando={guardando} onCerrar={() => setTiposAbierto(false)} onCrear={nombre => void crearCategoria(nombre)} onRenombrar={(id, nombre) => void renombrarCategoria(id, nombre)} onEliminar={(id, reasignar) => void eliminarCategoria(id, reasignar)} />}
+      {espacioPorEliminar && planEliminar?.ok && <EliminarEspacio nombre={espacioPorEliminar.nombre} enlaces={planEliminar.enlaces.length} guardando={guardando} onCerrar={() => setPorEliminar("")} onEliminar={() => void eliminarEspacio(espacioPorEliminar.id)} />}
       {aviso && <div className={`toast ${tipoAviso}`} role={tipoAviso === "error" ? "alert" : "status"} aria-live="polite">{aviso}</div>}
     </main>
   );

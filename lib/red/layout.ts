@@ -1,5 +1,5 @@
 import { aristasParaDibujar, nodoDeExtremo, type Arista } from "./aristas.ts";
-import { prefijoDe, puertosDeEndpoint, type EstadoPuerto, type EstadoRed, type TipoEquipo } from "./modelo.ts";
+import { etiquetaCategoria, prefijoDe, puertosDeEndpoint, type EstadoPuerto, type EstadoRed, type TipoEquipo } from "./modelo.ts";
 
 export const TIPOGRAFIA = 15;
 // Ancho medio de un carácter como fracción del tamaño de fuente. Antes servía para
@@ -36,7 +36,6 @@ export type FichaBandeja = { id: string; etiqueta: string; grupo: string };
 export type Layout = { zonas: Zona[]; nodos: Nodo[]; aristas: Arista[]; bandeja: FichaBandeja[]; grupos: string[][]; ancho: number; alto: number };
 
 const FILA_BORDE: TipoEquipo[] = ["isp", "firewall", "router"];
-const GRUPOS = { sala: "Salas", oficina: "Oficinas", otro: "Otros" } as const;
 
 export const anchoDeTexto = (texto: string) =>
   Math.max(ANCHO_MINIMO, Math.round(texto.length * TIPOGRAFIA * ANCHO_CARACTER) + RELLENO);
@@ -200,7 +199,7 @@ const destinosDe = (estado: EstadoRed, padres: Map<string, Nodo>): Nodo[] => {
 
 const bandejaDe = (estado: EstadoRed): FichaBandeja[] => [
   ...estado.espacios.filter(espacio => !puertosDeEndpoint(estado, espacio.id).length)
-    .map(espacio => ({ id: espacio.id, etiqueta: espacio.nombre, grupo: GRUPOS[espacio.categoria] })),
+    .map(espacio => ({ id: espacio.id, etiqueta: espacio.nombre, grupo: etiquetaCategoria(estado, espacio.categoria) })),
   ...estado.cubiculos.filter(cubiculo => !puertosDeEndpoint(estado, `cub:${cubiculo.id}`).length)
     .map(cubiculo => ({ id: `cub:${cubiculo.id}`, etiqueta: `Cubículo ${cubiculo.id}`, grupo: "Cubículos" })),
   ...estado.equipos.filter(equipo => equipo.puertos === 0 && equipo.tipo === "ap")

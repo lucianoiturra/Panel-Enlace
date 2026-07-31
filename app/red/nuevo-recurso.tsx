@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { categoriasEspacio, type CategoriaEspacio } from "../../lib/red/modelo";
+import { CATEGORIA_POR_DEFECTO, type Categoria, type CategoriaEspacio } from "../../lib/red/modelo";
 
 export type RecursoNuevo = {
   tipo: "espacio" | "ap";
@@ -10,23 +10,18 @@ export type RecursoNuevo = {
 };
 
 type Props = {
+  categorias: Categoria[];
   guardando: boolean;
   onCerrar: () => void;
   onCrear: (recurso: RecursoNuevo) => void;
 };
 
-const etiquetasCategoria: Record<CategoriaEspacio, string> = {
-  sala: "Sala",
-  oficina: "Oficina",
-  otro: "Otro espacio",
-};
-
-export default function NuevoRecurso({ guardando, onCerrar, onCrear }: Props) {
+export default function NuevoRecurso({ categorias, guardando, onCerrar, onCrear }: Props) {
   const dialogo = useRef<HTMLDialogElement>(null);
   const [tipo, setTipo] = useState<RecursoNuevo["tipo"]>("espacio");
   const [nombre, setNombre] = useState("");
   const [ubicacion, setUbicacion] = useState("");
-  const [categoria, setCategoria] = useState<CategoriaEspacio>("sala");
+  const [categoria, setCategoria] = useState<CategoriaEspacio>(categorias[0]?.id ?? CATEGORIA_POR_DEFECTO);
   const [modelo, setModelo] = useState("");
 
   useEffect(() => {
@@ -60,7 +55,7 @@ export default function NuevoRecurso({ guardando, onCerrar, onCrear }: Props) {
           <label>Nombre<input autoFocus value={nombre} maxLength={120} onChange={evento => setNombre(evento.target.value)} placeholder={tipo === "espacio" ? "Ej: Biblioteca" : "Ej: AP Biblioteca"} /></label>
           <label>Ubicación<input value={ubicacion} maxLength={160} onChange={evento => setUbicacion(evento.target.value)} placeholder="Ej: segundo piso, junto a la escalera" /></label>
           {tipo === "espacio"
-            ? <label>Tipo<select value={categoria} onChange={evento => setCategoria(evento.target.value as CategoriaEspacio)}>{categoriasEspacio.map(valor => <option key={valor} value={valor}>{etiquetasCategoria[valor]}</option>)}</select></label>
+            ? <label>Tipo<select value={categoria} onChange={evento => setCategoria(evento.target.value)}>{categorias.map(valor => <option key={valor.id} value={valor.id}>{valor.nombre}</option>)}</select></label>
             : <label>Modelo <span className="optional">(opcional)</span><input value={modelo} maxLength={120} onChange={evento => setModelo(evento.target.value)} placeholder="Ej: TP-Link EAP225" /></label>}
         </div>
         <div className="net-resource-foot">
