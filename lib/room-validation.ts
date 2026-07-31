@@ -15,11 +15,14 @@ export const ACCESSORY_STATUSES = ["Sin registrar", "Operativo", "Con fallas", "
 export const cleanText = (value: unknown, max: number) =>
   typeof value === "string" ? value.trim().slice(0, max) : "";
 
+// Se rechazan los ceros a la izquierda: "192.168.001.010" no es la misma
+// dirección leída en octal, y en un inventario de red es un error de captura
+// que conviene atajar en vez de guardar.
 export const isValidIpv4 = (value: string) => {
   const cleaned = value.trim();
   if (!cleaned) return true;
   const parts = cleaned.split(".");
-  return parts.length === 4 && parts.every(part => /^\d{1,3}$/.test(part) && Number(part) <= 255);
+  return parts.length === 4 && parts.every(part => /^(?:0|[1-9]\d{0,2})$/.test(part) && Number(part) <= 255);
 };
 
 export const isValidMac = (value: string) =>

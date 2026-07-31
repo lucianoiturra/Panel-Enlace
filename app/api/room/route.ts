@@ -141,20 +141,23 @@ export async function PUT(request: Request) {
 
       const existingStations = await tx.select({ id: cubicles.id, serialNumber: cubicles.serialNumber, inventoryCode: cubicles.inventoryCode }).from(cubicles);
       if (normalizedSerial && existingStations.some(station => station.id !== stationId && station.serialNumber.trim().toLocaleLowerCase("es-CL") === normalizedSerial)) {
-        return { error: "El número de serie ya está asignado a otro cubículo.", status: 409 } as const;
+        return { error: "El número de serie ya está asignado a otro cubículo.", status: 409, code: "duplicate" } as const;
       }
       if (normalizedInventory && existingStations.some(station => station.id !== stationId && station.inventoryCode.trim().toLocaleLowerCase("es-CL") === normalizedInventory)) {
-        return { error: "El código de inventario ya está asignado a otro cubículo.", status: 409 } as const;
+        return { error: "El código de inventario ya está asignado a otro cubículo.", status: 409, code: "duplicate" } as const;
       }
 
       const checkEntries = Object.entries(payload.checks ?? {});
-      if (checkEntries.some(([itemId, checked]) => !Number.isInteger(Number(itemId)) || Number(itemId) < 1 || typeof checked !== "boolean")) {
-        return { error: "Checklist inválido.", status: 400 } as const;
+      // La clave tiene que ser un entero escrito en limpio: `Number` aceptaría
+      // " 1", "1.0" o "1e0" como el ítem 1, y el mismo ítem llegaría repetido
+      // con valores distintos en una misma petición.
+      if (checkEntries.some(([itemId, checked]) => !/^\d+$/.test(itemId) || Number(itemId) < 1 || typeof checked !== "boolean")) {
+        return { error: "Checklist inválido.", status: 400, code: "checklist" } as const;
       }
       if (checkEntries.length) {
         const validItems = new Set((await tx.select({ id: checklistItems.id }).from(checklistItems)).map(item => item.id));
         if (checkEntries.some(([itemId]) => !validItems.has(Number(itemId)))) {
-          return { error: "El checklist contiene una verificación inexistente.", status: 400 } as const;
+          return { error: "El checklist contiene una verificación inexistente.", status: 400, code: "checklist" } as const;
         }
       }
 
@@ -176,7 +179,9 @@ export async function PUT(request: Request) {
         status,
         updatedAt,
       }).where(and(eq(cubicles.id, stationId), eq(cubicles.updatedAt, expectedUpdatedAt))).returning({ id: cubicles.id });
-      if (!updated) return { error: "La ficha cambió en otra sesión. Recarga antes de volver a guardar.", status: 409 } as const;
+      // `version` es el único de estos conflictos que no se resuelve reintentando:
+      // el cliente lo distingue por el código para ofrecer la recarga de la ficha.
+      if (!updated) return { error: "La ficha cambió en otra sesión. Recárgala para ver lo que quedó guardado.", status: 409, code: "version" } as const;
 
       for (const [itemId, checked] of checkEntries) {
         await tx.insert(checklistResults).values({ cubicleId: stationId, itemId: Number(itemId), checked: checked as boolean })
@@ -185,7 +190,7 @@ export async function PUT(request: Request) {
       return { updatedAt } as const;
     });
     if ("error" in outcome) {
-      return noStoreJson({ error: outcome.error }, { status: outcome.status });
+      return noStoreJson({ error: outcome.error, code: outcome.code }, { status: outcome.status });
     }
     return noStoreJson({ ok: true, updatedAt: outcome.updatedAt });
   } catch (error) {

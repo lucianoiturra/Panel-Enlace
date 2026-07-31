@@ -14,6 +14,13 @@ test("la IPv4 valida cuatro octetos entre 0 y 255", () => {
   assert.equal(isValidIpv4(" 192.168.1.101 "), true);
   assert.equal(isValidIpv4("192.168.1.256"), false);
   assert.equal(isValidIpv4("192.168.1"), false);
+  assert.equal(isValidIpv4("10.0.0.0"), true);
+});
+
+test("la IPv4 rechaza los ceros a la izquierda", () => {
+  assert.equal(isValidIpv4("192.168.001.010"), false);
+  assert.equal(isValidIpv4("192.168.1.01"), false);
+  assert.equal(isValidIpv4("010.0.0.1"), false);
 });
 
 test("el PIN acepta de 4 a 64 caracteres sin espacios", () => {

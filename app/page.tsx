@@ -12,6 +12,7 @@ type Station = { id: number; brandModel: string; serialNumber: string; inventory
 type Item = { id: number; label: string; createdAt: string };
 type Result = { id: number; cubicleId: number; itemId: number; checked: boolean };
 type Task = { id: number; cubicleId: number; description: string; completed: boolean; createdAt: string };
+type RoomData = { stations: Station[]; items: Item[]; results: Result[]; tasks: Task[] };
 type FieldErrors = Partial<Record<"ip" | "mac" | "adminPin" | "studentPin" | "inventoryCode" | "serialNumber", string>>;
 
 const statusInfo: Record<Status, { label: string; short: string }> = {
@@ -28,14 +29,21 @@ const outletInfo: Record<OutletStatus, string> = { unreviewed: "Sin revisar", op
 
 const emptyStations = Array.from({ length: 40 }, (_, i) => ({ id: i + 1, brandModel: "Lenovo IdeaCentre AIO 310-20IAP (Type F0CL)", serialNumber: "", inventoryCode: "", adminPinStatus: "unreviewed" as PinStatus, studentPinStatus: "unreviewed" as PinStatus, adminPin: "", studentPin: "", internetType: "unreviewed" as InternetType, outletStatus: "unreviewed" as OutletStatus, keyboard: "Sin registrar", mouse: "Sin registrar", ip: "", mac: "", observations: "", status: "pending" as Status, updatedAt: "" }));
 
-const readApiError = async (response: Response, fallback: string) => {
+const readApiFailure = async (response: Response, fallback: string) => {
   try {
-    const data = await response.json() as { error?: string };
-    return data.error || fallback;
+    const data = await response.json() as { error?: string; code?: string };
+    return { message: data.error || fallback, code: data.code ?? "" };
   } catch {
-    return fallback;
+    return { message: fallback, code: "" };
   }
 };
+
+const readApiError = async (response: Response, fallback: string) => (await readApiFailure(response, fallback)).message;
+
+// Quita acentos y espacios de sobra, pero conserva guiones y puntos: lo que más
+// se busca acá son IP, MAC y códigos de inventario, y partirlos por la
+// puntuación haría que "1C-83" dejara de encontrar su MAC.
+const normalizeSearch = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
 
 export default function Home() {
   const [stations, setStations] = useState<Station[]>(emptyStations);
@@ -50,6 +58,9 @@ export default function Home() {
   const [filter, setFilter] = useState<Status | "all">("all");
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  // Mientras no haya una carga con éxito, los 40 puestos del plano son sólo el
+  // molde de la sala: no representan ningún dato y no se pueden abrir.
+  const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadingPins, setLoadingPins] = useState(false);
   const [notice, setNotice] = useState("");
@@ -57,11 +68,16 @@ export default function Home() {
   const [noticeKind, setNoticeKind] = useState<"success" | "error">("success");
   const [loadError, setLoadError] = useState("");
   const [drawerError, setDrawerError] = useState("");
+  const [versionConflict, setVersionConflict] = useState(false);
   const [taskError, setTaskError] = useState("");
   const [checklistError, setChecklistError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [lastSyncAt, setLastSyncAt] = useState<Date | null>(null);
   const [busyAction, setBusyAction] = useState("");
+  // Cuenta las aperturas de la ficha, no el cubículo: recargar la ficha por un
+  // conflicto de versión la reabre sin cambiar `selected`, y el foco tiene que
+  // volver igual al cajón en lugar de quedar suelto en el documento.
+  const [drawerOpenings, setDrawerOpenings] = useState(0);
   const [pendingTaskDeletion, setPendingTaskDeletion] = useState<Task | null>(null);
   const [newCheck, setNewCheck] = useState("");
   const [showAdminPin, setShowAdminPin] = useState(false);
@@ -71,7 +87,11 @@ export default function Home() {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const drawerReturnFocusRef = useRef<HTMLElement | null>(null);
   const taskDeleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pinRequestRef = useRef(0);
+  const shortcutsRef = useRef<(event: KeyboardEvent) => void>(() => {});
+  // Cada apertura y cada cierre inicia una sesión nueva del cajón. Una
+  // petición que resuelve después de terminada su sesión ya no puede escribir
+  // en la ficha: para entonces puede estar cerrada, o mostrando otro cubículo.
+  const drawerSessionRef = useRef(0);
 
   const showNotice = (message: string, kind: "success" | "error" = "success") => {
     setNotice(message);
@@ -91,13 +111,16 @@ export default function Home() {
     try {
       const response = await fetch("/api/room");
       if (!response.ok) throw new Error(await readApiError(response, "No fue posible cargar los datos."));
-      const data = await response.json() as { stations: Station[]; items: Item[]; results: Result[]; tasks: Task[] };
+      const data = await response.json() as RoomData;
       setStations(data.stations); setItems(data.items); setResults(data.results); setTasks(data.tasks);
+      setLoaded(true);
       setLastSyncAt(new Date());
+      return data;
     } catch (error) {
       const message = error instanceof Error ? error.message : "No se pudo conectar con el almacenamiento.";
       setLoadError(`${message} Revisa la conexión e inténtalo nuevamente.`);
       showNotice("No se pudieron actualizar los datos.", "error");
+      return null;
     }
     finally { setLoading(false); }
   };
@@ -123,29 +146,11 @@ export default function Home() {
   useEffect(() => {
     if (selected !== null) {
       closeButtonRef.current?.focus();
-    } else if (drawerReturnFocusRef.current?.isConnected) {
-      drawerReturnFocusRef.current.focus();
+    } else if (drawerReturnFocusRef.current) {
+      if (drawerReturnFocusRef.current.isConnected) drawerReturnFocusRef.current.focus();
       drawerReturnFocusRef.current = null;
     }
-  }, [selected]);
-
-  useEffect(() => {
-    if (selected === null) return;
-    let vigente = true;
-    void (async () => {
-      try {
-        const response = await fetch(`/api/red/cadena?endpoint=cub:${selected}`);
-        if (!response.ok) return;
-        const cadena = await response.json() as { saltos: { etiqueta: string }[]; completa: boolean; motivo?: string };
-        if (!vigente) return;
-        const ruta = cadena.saltos.map(salto => salto.etiqueta).join(" → ");
-        setRedCadena({ texto: cadena.completa ? ruta : (cadena.motivo ?? "Sin puerto asignado"), completa: cadena.completa });
-      } catch {
-        if (vigente) setRedCadena(null);
-      }
-    })();
-    return () => { vigente = false; };
-  }, [selected]);
+  }, [selected, drawerOpenings]);
 
   useEffect(() => {
     if (!draft) return;
@@ -171,44 +176,78 @@ export default function Home() {
   const pendingSummary = useMemo(() => {
     const activeIds = new Set(stations.filter(station => station.status !== "no_computer").map(station => station.id));
     const completedChecks = results.filter(result => activeIds.has(result.cubicleId) && result.checked).length;
-    return { checklist: Math.max(0, activeIds.size * items.length - completedChecks), tasks: tasks.filter(task => !task.completed).length };
-  }, [stations, items, results, tasks]);
+    // La tarea en espera de deshacer ya no se cuenta, igual que en la ficha:
+    // el rail y el cajón tienen que decir el mismo número.
+    return { checklist: Math.max(0, activeIds.size * items.length - completedChecks), tasks: tasks.filter(task => !task.completed && task.id !== pendingTaskDeletion?.id).length };
+  }, [stations, items, results, tasks, pendingTaskDeletion]);
 
+  const search = normalizeSearch(query);
   const visible = (station: Station) => {
-    const text = `${station.id} ${station.ip} ${station.mac} ${station.serialNumber} ${station.inventoryCode} ${station.brandModel}`.toLowerCase();
-    return (filter === "all" || station.status === filter) && text.includes(query.toLowerCase());
+    const text = normalizeSearch(`${station.id} ${station.ip} ${station.mac} ${station.serialNumber} ${station.inventoryCode} ${station.brandModel}`);
+    return (filter === "all" || station.status === filter) && text.includes(search);
   };
 
-  const openStation = (id: number) => {
-    const station = stations.find(s => s.id === id)!;
-    drawerReturnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  // `source` permite abrir la ficha con datos recién traídos del servidor sin
+  // esperar a que el estado del componente se refresque: lo usa la recarga por
+  // conflicto de versión.
+  const openStation = (id: number, source?: RoomData) => {
+    const from = source ?? { stations, items, results, tasks };
+    const station = from.stations.find(s => s.id === id);
+    if (!station) return;
+    // Al reabrir sobre el propio cajón no se pisa el origen: el foco tiene que
+    // volver al puesto del plano desde el que se abrió la primera vez.
+    if (!drawerReturnFocusRef.current) drawerReturnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setRedCadena(null);
+    setDrawerOpenings(current => current + 1);
     setSelected(id); setDraft({ ...station }); setInitialDraft({ ...station }); setShowAdminPin(false); setShowStudentPin(false);
     const next: Record<string, boolean> = {};
-    items.forEach(item => { next[item.id] = !!results.find(r => r.cubicleId === id && r.itemId === item.id)?.checked; });
-    setChecks(next); setInitialChecks(next); setDrawerError(""); setTaskError(""); setFieldErrors({});
+    from.items.forEach(item => { next[item.id] = !!from.results.find(r => r.cubicleId === id && r.itemId === item.id)?.checked; });
+    setChecks(next); setInitialChecks(next); setDrawerError(""); setVersionConflict(false); setTaskError(""); setFieldErrors({});
     setLoadingPins(true);
-    const requestId = ++pinRequestRef.current;
+    const session = ++drawerSessionRef.current;
     void (async () => {
       try {
         const response = await fetch(`/api/room?pinFor=${id}`, { cache: "no-store" });
         if (!response.ok) throw new Error(await readApiError(response, "No fue posible cargar los PIN."));
         const pins = await response.json() as { adminPin: string; studentPin: string };
+        if (drawerSessionRef.current !== session) return;
         setDraft(current => current?.id === id ? { ...current, ...pins } : current);
         setInitialDraft(current => current?.id === id ? { ...current, ...pins } : current);
       } catch (error) {
-        if (pinRequestRef.current === requestId) setDrawerError(`${error instanceof Error ? error.message : "No fue posible cargar los PIN."} Cierra y vuelve a abrir la ficha antes de guardar.`);
+        if (drawerSessionRef.current === session) setDrawerError(`${error instanceof Error ? error.message : "No fue posible cargar los PIN."} Cierra y vuelve a abrir la ficha antes de guardar.`);
       } finally {
-        if (pinRequestRef.current === requestId) setLoadingPins(false);
+        if (drawerSessionRef.current === session) setLoadingPins(false);
+      }
+    })();
+    void (async () => {
+      try {
+        const response = await fetch(`/api/red/cadena?endpoint=cub:${id}`);
+        if (!response.ok) throw new Error(await readApiError(response, "No fue posible consultar la cadena de red."));
+        const cadena = await response.json() as { saltos: { etiqueta: string }[]; completa: boolean; motivo?: string };
+        if (drawerSessionRef.current !== session) return;
+        const ruta = cadena.saltos.map(salto => salto.etiqueta).join(" → ");
+        setRedCadena({ texto: cadena.completa ? ruta : (cadena.motivo ?? "Sin puerto asignado"), completa: cadena.completa });
+      } catch (error) {
+        if (drawerSessionRef.current === session) setRedCadena({ texto: error instanceof Error ? error.message : "No fue posible consultar la cadena de red.", completa: false });
       }
     })();
   };
 
   const requestCloseDrawer = () => {
     if (isDirty && !window.confirm("Hay cambios sin guardar. ¿Quieres descartarlos y cerrar la ficha?")) return;
-    pinRequestRef.current += 1;
+    drawerSessionRef.current += 1;
     setLoadingPins(false);
-    setDraft(null); setInitialDraft(null); setSelected(null); setDrawerError(""); setFieldErrors({});
+    setDraft(null); setInitialDraft(null); setSelected(null); setDrawerError(""); setVersionConflict(false); setFieldErrors({});
+  };
+
+  // Ante un conflicto de versión no sirve reintentar: la ficha local quedó
+  // vieja y el servidor va a rechazar cada intento hasta que se traiga de nuevo.
+  const reloadStation = async () => {
+    if (!draft || saving || loading) return;
+    const id = draft.id;
+    if (!window.confirm("Se descartarán tus cambios locales y se traerá la versión guardada del cubículo. ¿Continuar?")) return;
+    const data = await load();
+    if (data) openStation(id, data);
   };
 
   const validateDraft = (value: Station) => {
@@ -224,6 +263,11 @@ export default function Home() {
     return errors;
   };
 
+  // La lista y el checklist se actualizan siempre, porque reflejan lo que ya
+  // quedó en el servidor. La ficha sólo se toca si sigue siendo la misma
+  // sesión, y de ella únicamente se refresca la versión: lo que el usuario
+  // haya seguido escribiendo durante la espera se conserva y queda marcado
+  // como pendiente de guardar.
   const save = async () => {
     if (!draft || saving || loadingPins) return;
     const errors = validateDraft(draft);
@@ -232,32 +276,51 @@ export default function Home() {
       setDrawerError("Revisa los campos marcados antes de guardar.");
       return;
     }
+    const session = drawerSessionRef.current;
+    const sent = draft;
+    const sentChecks = checks;
     setSaving(true);
-    setDrawerError("");
+    setDrawerError(""); setVersionConflict(false);
+    let conflict = false;
     try {
-      const response = await fetch("/api/room", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...draft, checks }) });
-      if (!response.ok) throw new Error(await readApiError(response, "No fue posible guardar los cambios."));
+      const response = await fetch("/api/room", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...sent, checks: sentChecks }) });
+      if (!response.ok) {
+        const failure = await readApiFailure(response, "No fue posible guardar los cambios.");
+        conflict = failure.code === "version";
+        throw new Error(failure.message);
+      }
       const { updatedAt } = await response.json() as { updatedAt: string };
-      const saved = { ...draft, updatedAt };
-      setStations(current => current.map(s => s.id === draft.id ? { ...saved, adminPin: "", studentPin: "" } : s));
+      const saved = { ...sent, updatedAt };
+      setStations(current => current.map(s => s.id === sent.id ? { ...saved, adminPin: "", studentPin: "" } : s));
       setResults(current => {
-        const rest = current.filter(r => r.cubicleId !== draft.id);
-        return [...rest, ...Object.entries(checks).map(([itemId, checked], index) => ({ id: -index - 1, cubicleId: draft.id, itemId: Number(itemId), checked }))];
+        const rest = current.filter(r => r.cubicleId !== sent.id);
+        return [...rest, ...Object.entries(sentChecks).map(([itemId, checked], index) => ({ id: -index - 1, cubicleId: sent.id, itemId: Number(itemId), checked }))];
       });
-      setDraft(saved); setInitialDraft(saved); setInitialChecks({ ...checks }); setLastSyncAt(new Date());
-      showNotice(`Cubículo ${draft.id} actualizado correctamente.`);
+      if (drawerSessionRef.current === session) {
+        setDraft(current => current && current.id === sent.id ? { ...current, updatedAt } : current);
+        setInitialDraft(saved); setInitialChecks({ ...sentChecks });
+      }
+      setLastSyncAt(new Date());
+      showNotice(`Cubículo ${sent.id} actualizado correctamente.`);
     } catch (error) {
       const message = error instanceof Error ? error.message : "No fue posible guardar los cambios.";
-      setDrawerError(`${message} Tus cambios siguen en la ficha; vuelve a intentarlo.`);
-      showNotice("No se guardaron los cambios.", "error");
+      if (drawerSessionRef.current === session) {
+        setDrawerError(conflict ? message : `${message} Tus cambios siguen en la ficha; vuelve a intentarlo.`);
+        setVersionConflict(conflict);
+      }
+      showNotice(`No se guardaron los cambios del cubículo ${sent.id}.`, "error");
     } finally {
       setSaving(false);
     }
   };
 
+  // El manejador vive en un ref y el listener se inscribe una sola vez. Con el
+  // closure directo el efecto no podía llevar dependencias —necesita el `draft`
+  // y los `checks` del render actual—, así que se reinscribía en cada tecla
+  // escrita dentro del cajón.
   useEffect(() => {
-    if (!draft) return;
-    const onKeyDown = (event: KeyboardEvent) => {
+    shortcutsRef.current = (event: KeyboardEvent) => {
+      if (!draft) return;
       if (event.key === "Escape") { event.preventDefault(); requestCloseDrawer(); }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") { event.preventDefault(); void save(); }
       if (event.key === "Tab") {
@@ -268,9 +331,13 @@ export default function Home() {
         else if (first && last && !event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
       }
     };
+  });
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => shortcutsRef.current(event);
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  });
+  }, []);
 
   const addChecklist = async () => {
     const label = newCheck.trim();
@@ -330,14 +397,18 @@ export default function Home() {
     } finally { setBusyAction(""); }
   };
 
+  // El borrado se confirma por temporizador, con la ficha abierta o cerrada, así
+  // que el fallo se informa por el toast global: `taskError` sólo se ve dentro
+  // del cajón y ahí el error pasaría inadvertido.
   const commitTaskDeletion = async (task: Task) => {
+    taskDeleteTimerRef.current = null;
     setPendingTaskDeletion(null);
     try {
       const response = await fetch(`/api/tasks?id=${task.id}`, { method: "DELETE" });
       if (!response.ok) throw new Error(await readApiError(response, "No fue posible eliminar la tarea."));
       setTasks(current => current.filter(item => item.id !== task.id));
     } catch (error) {
-      setTaskError(error instanceof Error ? error.message : "No fue posible eliminar la tarea.");
+      showNotice(error instanceof Error ? error.message : "No fue posible eliminar la tarea.", "error");
     }
   };
 
@@ -350,6 +421,16 @@ export default function Home() {
   const undoTaskDeletion = () => {
     if (taskDeleteTimerRef.current) clearTimeout(taskDeleteTimerRef.current);
     taskDeleteTimerRef.current = null; setPendingTaskDeletion(null); showNotice("La tarea se conservó.");
+  };
+
+  // Marcar el puesto como vacío apaga los dos PIN, y volver a ponerle
+  // computador los devuelve a "sin revisar": dejarlos en "no aplica" declararía
+  // algo falso de un equipo que sí está.
+  const changeStatus = (status: Status) => {
+    if (!draft) return;
+    if (status === "no_computer") { setDraft({ ...draft, status, adminPinStatus: "not_applicable", studentPinStatus: "not_applicable" }); return; }
+    const restore = (current: PinStatus) => draft.status === "no_computer" && current === "not_applicable" ? "unreviewed" : current;
+    setDraft({ ...draft, status, adminPinStatus: restore(draft.adminPinStatus), studentPinStatus: restore(draft.studentPinStatus) });
   };
 
   return (
@@ -365,18 +446,18 @@ export default function Home() {
 
         <section className="status-rail" aria-label="Filtros y pendientes de la sala">
           <div className="status-filters">
-            {(["operational", "attention", "offline", "pending", "no_computer"] as Status[]).map(status => <button key={status} className={`status-filter ${status} ${filter === status ? "active" : ""}`} aria-pressed={filter === status} onClick={() => setFilter(filter === status ? "all" : status)}><i aria-hidden="true">{statusInfo[status].short}</i><strong>{counts[status]}</strong><span>{statusInfo[status].label}</span></button>)}
+            {(["operational", "attention", "offline", "pending", "no_computer"] as Status[]).map(status => <button key={status} className={`status-filter ${status} ${filter === status ? "active" : ""}`} aria-pressed={filter === status} onClick={() => setFilter(filter === status ? "all" : status)}><i aria-hidden="true">{statusInfo[status].short}</i><strong>{loaded ? counts[status] : "—"}</strong><span>{statusInfo[status].label}</span></button>)}
           </div>
-          <p className="pending-line"><span><strong>{pendingSummary.checklist}</strong> revisiones pendientes</span><span><strong>{pendingSummary.tasks}</strong> tareas</span></p>
+          <p className="pending-line"><span><strong>{loaded ? pendingSummary.checklist : "—"}</strong> revisiones pendientes</span><span><strong>{loaded ? pendingSummary.tasks : "—"}</strong> tareas</span></p>
         </section>
 
         <section className="room-surface">
           <div className="room-toolbar"><h2>Plano de la sala</h2><label className="search"><span aria-hidden="true">⌕</span><span className="sr-only">Buscar cubículo, IP, MAC, serie o inventario</span><input value={query} aria-label="Buscar cubículo, IP, MAC, serie o inventario" onChange={e => setQuery(e.target.value)} placeholder="Buscar cubículo, IP, MAC o serie" /></label></div>
-          <div className={`room-plan ${loading ? "is-loading" : ""}`}>
+          <div className={`room-plan ${loading ? "is-loading" : ""} ${loaded ? "" : "no-data"}`}>
             <div className="wall-label left">MURO INTERIOR</div>
             {[0, 1, 2, 3].map((row) => <section className={`computer-row row-${row + 1}`} key={row} aria-label={`Fila ${4 - row}`}>
               <div className="row-title"><span>FILA {4 - row}</span>{row !== 3 && <small>{row === 0 ? "Muro izquierdo" : "Isla central"}</small>}</div>
-              <div className="row-stations">{layoutStations.slice(row * 10, row * 10 + 10).map(station => <button key={station.id} disabled={!visible(station)} className={`station ${station.status} ${selected === station.id ? "selected" : ""}`} onClick={() => openStation(station.id)} aria-label={`Cubículo ${station.id}, ${statusInfo[station.status].label}`}><span className="station-top"><b>{String(station.id).padStart(2, "0")}</b><i>{statusInfo[station.status].short}</i></span>{station.status !== "no_computer" && <span className="monitor"><i></i></span>}<small>{station.status === "no_computer" ? "Puesto vacío" : station.inventoryCode || station.brandModel || "Sin registrar"}</small></button>)}</div>
+              <div className="row-stations">{layoutStations.slice(row * 10, row * 10 + 10).map(station => <button key={station.id} disabled={!loaded || !visible(station)} className={`station ${station.status} ${selected === station.id ? "selected" : ""}`} onClick={() => openStation(station.id)} aria-label={loaded ? `Cubículo ${station.id}, ${statusInfo[station.status].label}` : `Cubículo ${station.id}, sin datos cargados`}><span className="station-top"><b>{String(station.id).padStart(2, "0")}</b><i>{loaded ? statusInfo[station.status].short : "—"}</i></span>{station.status !== "no_computer" && <span className="monitor"><i></i></span>}<small>{!loaded ? "Sin datos" : station.status === "no_computer" ? "Puesto vacío" : station.inventoryCode || station.brandModel || "Sin registrar"}</small></button>)}</div>
             </section>)}
             <div className="wall-label right">VENTANALES</div>
             <div className="access-door"><i></i><span>PUERTA DE ACCESO</span></div>
@@ -388,16 +469,16 @@ export default function Home() {
       <aside className={`drawer ${draft ? "open" : ""}`} aria-hidden={!draft} aria-busy={draft ? loadingPins : undefined} role="dialog" aria-modal={!!draft} aria-labelledby="drawer-title">
         {draft && <><div className="drawer-head"><div><span>FICHA DE EQUIPO</span><h2 id="drawer-title">Cubículo {String(draft.id).padStart(2, "0")}</h2>{isDirty && <small className="unsaved-label">Cambios sin guardar</small>}</div><button ref={closeButtonRef} onClick={requestCloseDrawer} aria-label="Cerrar">×</button></div><div className="drawer-body">
           {loadingPins && <div className="loading-note" role="status">Cargando credenciales protegidas…</div>}
-          {drawerError && <div className="inline-error" role="alert">{drawerError}</div>}
-          <label>Estado<select className={`status-select ${draft.status}`} value={draft.status} onChange={e => { const status = e.target.value as Status; setDraft({ ...draft, status, ...(status === "no_computer" ? { adminPinStatus: "not_applicable", studentPinStatus: "not_applicable" } : {}) }); }}>{Object.entries(statusInfo).map(([value, info]) => <option key={value} value={value}>{info.label}</option>)}</select></label>
+          {drawerError && <div className="inline-error" role="alert"><span>{drawerError}</span>{versionConflict && <button type="button" disabled={saving || loading} onClick={() => void reloadStation()}>{loading ? "Recargando…" : "Recargar ficha"}</button>}</div>}
+          <label>Estado<select className={`status-select ${draft.status}`} value={draft.status} onChange={e => changeStatus(e.target.value as Status)}>{Object.entries(statusInfo).map(([value, info]) => <option key={value} value={value}>{info.label}</option>)}</select></label>
           <div className="two-cols"><label>Marca y modelo<input value={draft.brandModel} maxLength={160} onChange={e => setDraft({ ...draft, brandModel: e.target.value })} placeholder="Ej: Dell OptiPlex 7090" /></label><label>N.º de serie<input value={draft.serialNumber} maxLength={100} aria-invalid={!!fieldErrors.serialNumber} aria-describedby={fieldErrors.serialNumber ? "serial-error" : undefined} onChange={e => { setDraft({ ...draft, serialNumber: e.target.value }); setFieldErrors(current => ({ ...current, serialNumber: undefined })); }} placeholder="S/N del equipo" />{fieldErrors.serialNumber && <small id="serial-error" className="field-error">{fieldErrors.serialNumber}</small>}</label></div>
           <label>Código de inventario fijo<input value={draft.inventoryCode} maxLength={100} aria-invalid={!!fieldErrors.inventoryCode} aria-describedby={fieldErrors.inventoryCode ? "inventory-error" : undefined} onChange={e => { setDraft({ ...draft, inventoryCode: e.target.value }); setFieldErrors(current => ({ ...current, inventoryCode: undefined })); }} placeholder="Ej: AF-2026-001" />{fieldErrors.inventoryCode && <small id="inventory-error" className="field-error">{fieldErrors.inventoryCode}</small>}</label>
           <div className="two-cols"><label>Conexión a internet<select value={draft.internetType} onChange={e => setDraft({ ...draft, internetType: e.target.value as InternetType })}>{Object.entries(internetInfo).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>Estado del enchufe<select value={draft.outletStatus} onChange={e => setDraft({ ...draft, outletStatus: e.target.value as OutletStatus })}>{Object.entries(outletInfo).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div>
-          <div className="two-cols pin-fields"><div className="pin-control"><label>PIN administrador<select value={draft.adminPinStatus} onChange={e => { const value = e.target.value as PinStatus; setDraft({ ...draft, adminPinStatus: value, ...(value !== "configured" ? { adminPin: "" } : {}) }); setFieldErrors(current => ({ ...current, adminPin: undefined })); }}>{Object.entries(pinInfo).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>{draft.adminPinStatus === "configured" && <label className="pin-entry">Ingresar PIN<div><input type={showAdminPin ? "text" : "password"} autoComplete="off" maxLength={64} aria-invalid={!!fieldErrors.adminPin} aria-describedby={fieldErrors.adminPin ? "admin-pin-error" : undefined} value={draft.adminPin} onChange={e => { setDraft({ ...draft, adminPin: e.target.value.replace(/\s/g, "") }); setFieldErrors(current => ({ ...current, adminPin: undefined })); }} placeholder="4 a 64 caracteres" /><button type="button" onClick={() => setShowAdminPin(!showAdminPin)}>{showAdminPin ? "Ocultar" : "Ver"}</button></div>{fieldErrors.adminPin && <small id="admin-pin-error" className="field-error">{fieldErrors.adminPin}</small>}</label>}</div><div className="pin-control"><label>PIN cuenta estudiante<select value={draft.studentPinStatus} onChange={e => { const value = e.target.value as PinStatus; setDraft({ ...draft, studentPinStatus: value, ...(value !== "configured" ? { studentPin: "" } : {}) }); setFieldErrors(current => ({ ...current, studentPin: undefined })); }}>{Object.entries(pinInfo).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>{draft.studentPinStatus === "configured" && <label className="pin-entry">Ingresar PIN<div><input type={showStudentPin ? "text" : "password"} autoComplete="off" maxLength={64} aria-invalid={!!fieldErrors.studentPin} aria-describedby={fieldErrors.studentPin ? "student-pin-error" : undefined} value={draft.studentPin} onChange={e => { setDraft({ ...draft, studentPin: e.target.value.replace(/\s/g, "") }); setFieldErrors(current => ({ ...current, studentPin: undefined })); }} placeholder="4 a 64 caracteres" /><button type="button" onClick={() => setShowStudentPin(!showStudentPin)}>{showStudentPin ? "Ocultar" : "Ver"}</button></div>{fieldErrors.studentPin && <small id="student-pin-error" className="field-error">{fieldErrors.studentPin}</small>}</label>}</div></div>
+          <div className="two-cols pin-fields"><div className="pin-control"><label>PIN administrador<select value={draft.adminPinStatus} onChange={e => { const value = e.target.value as PinStatus; setDraft({ ...draft, adminPinStatus: value, ...(value !== "configured" ? { adminPin: "" } : {}) }); setFieldErrors(current => ({ ...current, adminPin: undefined })); }}>{Object.entries(pinInfo).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>{draft.adminPinStatus === "configured" && <label className="pin-entry">Ingresar PIN<div><input type={showAdminPin ? "text" : "password"} autoComplete="off" maxLength={64} disabled={loadingPins} aria-invalid={!!fieldErrors.adminPin} aria-describedby={fieldErrors.adminPin ? "admin-pin-error" : undefined} value={draft.adminPin} onChange={e => { setDraft({ ...draft, adminPin: e.target.value.replace(/\s/g, "") }); setFieldErrors(current => ({ ...current, adminPin: undefined })); }} placeholder="4 a 64 caracteres" /><button type="button" onClick={() => setShowAdminPin(!showAdminPin)}>{showAdminPin ? "Ocultar" : "Ver"}</button></div>{fieldErrors.adminPin && <small id="admin-pin-error" className="field-error">{fieldErrors.adminPin}</small>}</label>}</div><div className="pin-control"><label>PIN cuenta estudiante<select value={draft.studentPinStatus} onChange={e => { const value = e.target.value as PinStatus; setDraft({ ...draft, studentPinStatus: value, ...(value !== "configured" ? { studentPin: "" } : {}) }); setFieldErrors(current => ({ ...current, studentPin: undefined })); }}>{Object.entries(pinInfo).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>{draft.studentPinStatus === "configured" && <label className="pin-entry">Ingresar PIN<div><input type={showStudentPin ? "text" : "password"} autoComplete="off" maxLength={64} disabled={loadingPins} aria-invalid={!!fieldErrors.studentPin} aria-describedby={fieldErrors.studentPin ? "student-pin-error" : undefined} value={draft.studentPin} onChange={e => { setDraft({ ...draft, studentPin: e.target.value.replace(/\s/g, "") }); setFieldErrors(current => ({ ...current, studentPin: undefined })); }} placeholder="4 a 64 caracteres" /><button type="button" onClick={() => setShowStudentPin(!showStudentPin)}>{showStudentPin ? "Ocultar" : "Ver"}</button></div>{fieldErrors.studentPin && <small id="student-pin-error" className="field-error">{fieldErrors.studentPin}</small>}</label>}</div></div>
           <div className="two-cols"><label>Dirección IP<input value={draft.ip} maxLength={15} inputMode="decimal" aria-invalid={!!fieldErrors.ip} aria-describedby={fieldErrors.ip ? "ip-error" : undefined} onChange={e => { setDraft({ ...draft, ip: e.target.value }); setFieldErrors(current => ({ ...current, ip: undefined })); }} placeholder="Ej: 192.168.1.101" />{fieldErrors.ip && <small id="ip-error" className="field-error">{fieldErrors.ip}</small>}</label><label>Dirección MAC<input value={draft.mac} maxLength={20} autoCapitalize="characters" aria-invalid={!!fieldErrors.mac} aria-describedby={fieldErrors.mac ? "mac-error" : undefined} onChange={e => { setDraft({ ...draft, mac: e.target.value.toUpperCase() }); setFieldErrors(current => ({ ...current, mac: undefined })); }} placeholder="Ej: 1C-83-41-1C-7D-A7" />{fieldErrors.mac && <small id="mac-error" className="field-error">{fieldErrors.mac}</small>}</label></div>
           <div className="net-line"><span>RED</span>{redCadena ? <b className={redCadena.completa ? "" : "pending"}>{redCadena.texto}</b> : <b className="pending">Consultando…</b>}<a href={`/red?endpoint=cub:${draft.id}`}>Ver en la pestaña Red</a></div>
           <div className="two-cols"><label>Teclado<select value={draft.keyboard} onChange={e => setDraft({ ...draft, keyboard: e.target.value })}><option>Sin registrar</option><option>Operativo</option><option>Con fallas</option><option>No disponible</option></select></label><label>Mouse<select value={draft.mouse} onChange={e => setDraft({ ...draft, mouse: e.target.value })}><option>Sin registrar</option><option>Operativo</option><option>Con fallas</option><option>No disponible</option></select></label></div>
-          <div className="check-section"><div><span>CHECKLIST</span><small>{Object.values(checks).filter(Boolean).length} de {items.length} completados</small></div>{items.map(item => <label className="check-row" key={item.id}><input type="checkbox" checked={!!checks[item.id]} onChange={e => setChecks({ ...checks, [item.id]: e.target.checked })} /><span>{item.label}</span></label>)}</div>
+          <div className="check-section"><div><span>CHECKLIST</span><small>{draft.status === "no_computer" ? "No aplica" : `${Object.values(checks).filter(Boolean).length} de ${items.length} completados`}</small></div>{draft.status === "no_computer" ? <p className="empty-state">Un puesto sin computador no entra en el checklist de la sala.</p> : items.map(item => <label className="check-row" key={item.id}><input type="checkbox" checked={!!checks[item.id]} onChange={e => setChecks({ ...checks, [item.id]: e.target.checked })} /><span>{item.label}</span></label>)}</div>
           <div className="task-section"><div className="task-heading"><span>TAREAS ESPECÍFICAS</span><small>{tasks.filter(task => task.cubicleId === draft.id && !task.completed && task.id !== pendingTaskDeletion?.id).length} pendientes</small></div>{taskError && <div className="field-error" role="alert">{taskError}</div>}<div className="task-list">{tasks.filter(task => task.cubicleId === draft.id && task.id !== pendingTaskDeletion?.id).map(task => <div className={`task-row ${task.completed ? "completed" : ""}`} key={task.id}><button className="task-check" type="button" disabled={!!busyAction} onClick={() => void toggleTask(task)} aria-label={task.completed ? "Marcar pendiente" : "Marcar completada"}>{task.completed ? "✓" : ""}</button><span>{task.description}</span><button className="task-delete" type="button" disabled={!!pendingTaskDeletion || !!busyAction} onClick={() => removeTask(task)} aria-label="Eliminar tarea">×</button></div>)}</div><div className="task-add"><input value={newTask} maxLength={160} aria-label="Nueva tarea específica" aria-invalid={!!taskError} onChange={e => { setNewTask(e.target.value); setTaskError(""); }} onKeyDown={e => e.key === "Enter" && void addTask()} placeholder="Ej: Actualizar tarjeta Wi‑Fi" /><button type="button" disabled={!!busyAction} onClick={() => void addTask()}>{busyAction === "add-task" ? "Agregando…" : "Agregar"}</button></div></div>
           <label>Observaciones<textarea value={draft.observations} maxLength={2000} onChange={e => setDraft({ ...draft, observations: e.target.value })} placeholder="Registra fallas, cambios o información relevante…" rows={4} /><small className="character-count">{draft.observations.length}/2000</small></label>
         </div><div className="drawer-foot"><span className="shortcut-hint">Ctrl/⌘ + S para guardar</span><button className="secondary" onClick={requestCloseDrawer} disabled={saving}>Cancelar</button><button className="primary" onClick={save} disabled={saving || loadingPins || !isDirty}>{loadingPins ? "Cargando…" : saving ? "Guardando…" : isDirty ? "Guardar cambios" : "Sin cambios"}</button></div></>}
