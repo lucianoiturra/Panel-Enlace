@@ -82,6 +82,7 @@ const prepararEsquema = unaVezPorClave(async (url: string) => {
       id TEXT PRIMARY KEY,
       nombre TEXT NOT NULL DEFAULT '',
       ubicacion TEXT NOT NULL DEFAULT '',
+      segmento TEXT NOT NULL DEFAULT '',
       x INTEGER NOT NULL DEFAULT 0,
       y INTEGER NOT NULL DEFAULT 0,
       w INTEGER NOT NULL DEFAULT 0,
@@ -93,13 +94,20 @@ const prepararEsquema = unaVezPorClave(async (url: string) => {
       rack TEXT NOT NULL DEFAULT '',
       tipo TEXT NOT NULL DEFAULT 'switch',
       etiqueta TEXT NOT NULL DEFAULT '',
+      marca TEXT NOT NULL DEFAULT '',
       modelo TEXT NOT NULL DEFAULT '',
+      ip_gestion TEXT NOT NULL DEFAULT '',
       puertos INTEGER NOT NULL DEFAULT 0,
       color TEXT NOT NULL DEFAULT '',
       x INTEGER NOT NULL DEFAULT 0,
       y INTEGER NOT NULL DEFAULT 0,
       nota TEXT NOT NULL DEFAULT ''
     )`,
+    // Equivalentes en desarrollo a drizzle-pg/0006_racks_equipos.sql: el CREATE
+    // de arriba no toca una tabla que ya existe.
+    "ALTER TABLE net_racks ADD COLUMN IF NOT EXISTS segmento TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE net_equipos ADD COLUMN IF NOT EXISTS marca TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE net_equipos ADD COLUMN IF NOT EXISTS ip_gestion TEXT NOT NULL DEFAULT ''",
     `CREATE TABLE IF NOT EXISTS net_puertos (
       id TEXT PRIMARY KEY,
       equipo TEXT NOT NULL,

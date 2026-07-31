@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { cadenaComoTexto, saltosDesdeIsp, type Cadena } from "../../lib/red/trazado";
 import { CATEGORIA_POR_DEFECTO, estadosEspacio, estadosPuerto, etiquetaCategoria, etiquetaEndpoint, etiquetaPuerto, etiquetasEstadoEspacio, etiquetasEstadoPuerto, numeroCubiculo, planEliminarEspacio, prefijoDe, type CategoriaEspacio, type EstadoRed } from "../../lib/red/modelo";
+import { pareceIp } from "../../lib/red/inventario";
 import type { RecursoNuevo } from "./nuevo-recurso";
 import { useDialogFocus } from "../use-dialog-focus";
 
@@ -31,6 +32,8 @@ export default function Ficha({ estado, endpointId, cadena, guardando, onCerrar,
   const [ubicacionRecurso, setUbicacionRecurso] = useState(espacio?.ubicacion ?? ap?.nota ?? "");
   const [categoriaRecurso, setCategoriaRecurso] = useState<CategoriaEspacio>(espacio?.categoria ?? CATEGORIA_POR_DEFECTO);
   const [modeloRecurso, setModeloRecurso] = useState(ap?.modelo ?? "");
+  const [marcaRecurso, setMarcaRecurso] = useState(ap?.marca ?? "");
+  const [ipRecurso, setIpRecurso] = useState(ap?.ipGestion ?? "");
   const [notaEnlace, setNotaEnlace] = useState("");
   const [destinoElegido, setDestinoElegido] = useState("");
   const [copiado, setCopiado] = useState(false);
@@ -102,7 +105,9 @@ export default function Ficha({ estado, endpointId, cadena, guardando, onCerrar,
         id: ap.id,
         nombre: nombreRecurso,
         ubicacion: ubicacionRecurso,
+        marca: marcaRecurso,
         modelo: modeloRecurso,
+        ipGestion: ipRecurso,
       });
     }
   };
@@ -111,6 +116,7 @@ export default function Ficha({ estado, endpointId, cadena, guardando, onCerrar,
     ? nombreRecurso.trim() !== espacio.nombre || ubicacionRecurso.trim() !== espacio.ubicacion || categoriaRecurso !== espacio.categoria
     : ap
       ? nombreRecurso.trim() !== ap.etiqueta || ubicacionRecurso.trim() !== ap.nota || modeloRecurso.trim() !== ap.modelo
+        || marcaRecurso.trim() !== ap.marca || ipRecurso.trim() !== ap.ipGestion
       : false;
 
   const titulo = etiquetaEndpoint(estado, endpointId);
@@ -141,7 +147,16 @@ export default function Ficha({ estado, endpointId, cadena, guardando, onCerrar,
           <label>Ubicación<input value={ubicacionRecurso} maxLength={160} disabled={guardando} onChange={evento => setUbicacionRecurso(evento.target.value)} placeholder="Ej: segundo piso, ala norte" /></label>
           {espacio
             ? <label>Tipo<select value={categoriaRecurso} disabled={guardando} onChange={evento => setCategoriaRecurso(evento.target.value)}>{estado.categorias.map(valor => <option key={valor.id} value={valor.id}>{valor.nombre}</option>)}</select></label>
-            : <label>Modelo<input value={modeloRecurso} maxLength={120} disabled={guardando} onChange={evento => setModeloRecurso(evento.target.value)} placeholder="Ej: TP-Link EAP225" /></label>}
+            : <>
+                <div className="two-cols">
+                  <label>Marca<input value={marcaRecurso} maxLength={80} disabled={guardando} onChange={evento => setMarcaRecurso(evento.target.value)} placeholder="Ej: TP-Link" /></label>
+                  <label>Modelo<input value={modeloRecurso} maxLength={120} disabled={guardando} onChange={evento => setModeloRecurso(evento.target.value)} placeholder="Ej: EAP225" /></label>
+                </div>
+                <label>IP de gestión
+                  <input value={ipRecurso} maxLength={64} disabled={guardando} onChange={evento => setIpRecurso(evento.target.value)} placeholder="Ej: 192.168.30.9" />
+                  {ipRecurso.trim() && !pareceIp(ipRecurso) && <small className="net-pista">No parece una IP en formato 192.168.30.2. Se guarda igual.</small>}
+                </label>
+              </>}
           <button className="secondary" type="button" disabled={guardando || !recursoModificado || !nombreRecurso.trim()} onClick={() => void guardarDatosRecurso()}>{guardando ? "Guardando…" : "Guardar datos"}</button>
         </section>}
 

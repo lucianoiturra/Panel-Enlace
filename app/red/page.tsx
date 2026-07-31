@@ -9,6 +9,9 @@ import Diagrama from "./diagrama";
 import Ficha from "./ficha";
 import Captura, { type FilaSesion } from "./captura";
 import NuevoRecurso, { type RecursoNuevo } from "./nuevo-recurso";
+import NuevoInventario from "./nuevo-inventario";
+import FichaRack, { type DatosRack } from "./ficha-rack";
+import FichaEquipo, { type DatosEquipo } from "./ficha-equipo";
 import LimpiarConexiones from "./limpiar-conexiones";
 import TiposEspacio from "./tipos-espacio";
 import EliminarEspacio from "./eliminar-espacio";
@@ -65,6 +68,10 @@ export default function PaginaRed() {
   const [formatoEspacios, setFormatoEspacios] = useState<FormatoEspacios>("lista");
   const [filtrosMovilAbiertos, setFiltrosMovilAbiertos] = useState(false);
   const [sesion, setSesion] = useState<FilaSesion[]>([]);
+  const [rackEnFicha, setRackEnFicha] = useState("");
+  const [equipoEnFicha, setEquipoEnFicha] = useState("");
+  const [errorEquipo, setErrorEquipo] = useState("");
+  const [altaInventario, setAltaInventario] = useState<{ modo: "rack" | "equipo"; rack: string } | null>(null);
   const rackVisible = rackActivo || estado.racks[0]?.id || "";
 
   const mostrarAviso = (mensaje: string, tipo: "success" | "error" = "success") => {
@@ -126,11 +133,28 @@ export default function PaginaRed() {
     await pedir("/api/red", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tipo, id: fichaAbierta, ...cambios }) }, "No fue posible guardar los cambios.");
   }, "Cambio guardado.");
 
+  // Un AP es una fila de net_equipos como cualquier switch, así que viaja por la
+  // ruta de equipos. La ubicación sigue guardándose en su nota, como siempre.
+  const comoEquipo = (recurso: RecursoNuevo & { id?: string }) => ({
+    id: recurso.id,
+    rack: "",
+    tipo: "ap" as const,
+    etiqueta: recurso.nombre,
+    marca: recurso.marca ?? "",
+    modelo: recurso.modelo ?? "",
+    ipGestion: recurso.ipGestion ?? "",
+    puertos: 0,
+    nota: recurso.ubicacion,
+  });
+
   const guardarRecurso = (cambios: RecursoNuevo & { id: string }) => conGuardado(async () => {
-    await pedir("/api/red/recursos", {
+    const [url, cuerpo] = cambios.tipo === "ap"
+      ? ["/api/red/equipos", comoEquipo(cambios)] as const
+      : ["/api/red/recursos", cambios] as const;
+    await pedir(url, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(cambios),
+      body: JSON.stringify(cuerpo),
     }, "No fue posible guardar los datos.");
   }, "Datos actualizados.");
 
@@ -139,16 +163,21 @@ export default function PaginaRed() {
     void (async () => {
       setGuardando(true);
       try {
-        const response = await pedir("/api/red/recursos", {
+        const [url, cuerpo] = recurso.tipo === "ap"
+          ? ["/api/red/equipos", comoEquipo(recurso)] as const
+          : ["/api/red/recursos", recurso] as const;
+        const response = await pedir(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(recurso),
+          body: JSON.stringify(cuerpo),
         }, "No fue posible agregar el elemento.");
-        const { id } = await response.json() as { id: string };
+        // La ruta de equipos devuelve el punto de conexión aparte del id del
+        // equipo; la ficha se abre sobre el punto, que es lo enlazable.
+        const creado = await response.json() as { id: string; endpointId?: string };
         const recargado = await cargar();
         if (!recargado) return;
         setNuevoAbierto(false);
-        abrirFicha(id);
+        abrirFicha(creado.endpointId ?? creado.id);
         mostrarAviso(recurso.tipo === "ap" ? "Punto de acceso agregado." : "Espacio agregado.");
       } catch (error) {
         mostrarAviso(error instanceof Error ? error.message : "No fue posible agregar el elemento.", "error");
@@ -166,6 +195,52 @@ export default function PaginaRed() {
     setSeleccionado("");
     setPorEliminar("");
   }, "Espacio eliminado.");
+
+  const guardarRack = (datos: DatosRack) => conGuardado(async () => {
+    await pedir("/api/red/racks", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(datos) }, "No fue posible guardar el rack.");
+  }, "Rack actualizado.");
+
+  const crearRack = (datos: DatosRack) => conGuardado(async () => {
+    const response = await pedir("/api/red/racks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(datos) }, "No fue posible agregar el rack.");
+    const { id } = await response.json() as { id: string };
+    setAltaInventario(null);
+    setRackActivo(id);
+  }, "Rack agregado.");
+
+  // La ficha se cierra antes de recargar: el rack deja de existir y la ficha
+  // abierta quedaría apuntando a un id que ya no está en el estado.
+  const eliminarRack = (id: string) => conGuardado(async () => {
+    await pedir(`/api/red/racks?id=${encodeURIComponent(id)}`, { method: "DELETE" }, "No fue posible eliminar el rack.");
+    setRackEnFicha("");
+    setRackActivo("");
+  }, "Rack eliminado.");
+
+  const guardarEquipo = (datos: DatosEquipo) => {
+    setErrorEquipo("");
+    return conGuardado(async () => {
+      const response = await fetch("/api/red/equipos", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(datos) });
+      if (!response.ok) {
+        const mensaje = await leerError(response, "No fue posible guardar el equipo.");
+        // El 409 del cambio de puertos se queda en la ficha, junto al campo que
+        // lo provocó: en el toast se va a los cuatro segundos y nombra puertos
+        // que hay que ir a buscar.
+        if (response.status === 409) setErrorEquipo(mensaje);
+        throw new Error(mensaje);
+      }
+    }, "Equipo actualizado.");
+  };
+
+  const crearEquipo = (datos: DatosEquipo) => conGuardado(async () => {
+    const response = await pedir("/api/red/equipos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(datos) }, "No fue posible agregar el equipo.");
+    const { id } = await response.json() as { id: string };
+    setAltaInventario(null);
+    setEquipoEnFicha(id);
+  }, "Equipo agregado.");
+
+  const eliminarEquipo = (id: string) => conGuardado(async () => {
+    await pedir(`/api/red/equipos?id=${encodeURIComponent(id)}`, { method: "DELETE" }, "No fue posible eliminar el equipo.");
+    setEquipoEnFicha("");
+  }, "Equipo eliminado.");
 
   const crearCategoria = (nombre: string) => conGuardado(async () => {
     await pedir("/api/red/categorias", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nombre }) }, "No fue posible agregar el tipo.");
@@ -473,7 +548,7 @@ export default function PaginaRed() {
             {vista === "espacios"
               ? <VistaEspacios espacios={espaciosVisibles} categorias={estado.categorias} orden={ordenEspacios} agrupar={agrupar} formato={formatoEspacios} puertosDe={puertosDe} etiquetaDePuerto={etiquetaDePuerto} cubiculos={estado.cubiculos} seleccionado={seleccionado} onAbrir={abrirFicha} onLimpiar={limpiarFiltrosEspacios} />
               : vista === "racks"
-                ? <VistaRacks estado={estado} rackActivo={rackVisible} onRack={setRackActivo} formato={formatoRacks} onFormato={setFormatoRacks} seleccionado={seleccionado} onAbrir={abrirFicha} />
+                ? <VistaRacks estado={estado} rackActivo={rackVisible} onRack={setRackActivo} formato={formatoRacks} onFormato={setFormatoRacks} seleccionado={seleccionado} onAbrir={abrirFicha} onEditarRack={setRackEnFicha} onEditarEquipo={id => { setErrorEquipo(""); setEquipoEnFicha(id); }} onNuevoRack={() => setAltaInventario({ modo: "rack", rack: "" })} onNuevoEquipo={rack => setAltaInventario({ modo: "equipo", rack })} onReordenar={reordenar} />
                 : vista === "cobertura"
                   ? <VistaCobertura estado={estado} onAbrir={abrirFicha} />
                   : <Diagrama estado={estado} seleccionado={seleccionado} centrarEn={vista === "diagrama" ? coincidenciaBuscador : ""} onAbrir={abrirFicha} onSeleccionar={setSeleccionado} onConectar={asignarRapido} onDesconectar={borrarEnlace} onReenlazar={reenlazar} onReordenar={reordenar} onRestablecerOrden={restablecerOrden} hayOrden={Object.keys(estado.orden).length > 0} guardando={guardando} onAviso={mensaje => mostrarAviso(mensaje, "error")} onCopiar={copiarTexto} />}
@@ -485,6 +560,11 @@ export default function PaginaRed() {
       {fichaAbierta && <button className="backdrop" onClick={() => setFichaAbierta("")} aria-label="Cerrar ficha" />}
       {capturaAbierta && <Captura estado={estado} sesion={sesion} puertoInicial={seleccionado.startsWith("pto:") ? seleccionado : ""} onCerrar={() => setCapturaAbierta(false)} onAsignar={asignarRapido} onMarcarLibre={marcarLibre} onDeshacer={deshacerAsignacion} />}
       {nuevoAbierto && <NuevoRecurso categorias={estado.categorias} guardando={guardando} onCerrar={() => setNuevoAbierto(false)} onCrear={crearRecurso} />}
+      {rackEnFicha && <FichaRack key={rackEnFicha} estado={estado} rackId={rackEnFicha} guardando={guardando} onCerrar={() => setRackEnFicha("")} onGuardar={datos => void guardarRack(datos)} onAbrirEquipo={id => { setRackEnFicha(""); setErrorEquipo(""); setEquipoEnFicha(id); }} onEliminar={id => void eliminarRack(id)} />}
+      {rackEnFicha && <button className="backdrop" onClick={() => setRackEnFicha("")} aria-label="Cerrar ficha del rack" />}
+      {equipoEnFicha && <FichaEquipo key={equipoEnFicha} estado={estado} equipoId={equipoEnFicha} guardando={guardando} error={errorEquipo} onCerrar={() => { setEquipoEnFicha(""); setErrorEquipo(""); }} onGuardar={datos => void guardarEquipo(datos)} onAbrirPuerto={id => { setEquipoEnFicha(""); abrirFicha(id); }} onEliminar={id => void eliminarEquipo(id)} />}
+      {equipoEnFicha && <button className="backdrop" onClick={() => { setEquipoEnFicha(""); setErrorEquipo(""); }} aria-label="Cerrar ficha del equipo" />}
+      {altaInventario && <NuevoInventario modo={altaInventario.modo} rack={altaInventario.rack} nombreRack={estado.racks.find(rack => rack.id === altaInventario.rack)?.nombre ?? ""} guardando={guardando} onCerrar={() => setAltaInventario(null)} onCrearRack={datos => void crearRack(datos)} onCrearEquipo={datos => void crearEquipo(datos)} />}
       {limpiezaAbierta && <LimpiarConexiones cantidad={estado.enlaces.length} guardando={guardando} onCerrar={() => setLimpiezaAbierta(false)} onLimpiar={limpiarConexiones} />}
       {tiposAbierto && <TiposEspacio categorias={estado.categorias} conteos={conteosCategorias} guardando={guardando} onCerrar={() => setTiposAbierto(false)} onCrear={nombre => void crearCategoria(nombre)} onRenombrar={(id, nombre) => void renombrarCategoria(id, nombre)} onEliminar={(id, reasignar) => void eliminarCategoria(id, reasignar)} />}
       {espacioPorEliminar && planEliminar?.ok && <EliminarEspacio nombre={espacioPorEliminar.nombre} enlaces={planEliminar.enlaces.length} guardando={guardando} onCerrar={() => setPorEliminar("")} onEliminar={() => void eliminarEspacio(espacioPorEliminar.id)} />}

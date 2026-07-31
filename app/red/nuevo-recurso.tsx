@@ -6,7 +6,9 @@ export type RecursoNuevo = {
   nombre: string;
   ubicacion: string;
   categoria?: CategoriaEspacio;
+  marca?: string;
   modelo?: string;
+  ipGestion?: string;
 };
 
 type Props = {
