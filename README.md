@@ -42,9 +42,9 @@ No es necesario configurar comandos especiales en Vercel: el proyecto usa `npm r
 ### Pestaña Red
 
 Las seis tablas `net_*` vienen en `drizzle-pg/0001_robust_ultimatum.sql`. Después aplica
-`drizzle-pg/0002_nostalgic_tarot.sql`, `0003_certain_jean_grey.sql` y
-`0004_silly_black_crow.sql`. Ejecuta las migraciones en orden en Supabase antes
-de publicar, por lo dicho arriba.
+`drizzle-pg/0002_nostalgic_tarot.sql`, `0003_certain_jean_grey.sql`,
+`0004_silly_black_crow.sql`, `0005_melodic_rhodey.sql` y `0006_racks_equipos.sql`.
+Ejecuta las migraciones en orden en Supabase antes de publicar, por lo dicho arriba
 sobre el DDL en Vercel.
 
 Los datos iniciales vienen de `lib/red/semilla.json`, generado desde el canvas con:

@@ -15,7 +15,7 @@ test("las zonas salen en el orden de la cadena de uplinks, no por id", () => {
 
 test("un rack sin uplink que lo alcance va al final, por id", () => {
   const estado = real();
-  estado.equipos = [...estado.equipos, { id: "R0-SW1", rack: "R0", tipo: "switch", etiqueta: "Suelto", modelo: "", puertos: 8, color: "", x: 0, y: 0, nota: "" }];
+  estado.equipos = [...estado.equipos, { id: "R0-SW1", rack: "R0", tipo: "switch", etiqueta: "Suelto", marca: "", modelo: "", ipGestion: "", puertos:8, color: "", x: 0, y: 0, nota: "" }];
   assert.deepEqual(ordenDeZonas(estado), [ZONA_BORDE, "R1", "R2", "R3", "R0"]);
 });
 

@@ -2,15 +2,15 @@ import type { EstadoRed } from "../lib/red/modelo.ts";
 
 export const fixture = (): EstadoRed => ({
   racks: [
-    { id: "R2", nombre: "Rack 2 | Sala Enlace", ubicacion: "Sala Enlace", x: -1440, y: 1240, w: 2640, h: 1560, notas: "" },
-    { id: "R3", nombre: "Rack 3 | Sala de Profesores", ubicacion: "Sala de Profesores", x: 2360, y: 920, w: 2880, h: 1480, notas: "" },
+    { id: "R2", nombre: "Rack 2 | Sala Enlace", ubicacion: "Sala Enlace", segmento: "192.168.20.0/24", x: -1440, y: 1240, w: 2640, h: 1560, notas: "" },
+    { id: "R3", nombre: "Rack 3 | Sala de Profesores", ubicacion: "Sala de Profesores", segmento: "", x: 2360, y: 920, w: 2880, h: 1480, notas: "" },
   ],
   equipos: [
-    { id: "R2-PP1", rack: "R2", tipo: "patchpanel", etiqueta: "Patch Panel 3Z", modelo: "24 puertos UTP Cat6", puertos: 24, color: "", x: -1034, y: 1400, nota: "" },
-    { id: "R2-SW1", rack: "R2", tipo: "switch", etiqueta: "Switch 1 | Gigabit 24p Smart", modelo: "TP-Link TL-SG1024S", puertos: 24, color: "3", x: -580, y: 1600, nota: "" },
-    { id: "R3-SW1", rack: "R3", tipo: "switch", etiqueta: "Switch 1 | Cisco", modelo: "Cisco", puertos: 28, color: "#c44a4a", x: 2894, y: 1300, nota: "" },
-    { id: "MIKROTIK", rack: "R2", tipo: "router", etiqueta: "MikroTik", modelo: "", puertos: 0, color: "4", x: -522, y: 21, nota: "" },
-    { id: "ISP", rack: "R2", tipo: "isp", etiqueta: "Proveedores de Servicios de Internet", modelo: "", puertos: 0, color: "4", x: -115, y: -280, nota: "" },
+    { id: "R2-PP1", rack: "R2", tipo: "patchpanel", etiqueta: "Patch Panel 3Z", marca: "", modelo: "24 puertos UTP Cat6", ipGestion: "", puertos: 24, color: "", x: -1034, y: 1400, nota: "" },
+    { id: "R2-SW1", rack: "R2", tipo: "switch", etiqueta: "Switch 1 | Gigabit 24p Smart", marca: "TP-Link", modelo: "TL-SG1024S", ipGestion: "192.168.20.2", puertos: 24, color: "3", x: -580, y: 1600, nota: "" },
+    { id: "R3-SW1", rack: "R3", tipo: "switch", etiqueta: "Switch 1 | Cisco", marca: "Cisco", modelo: "", ipGestion: "", puertos: 28, color: "#c44a4a", x: 2894, y: 1300, nota: "" },
+    { id: "MIKROTIK", rack: "R2", tipo: "router", etiqueta: "MikroTik", marca: "", modelo: "", ipGestion: "", puertos: 0, color: "4", x: -522, y: 21, nota: "" },
+    { id: "ISP", rack: "R2", tipo: "isp", etiqueta: "Proveedores de Servicios de Internet", marca: "", modelo: "", ipGestion: "", puertos: 0, color: "4", x: -115, y: -280, nota: "" },
   ],
   puertos: [
     { id: "pto:R2-PP1-p14", equipo: "R2-PP1", n: 14, estado: "ocupado", nota: "" },

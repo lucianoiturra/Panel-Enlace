@@ -48,7 +48,7 @@ test("validarEnlace acepta un enlace nuevo entre endpoints existentes", () => {
 
 test("validarEnlace permite documentar ISP a Fortinet aunque sus puntos estén ocupados", () => {
   const estado = fixture();
-  estado.equipos.push({ id: "FORTINET", rack: "", tipo: "firewall", etiqueta: "Fortinet", modelo: "", puertos: 0, color: "", x: 0, y: 0, nota: "" });
+  estado.equipos.push({ id: "FORTINET", rack: "", tipo: "firewall", etiqueta: "Fortinet", marca: "", modelo: "", ipGestion: "", puertos:0, color: "", x: 0, y: 0, nota: "" });
   estado.puertos.push({ id: "pto:FORTINET-p0", equipo: "FORTINET", n: 0, estado: "ocupado", nota: "" });
 
   assert.deepEqual(validarEnlace(estado, "pto:ISP-p0", "pto:FORTINET-p0"), { ok: true });

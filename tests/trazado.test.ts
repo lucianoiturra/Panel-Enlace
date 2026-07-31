@@ -151,7 +151,7 @@ test("un endpoint inexistente devuelve camino y alcanzables vacíos", () => {
 test("una ruta incompleta se detiene en la troncal y no salta a otra sala", () => {
   const estado = fixture();
   estado.enlaces = estado.enlaces.filter(enlace => enlace.id !== 4 && enlace.id !== 5);
-  estado.equipos.push({ id: "AP-OTRA-SALA", rack: "R3", tipo: "ap", etiqueta: "AP otra sala", modelo: "", puertos: 0, color: "", x: 0, y: 0, nota: "" });
+  estado.equipos.push({ id: "AP-OTRA-SALA", rack: "R3", tipo: "ap", etiqueta: "AP otra sala", marca: "", modelo: "", ipGestion: "", puertos:0, color: "", x: 0, y: 0, nota: "" });
   estado.puertos.push({ id: "pto:AP-OTRA-SALA-p0", equipo: "AP-OTRA-SALA", n: 0, estado: "ocupado", nota: "" });
   estado.enlaces.push({ id: 6, a: "pto:R3-SW1-p28", b: "pto:AP-OTRA-SALA-p0", tipo: "roseta", nota: "" });
   const cadena = trazarCadena(estado, "esp:3-basico-b");
@@ -162,7 +162,7 @@ test("una ruta incompleta se detiene en la troncal y no salta a otra sala", () =
 
 test("seleccionar el puerto de un AP enfoca el circuito hasta ese AP", () => {
   const estado = fixture();
-  estado.equipos.push({ id: "AP-SALA", rack: "R2", tipo: "ap", etiqueta: "AP Sala", modelo: "", puertos: 0, color: "", x: 0, y: 0, nota: "" });
+  estado.equipos.push({ id: "AP-SALA", rack: "R2", tipo: "ap", etiqueta: "AP Sala", marca: "", modelo: "", ipGestion: "", puertos:0, color: "", x: 0, y: 0, nota: "" });
   estado.puertos.push({ id: "pto:AP-SALA-p0", equipo: "AP-SALA", n: 0, estado: "ocupado", nota: "" });
   estado.enlaces.push({ id: 6, a: "pto:R2-SW1-p11", b: "pto:AP-SALA-p0", tipo: "roseta", nota: "" });
   assert.equal(origenDeCircuito(estado, "pto:R2-SW1-p11"), "pto:AP-SALA-p0");
@@ -175,11 +175,11 @@ test("seleccionar el puerto de un AP enfoca el circuito hasta ese AP", () => {
 test("si falta el último parcheo sigue los uplinks hacia el rack de borde", () => {
   const estado = fixture();
   estado.enlaces = estado.enlaces.filter(enlace => ![3, 4, 5].includes(enlace.id));
-  estado.racks.push({ id: "R1", nombre: "Rack 1", ubicacion: "Sala Enlace", x: 0, y: 0, w: 0, h: 0, notas: "" });
+  estado.racks.push({ id: "R1", nombre: "Rack 1", ubicacion: "Sala Enlace", segmento: "", x: 0, y: 0, w: 0, h: 0, notas: "" });
   estado.equipos.push(
-    { id: "R1-SW1", rack: "R1", tipo: "switch", etiqueta: "Switch 1", modelo: "", puertos: 24, color: "", x: 0, y: 0, nota: "" },
-    { id: "R1-PP1", rack: "R1", tipo: "patchpanel", etiqueta: "Patch 1", modelo: "", puertos: 24, color: "", x: 0, y: 0, nota: "" },
-    { id: "FORTINET", rack: "", tipo: "firewall", etiqueta: "Fortinet", modelo: "", puertos: 0, color: "", x: 0, y: 0, nota: "" },
+    { id: "R1-SW1", rack: "R1", tipo: "switch", etiqueta: "Switch 1", marca: "", modelo: "", ipGestion: "", puertos:24, color: "", x: 0, y: 0, nota: "" },
+    { id: "R1-PP1", rack: "R1", tipo: "patchpanel", etiqueta: "Patch 1", marca: "", modelo: "", ipGestion: "", puertos:24, color: "", x: 0, y: 0, nota: "" },
+    { id: "FORTINET", rack: "", tipo: "firewall", etiqueta: "Fortinet", marca: "", modelo: "", ipGestion: "", puertos:0, color: "", x: 0, y: 0, nota: "" },
   );
   estado.puertos.push(
     { id: "pto:R1-SW1-p23", equipo: "R1-SW1", n: 23, estado: "ocupado", nota: "" },
@@ -200,8 +200,8 @@ test("si falta el último parcheo sigue los uplinks hacia el rack de borde", () 
 test("seleccionar Fortinet conserva a la vez su lado ISP y su lado de distribución", () => {
   const estado = fixture();
   estado.equipos.push(
-    { id: "FORTINET", rack: "", tipo: "firewall", etiqueta: "Fortinet FortiGate", modelo: "", puertos: 0, color: "", x: 0, y: 0, nota: "" },
-    { id: "R1-PP1", rack: "R2", tipo: "patchpanel", etiqueta: "Patch 1", modelo: "", puertos: 24, color: "", x: 0, y: 0, nota: "" },
+    { id: "FORTINET", rack: "", tipo: "firewall", etiqueta: "Fortinet FortiGate", marca: "", modelo: "", ipGestion: "", puertos:0, color: "", x: 0, y: 0, nota: "" },
+    { id: "R1-PP1", rack: "R2", tipo: "patchpanel", etiqueta: "Patch 1", marca: "", modelo: "", ipGestion: "", puertos:24, color: "", x: 0, y: 0, nota: "" },
   );
   estado.puertos.push(
     { id: "pto:FORTINET-p0", equipo: "FORTINET", n: 0, estado: "ocupado", nota: "" },
