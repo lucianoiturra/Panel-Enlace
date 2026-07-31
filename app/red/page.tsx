@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import NavSecciones from "../nav-secciones";
-import VistaEspacios from "./vista-espacios";
+import VistaEspacios, { type FormatoEspacios } from "./vista-espacios";
 import VistaRacks from "./vista-racks";
 import VistaCobertura from "./vista-cobertura";
 import Diagrama from "./diagrama";
@@ -13,12 +13,19 @@ import LimpiarConexiones from "./limpiar-conexiones";
 import TiposEspacio from "./tipos-espacio";
 import EliminarEspacio from "./eliminar-espacio";
 import { cadenaComoTexto, trazarCircuito } from "../../lib/red/trazado";
+import { aliasCubiculo, normalizar } from "../../lib/red/busqueda";
 import { criteriosOrden, etiquetasCriterioOrden, type CriterioOrden } from "../../lib/red/agrupar";
 import { estadosEspacio, etiquetaEndpoint, etiquetaPuerto, etiquetasEstadoEspacio, planEliminarEspacio, puertosDeEndpoint, type Enlace, type EstadoEspacio, type EstadoRed } from "../../lib/red/modelo";
 
 const estadoVacio: EstadoRed = { racks: [], equipos: [], puertos: [], espacios: [], enlaces: [], bitacora: [], cubiculos: [], categorias: [], orden: {} };
 
-const cortosEstado: Record<EstadoEspacio, string> = { operativo: "OK", "solo-wifi": "≈", "sin-internet": "×", "sin-verificar": "?" };
+type FiltroConexion = "todos" | "con-puerto" | "sin-puerto";
+
+const coincideBusqueda = (valor: string, consulta: string) => {
+  const objetivo = normalizar(valor);
+  const terminos = normalizar(consulta).split(" ").filter(Boolean);
+  return terminos.length > 0 && terminos.every(termino => objetivo.includes(termino));
+};
 
 const leerError = async (response: Response, respaldo: string) => {
   try {
@@ -34,7 +41,10 @@ export default function PaginaRed() {
   const [cargando, setCargando] = useState(true);
   const [errorCarga, setErrorCarga] = useState("");
   const [filtro, setFiltro] = useState<EstadoEspacio | "todos">("todos");
+  const [filtroConexion, setFiltroConexion] = useState<FiltroConexion>("todos");
+  const [filtroCategoria, setFiltroCategoria] = useState("todos");
   const [consulta, setConsulta] = useState("");
+  const buscadorRef = useRef<HTMLInputElement>(null);
   const [seleccionado, setSeleccionado] = useState("");
   const [fichaAbierta, setFichaAbierta] = useState("");
   const [ultimaSync, setUltimaSync] = useState<Date | null>(null);
@@ -51,7 +61,9 @@ export default function PaginaRed() {
   const [tiposAbierto, setTiposAbierto] = useState(false);
   const [porEliminar, setPorEliminar] = useState("");
   const [ordenEspacios, setOrdenEspacios] = useState<CriterioOrden>("nombre");
-  const [agrupar, setAgrupar] = useState(false);
+  const [agrupar, setAgrupar] = useState(true);
+  const [formatoEspacios, setFormatoEspacios] = useState<FormatoEspacios>("lista");
+  const [filtrosMovilAbiertos, setFiltrosMovilAbiertos] = useState(false);
   const [sesion, setSesion] = useState<FilaSesion[]>([]);
   const rackVisible = rackActivo || estado.racks[0]?.id || "";
 
@@ -288,6 +300,18 @@ export default function PaginaRed() {
     return () => { document.body.style.overflow = anterior; };
   }, [fichaAbierta]);
 
+  useEffect(() => {
+    const enfocarBuscador = (evento: KeyboardEvent) => {
+      const objetivo = evento.target as HTMLElement | null;
+      const escribiendo = objetivo?.matches("input, textarea, select, [contenteditable='true']");
+      if (evento.key !== "/" || escribiendo || evento.metaKey || evento.ctrlKey || evento.altKey) return;
+      evento.preventDefault();
+      buscadorRef.current?.focus();
+    };
+    window.addEventListener("keydown", enfocarBuscador);
+    return () => window.removeEventListener("keydown", enfocarBuscador);
+  }, []);
+
   const conteos = useMemo(() => Object.fromEntries(estadosEspacio.map(valor => [valor, estado.espacios.filter(espacio => espacio.estado === valor).length])) as Record<EstadoEspacio, number>, [estado.espacios]);
 
   const conteosCategorias = useMemo(() => {
@@ -296,42 +320,42 @@ export default function PaginaRed() {
     return total;
   }, [estado.espacios]);
 
+  const conteosConexion = useMemo(() => {
+    const conPuerto = estado.espacios.filter(espacio => puertosDeEndpoint(estado, espacio.id).length).length;
+    return { conPuerto, sinPuerto: estado.espacios.length - conPuerto };
+  }, [estado]);
+
   const espacioPorEliminar = estado.espacios.find(espacio => espacio.id === porEliminar);
   const planEliminar = porEliminar ? planEliminarEspacio(estado, porEliminar) : null;
 
   const puertosDe = (id: string) => puertosDeEndpoint(estado, id);
   const etiquetaDePuerto = (id: string) => etiquetaPuerto(estado, id);
 
-  const pendientes = useMemo(() => {
-    const endpoints = [...estado.espacios.map(espacio => espacio.id), ...estado.cubiculos.map(cubiculo => `cub:${cubiculo.id}`)];
-    return {
-      sinPuerto: endpoints.filter(id => !puertosDeEndpoint(estado, id).length).length,
-      sinEtiqueta: estado.puertos.filter(puerto => puerto.nota === "sin etiquetar en el levantamiento").length,
-      desconocidos: estado.puertos.filter(puerto => puerto.nota === "destino desconocido según canvas").length,
-    };
-  }, [estado]);
-
   const espaciosVisibles = useMemo(() => {
-    const texto = consulta.trim().toLowerCase();
+    const texto = normalizar(consulta);
     return estado.espacios.filter(espacio => {
       if (filtro !== "todos" && espacio.estado !== filtro) return false;
+      if (filtroCategoria !== "todos" && espacio.categoria !== filtroCategoria) return false;
+      const puertosDelEspacio = puertosDeEndpoint(estado, espacio.id);
+      if (filtroConexion === "con-puerto" && !puertosDelEspacio.length) return false;
+      if (filtroConexion === "sin-puerto" && puertosDelEspacio.length) return false;
       if (!texto) return true;
-      const puertos = puertosDeEndpoint(estado, espacio.id).map(puerto => etiquetaPuerto(estado, puerto.id)).join(" ");
+      const puertos = puertosDelEspacio.map(puerto => etiquetaPuerto(estado, puerto.id)).join(" ");
       const tipo = estado.categorias.find(categoria => categoria.id === espacio.categoria)?.nombre ?? "";
-      return `${espacio.nombre} ${espacio.ubicacion} ${espacio.categoria} ${tipo} ${puertos}`.toLowerCase().includes(texto);
+      const contenido = `${espacio.nombre} ${espacio.ubicacion} ${espacio.categoria} ${tipo} ${etiquetasEstadoEspacio[espacio.estado]} ${puertos}`;
+      return coincideBusqueda(contenido, texto);
     });
-  }, [estado, filtro, consulta]);
+  }, [estado, filtro, filtroCategoria, filtroConexion, consulta]);
 
   const coincidenciaBuscador = useMemo(() => {
-    const texto = consulta.trim().toLowerCase();
+    const texto = normalizar(consulta);
     if (texto.length < 2) return "";
-    const normalizar = (valor: string) => valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    const buscado = normalizar(texto);
-    const espacio = estado.espacios.find(candidato => normalizar(`${candidato.nombre} ${candidato.ubicacion}`).includes(buscado));
+    const espacio = estado.espacios.find(candidato => coincideBusqueda(`${candidato.nombre} ${candidato.ubicacion}`, texto));
     if (espacio) return espacio.id;
-    const cubiculo = estado.cubiculos.find(candidato => `cubiculo ${candidato.id}`.includes(buscado) || `cub ${candidato.id}` === buscado);
+    const numeroCubiculo = aliasCubiculo(texto);
+    const cubiculo = numeroCubiculo === null ? undefined : estado.cubiculos.find(candidato => candidato.id === numeroCubiculo);
     if (cubiculo) return `cub:${cubiculo.id}`;
-    const puerto = estado.puertos.find(candidato => normalizar(etiquetaPuerto(estado, candidato.id)).replace(/[\s/]/g, "").includes(buscado.replace(/[\s/]/g, "")));
+    const puerto = estado.puertos.find(candidato => coincideBusqueda(etiquetaPuerto(estado, candidato.id), texto));
     return puerto?.id ?? "";
   }, [consulta, estado]);
 
@@ -355,6 +379,14 @@ export default function PaginaRed() {
     }
   })();
 
+  const hayFiltrosEspacios = filtro !== "todos" || filtroConexion !== "todos" || filtroCategoria !== "todos" || Boolean(consulta.trim());
+  const limpiarFiltrosEspacios = () => {
+    setFiltro("todos");
+    setFiltroConexion("todos");
+    setFiltroCategoria("todos");
+    setConsulta("");
+  };
+
   return (
     <main>
       <header className="topbar">
@@ -364,41 +396,82 @@ export default function PaginaRed() {
 
       <section className="shell">
         {errorCarga && <div className="error-banner" role="alert"><span>{errorCarga}</span><button type="button" onClick={() => void cargar()} disabled={cargando}>{cargando ? "Reintentando…" : "Reintentar"}</button></div>}
-        <div className="workspace-head"><div><h1>Red del colegio</h1><p className="subtitle">{estado.racks.length} racks · {estado.puertos.filter(puerto => puerto.n > 0).length} puertos · {estado.espacios.length} espacios · {estado.cubiculos.length} cubículos.</p></div><div className="workspace-actions"><button className="secondary toolbar-action" onClick={() => setNuevoAbierto(true)}>Agregar elemento</button><button className="secondary toolbar-action" onClick={() => setCapturaAbierta(true)}>Captura rápida</button><details className="workspace-menu"><summary>Más acciones</summary><div><button type="button" className="danger-link" disabled={!estado.enlaces.length || guardando} onClick={evento => { evento.currentTarget.closest("details")?.removeAttribute("open"); setLimpiezaAbierta(true); }}>Limpiar todas las conexiones <small>{estado.enlaces.length} registradas</small></button></div></details></div></div>
-
-        <section className="status-rail" aria-label="Filtros y pendientes de la red">
-          <div className="status-filters">
-            {estadosEspacio.map(valor => <button key={valor} className={`status-filter ${valor === "operativo" ? "operational" : valor === "sin-internet" ? "offline" : valor === "solo-wifi" ? "attention" : "pending"} ${filtro === valor ? "active" : ""}`} aria-pressed={filtro === valor} onClick={() => setFiltro(filtro === valor ? "todos" : valor)}><i aria-hidden="true">{cortosEstado[valor]}</i><strong>{conteos[valor]}</strong><span>{etiquetasEstadoEspacio[valor]}</span></button>)}
-          </div>
-          <p className="pending-line"><span><strong>{pendientes.sinPuerto}</strong> sin puerto</span><span><strong>{pendientes.sinEtiqueta}</strong> puertos sin etiqueta</span><span><strong>{pendientes.desconocidos}</strong> destinos desconocidos</span></p>
-        </section>
+        <div className="workspace-head"><div><h1>Red del colegio</h1><p className="subtitle">{estado.racks.length} racks · {estado.puertos.filter(puerto => puerto.n > 0).length} puertos · {estado.espacios.length} espacios · {estado.cubiculos.length} cubículos.</p></div><div className="workspace-actions"><button className="secondary toolbar-action" onClick={() => setNuevoAbierto(true)}>Agregar elemento</button><button className="secondary toolbar-action" onClick={() => setCapturaAbierta(true)}>Captura rápida</button><details className="workspace-menu"><summary>Más acciones</summary><div><button type="button" className="workspace-action-link" onClick={evento => { evento.currentTarget.closest("details")?.removeAttribute("open"); setTiposAbierto(true); }}>Administrar tipos de espacio <small>Crear, renombrar o reasignar</small></button><div className="workspace-menu-separator" /><button type="button" className="danger-link" disabled={!estado.enlaces.length || guardando} onClick={evento => { evento.currentTarget.closest("details")?.removeAttribute("open"); setLimpiezaAbierta(true); }}>Limpiar todas las conexiones <small>{estado.enlaces.length} registradas</small></button></div></details></div></div>
 
         <section className="room-surface">
           <div className="room-toolbar">
-            <h2>{vista === "espacios" ? "Espacios del colegio" : vista === "racks" ? "Racks y puertos" : vista === "cobertura" ? "Cobertura del levantamiento" : "Diagrama de la red"}</h2>
-            <div className="net-toolbar-right">
-              <div className="net-seg" role="group" aria-label="Vista">
-                <button className={vista === "espacios" ? "on" : ""} aria-pressed={vista === "espacios"} onClick={() => setVista("espacios")}>ESPACIOS</button>
-                <button className={vista === "racks" ? "on" : ""} aria-pressed={vista === "racks"} onClick={() => setVista("racks")}>RACKS</button>
-                <button className={vista === "cobertura" ? "on" : ""} aria-pressed={vista === "cobertura"} onClick={() => setVista("cobertura")}>COBERTURA</button>
-                <button className={vista === "diagrama" ? "on" : ""} aria-pressed={vista === "diagrama"} onClick={() => setVista("diagrama")}>DIAGRAMA</button>
-              </div>
-              <label className="search"><span aria-hidden="true">⌕</span><span className="sr-only">Buscar espacio, cubículo o puerto</span><input value={consulta} aria-label="Buscar espacio, cubículo o puerto" onChange={event => setConsulta(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && coincidenciaBuscador) setSeleccionado(coincidenciaBuscador); }} placeholder="Buscar espacio, cubículo o puerto" /></label>
+            <div>
+              <h2>{vista === "espacios" ? <>Espacios del colegio <span>{estado.espacios.length}</span></> : vista === "racks" ? "Racks y puertos" : vista === "cobertura" ? "Cobertura del levantamiento" : "Diagrama de la red"}</h2>
+              <p>{vista === "espacios" ? "Estado operativo y conexión documentada de cada espacio." : vista === "racks" ? "Equipos y puertos disponibles en cada rack." : vista === "cobertura" ? "Avance global del levantamiento y pendientes por resolver." : "Recorrido completo de las conexiones del colegio."}</p>
             </div>
           </div>
-          {vista === "espacios" && <div className="net-orden-bar">
-            <label className="net-orden-select">Ordenar por
-              <select value={ordenEspacios} onChange={event => setOrdenEspacios(event.target.value as CriterioOrden)}>
-                {criteriosOrden.map(valor => <option key={valor} value={valor}>{etiquetasCriterioOrden[valor]}</option>)}
-              </select>
-            </label>
-            <button type="button" className={`net-toggle ${agrupar ? "on" : ""}`} aria-pressed={agrupar} onClick={() => setAgrupar(!agrupar)}>Agrupar por tipo</button>
-            <button type="button" className="secondary net-orden-tipos" onClick={() => setTiposAbierto(true)}>Administrar tipos</button>
-          </div>}
+
+          <div className="net-navigation-bar">
+            <div className="net-seg" role="group" aria-label="Vista de la red">
+              <button className={vista === "espacios" ? "on" : ""} aria-pressed={vista === "espacios"} onClick={() => setVista("espacios")}>Espacios</button>
+              <button className={vista === "racks" ? "on" : ""} aria-pressed={vista === "racks"} onClick={() => setVista("racks")}>Racks</button>
+              <button className={vista === "cobertura" ? "on" : ""} aria-pressed={vista === "cobertura"} onClick={() => setVista("cobertura")}>Cobertura</button>
+              <button className={vista === "diagrama" ? "on" : ""} aria-pressed={vista === "diagrama"} onClick={() => setVista("diagrama")}>Diagrama</button>
+            </div>
+            <div className="search net-global-search" role="search">
+              <span aria-hidden="true">⌕</span>
+              <span className="sr-only">Buscar por espacio, ubicación, rack o puerto</span>
+              <input ref={buscadorRef} value={consulta} aria-label="Buscar por espacio, ubicación, rack o puerto" onChange={event => setConsulta(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && coincidenciaBuscador) abrirFicha(coincidenciaBuscador); }} placeholder="Buscar por espacio, ubicación, rack o puerto…" />
+              {consulta ? <button type="button" className="net-search-clear" onClick={() => setConsulta("")} aria-label="Limpiar búsqueda">×</button> : <kbd aria-hidden="true">/</kbd>}
+            </div>
+          </div>
+
+          {vista === "espacios" && <>
+            <button type="button" className="net-mobile-filter-toggle" aria-expanded={filtrosMovilAbiertos} aria-controls="filtros-espacios" onClick={() => setFiltrosMovilAbiertos(actual => !actual)}>
+              <span>Filtros {hayFiltrosEspacios ? `· ${espaciosVisibles.length} resultados` : ""}</span><i aria-hidden="true">⌄</i>
+            </button>
+            <section id="filtros-espacios" className={`net-space-filters ${filtrosMovilAbiertos ? "open" : ""}`} aria-label="Filtros de espacios">
+              <div className="net-filter-row">
+                <span className="net-filter-label">Estado</span>
+                <div className="net-filter-chips">
+                  <button type="button" className={filtro === "todos" ? "on" : ""} aria-pressed={filtro === "todos"} onClick={() => setFiltro("todos")}><i className="all" aria-hidden="true" />Todos <strong>{estado.espacios.length}</strong></button>
+                  {estadosEspacio.map(valor => <button type="button" key={valor} className={`${valor} ${filtro === valor ? "on" : ""}`} aria-pressed={filtro === valor} onClick={() => setFiltro(valor)}><i aria-hidden="true" />{etiquetasEstadoEspacio[valor]} <strong>{conteos[valor]}</strong></button>)}
+                </div>
+              </div>
+              <div className="net-filter-row">
+                <span className="net-filter-label">Documentación</span>
+                <div className="net-filter-chips connection">
+                  <button type="button" className={filtroConexion === "todos" ? "on" : ""} aria-pressed={filtroConexion === "todos"} onClick={() => setFiltroConexion("todos")}>Todos <strong>{estado.espacios.length}</strong></button>
+                  <button type="button" className={filtroConexion === "con-puerto" ? "on" : ""} aria-pressed={filtroConexion === "con-puerto"} onClick={() => setFiltroConexion("con-puerto")}><i className="documented" aria-hidden="true" />Con puerto <strong>{conteosConexion.conPuerto}</strong></button>
+                  <button type="button" className={filtroConexion === "sin-puerto" ? "on" : ""} aria-pressed={filtroConexion === "sin-puerto"} onClick={() => setFiltroConexion("sin-puerto")}><i className="undocumented" aria-hidden="true" />Sin documentar <strong>{conteosConexion.sinPuerto}</strong></button>
+                </div>
+              </div>
+            </section>
+
+            <div className="net-space-controls">
+              <p><strong>{espaciosVisibles.length}</strong> de {estado.espacios.length} espacios</p>
+              <div>
+                <label className="net-control-select"><span>Tipo</span><select value={filtroCategoria} onChange={event => setFiltroCategoria(event.target.value)}><option value="todos">Todos</option>{estado.categorias.map(categoria => <option key={categoria.id} value={categoria.id}>{categoria.nombre} ({conteosCategorias[categoria.id] ?? 0})</option>)}</select></label>
+                <label className="net-control-select"><span>Orden</span><select value={ordenEspacios} onChange={event => setOrdenEspacios(event.target.value as CriterioOrden)}>{criteriosOrden.map(valor => <option key={valor} value={valor}>{etiquetasCriterioOrden[valor]}</option>)}</select></label>
+                <button type="button" className={`net-group-toggle ${agrupar ? "on" : ""}`} aria-pressed={agrupar} onClick={() => setAgrupar(!agrupar)}><i aria-hidden="true" />Agrupar</button>
+                <div className="net-seg compact" role="group" aria-label="Formato de espacios">
+                  <button type="button" className={formatoEspacios === "lista" ? "on" : ""} aria-pressed={formatoEspacios === "lista"} onClick={() => setFormatoEspacios("lista")}>Lista</button>
+                  <button type="button" className={formatoEspacios === "cuadricula" ? "on" : ""} aria-pressed={formatoEspacios === "cuadricula"} onClick={() => setFormatoEspacios("cuadricula")}>Cuadrícula</button>
+                </div>
+              </div>
+            </div>
+
+            {hayFiltrosEspacios && <div className="net-active-filters" role="status">
+              <span>Filtros activos</span>
+              <div>
+                {consulta && <button type="button" onClick={() => setConsulta("")}>Búsqueda: “{consulta}” <i aria-hidden="true">×</i></button>}
+                {filtro !== "todos" && <button type="button" onClick={() => setFiltro("todos")}>Estado: {etiquetasEstadoEspacio[filtro]} <i aria-hidden="true">×</i></button>}
+                {filtroConexion !== "todos" && <button type="button" onClick={() => setFiltroConexion("todos")}>{filtroConexion === "con-puerto" ? "Con puerto" : "Sin documentar"} <i aria-hidden="true">×</i></button>}
+                {filtroCategoria !== "todos" && <button type="button" onClick={() => setFiltroCategoria("todos")}>Tipo: {estado.categorias.find(categoria => categoria.id === filtroCategoria)?.nombre ?? filtroCategoria} <i aria-hidden="true">×</i></button>}
+              </div>
+              <button type="button" className="net-clear-filters" onClick={limpiarFiltrosEspacios}>Limpiar todo</button>
+            </div>}
+          </>}
+
           {coincidenciaBuscador && <div className="net-quick"><span className="net-quick-chain">{cadenaComoTexto(cadenaBuscador)}</span><div className="net-quick-actions"><button className="secondary" type="button" onClick={() => void copiarCadenaBuscador()}>Copiar</button><button className="secondary" type="button" onClick={() => abrirFicha(coincidenciaBuscador)}>Abrir ficha</button></div></div>}
           <div className={cargando ? "net-body is-loading" : "net-body"}>
             {vista === "espacios"
-              ? <VistaEspacios espacios={espaciosVisibles} categorias={estado.categorias} orden={ordenEspacios} agrupar={agrupar} puertosDe={puertosDe} etiquetaDePuerto={etiquetaDePuerto} cubiculos={estado.cubiculos} seleccionado={seleccionado} onAbrir={abrirFicha} />
+              ? <VistaEspacios espacios={espaciosVisibles} categorias={estado.categorias} orden={ordenEspacios} agrupar={agrupar} formato={formatoEspacios} puertosDe={puertosDe} etiquetaDePuerto={etiquetaDePuerto} cubiculos={estado.cubiculos} seleccionado={seleccionado} onAbrir={abrirFicha} onLimpiar={limpiarFiltrosEspacios} />
               : vista === "racks"
                 ? <VistaRacks estado={estado} rackActivo={rackVisible} onRack={setRackActivo} formato={formatoRacks} onFormato={setFormatoRacks} seleccionado={seleccionado} onAbrir={abrirFicha} />
                 : vista === "cobertura"

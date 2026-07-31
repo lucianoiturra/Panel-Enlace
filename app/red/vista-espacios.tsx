@@ -1,49 +1,166 @@
+"use client";
+
+import { useState } from "react";
 import { agruparPorTipo, ordenarEspacios, type CriterioOrden } from "../../lib/red/agrupar";
 import { etiquetasEstadoEspacio, ID_SALA_COMPUTACION, type Categoria, type Cubiculo, type Espacio, type Puerto } from "../../lib/red/modelo";
+
+export type FormatoEspacios = "lista" | "cuadricula";
 
 type Props = {
   espacios: Espacio[];
   categorias: Categoria[];
   orden: CriterioOrden;
   agrupar: boolean;
+  formato: FormatoEspacios;
   puertosDe: (id: string) => Puerto[];
   etiquetaDePuerto: (id: string) => string;
   cubiculos: Cubiculo[];
   seleccionado: string;
   onAbrir: (id: string) => void;
+  onLimpiar: () => void;
 };
 
-export default function VistaEspacios({ espacios, categorias, orden, agrupar, puertosDe, etiquetaDePuerto, cubiculos, seleccionado, onAbrir }: Props) {
-  if (!espacios.length) return <p className="empty-state">Ningún espacio coincide con el filtro.</p>;
+const pluralizar = (cantidad: number, singular: string, plural = `${singular}s`) => `${cantidad} ${cantidad === 1 ? singular : plural}`;
+
+export default function VistaEspacios({ espacios, categorias, orden, agrupar, formato, puertosDe, etiquetaDePuerto, cubiculos, seleccionado, onAbrir, onLimpiar }: Props) {
+  const [gruposCerrados, setGruposCerrados] = useState<Set<string>>(new Set());
+
+  if (!espacios.length) return (
+    <div className="net-spaces-empty">
+      <span aria-hidden="true">⌕</span>
+      <div>
+        <strong>No encontramos espacios</strong>
+        <p>Prueba con otro nombre, puerto o combinación de filtros.</p>
+      </div>
+      <button type="button" className="secondary" onClick={onLimpiar}>Quitar filtros</button>
+    </div>
+  );
 
   const ordenados = ordenarEspacios(espacios, orden, categorias);
-  const etiquetaTipo = (id: string) => categorias.find(categoria => categoria.id === id)?.nombre ?? "";
+  const etiquetaTipo = (id: string) => categorias.find(categoria => categoria.id === id)?.nombre ?? "Sin tipo";
 
-  const tarjeta = (espacio: Espacio) => {
+  const datosDe = (espacio: Espacio) => {
     const puertos = puertosDe(espacio.id);
-    const esSalaComputacion = espacio.id === ID_SALA_COMPUTACION;
-    const tipo = etiquetaTipo(espacio.categoria);
+    return {
+      puertos,
+      tipo: etiquetaTipo(espacio.categoria),
+      conexion: puertos.map(puerto => etiquetaDePuerto(puerto.id)).join(" · "),
+      esSalaComputacion: espacio.id === ID_SALA_COMPUTACION,
+    };
+  };
+
+  const estado = (espacio: Espacio) => (
+    <span className={`net-space-status ${espacio.estado}`}>
+      <i aria-hidden="true" />
+      {etiquetasEstadoEspacio[espacio.estado]}
+    </span>
+  );
+
+  const conexion = (espacio: Espacio) => {
+    const datos = datosDe(espacio);
+    return datos.puertos.length
+      ? <span className="net-space-connection documented"><i aria-hidden="true">↳</i>{datos.conexion}</span>
+      : <span className="net-space-connection undocumented"><i aria-hidden="true">!</i>Sin documentar</span>;
+  };
+
+  const fila = (espacio: Espacio) => {
+    const datos = datosDe(espacio);
     return (
-      <button key={espacio.id} className={`net-card ${espacio.estado} ${seleccionado === espacio.id ? "selected" : ""}`} onClick={() => onAbrir(espacio.id)} aria-label={`${espacio.nombre}${tipo ? `, ${tipo}` : ""}, ${etiquetasEstadoEspacio[espacio.estado]}`}>
-        <span className="net-card-name">{espacio.nombre}</span>
-        {!agrupar && tipo && <span className="net-card-type">{tipo}</span>}
-        {espacio.ubicacion && <span className="net-card-location">{espacio.ubicacion}</span>}
-        {puertos.length ? <span className="net-card-port">{puertos.map(puerto => etiquetaDePuerto(puerto.id)).join(" · ")}</span> : <span className="net-card-port none">Sin puerto</span>}
-        {esSalaComputacion && <span className="net-card-extra">{cubiculos.length} cubículos</span>}
+      <button
+        type="button"
+        key={espacio.id}
+        className={`net-space-row ${seleccionado === espacio.id ? "selected" : ""}`}
+        onClick={() => onAbrir(espacio.id)}
+        aria-label={`Abrir ${espacio.nombre}, ${datos.tipo}, ${etiquetasEstadoEspacio[espacio.estado]}, ${datos.puertos.length ? datos.conexion : "sin conexión documentada"}`}
+      >
+        <span className="net-space-primary">
+          <strong>{espacio.nombre}</strong>
+          {datos.esSalaComputacion && <small>{pluralizar(cubiculos.length, "cubículo")}</small>}
+        </span>
+        <span className="net-space-type">{datos.tipo}</span>
+        <span className={`net-space-location ${espacio.ubicacion ? "" : "empty"}`}>{espacio.ubicacion || "—"}</span>
+        {estado(espacio)}
+        {conexion(espacio)}
+        <span className="net-space-open" aria-hidden="true">›</span>
       </button>
     );
   };
 
-  if (!agrupar) return <div className="net-grid">{ordenados.map(tarjeta)}</div>;
+  const tarjeta = (espacio: Espacio) => {
+    const datos = datosDe(espacio);
+    return (
+      <button
+        type="button"
+        key={espacio.id}
+        className={`net-space-card ${seleccionado === espacio.id ? "selected" : ""}`}
+        onClick={() => onAbrir(espacio.id)}
+        aria-label={`Abrir ${espacio.nombre}, ${datos.tipo}, ${etiquetasEstadoEspacio[espacio.estado]}, ${datos.puertos.length ? datos.conexion : "sin conexión documentada"}`}
+      >
+        <span className="net-space-card-head">
+          <strong>{espacio.nombre}</strong>
+          <span aria-hidden="true">›</span>
+        </span>
+        <span className="net-space-card-meta">
+          {!agrupar && <span>{datos.tipo}</span>}
+          {espacio.ubicacion && <span>{espacio.ubicacion}</span>}
+          {datos.esSalaComputacion && <span>{pluralizar(cubiculos.length, "cubículo")}</span>}
+        </span>
+        <span className="net-space-card-foot">
+          {estado(espacio)}
+          {conexion(espacio)}
+        </span>
+      </button>
+    );
+  };
+
+  const contenido = (items: Espacio[], mostrarCabecera = false) => formato === "lista" ? (
+    <div className="net-space-list">
+      {mostrarCabecera && <div className="net-space-list-head" aria-hidden="true">
+        <span>Espacio</span><span>Tipo</span><span>Ubicación</span><span>Estado</span><span>Conexión</span><span />
+      </div>}
+      {items.map(fila)}
+    </div>
+  ) : <div className="net-space-grid">{items.map(tarjeta)}</div>;
+
+  if (!agrupar) return contenido(ordenados, formato === "lista");
 
   return (
-    <div className="net-grupos">
-      {agruparPorTipo(ordenados, categorias).map(grupo => (
-        <section key={grupo.id || "sin-tipo"} aria-label={grupo.nombre}>
-          <h3 className="net-grupo-titulo">{grupo.nombre} <span>{grupo.espacios.length}</span></h3>
-          <div className="net-grid">{grupo.espacios.map(tarjeta)}</div>
-        </section>
-      ))}
+    <div className="net-space-groups">
+      {formato === "lista" && <div className="net-space-list-head global" aria-hidden="true">
+        <span>Espacio</span><span>Tipo</span><span>Ubicación</span><span>Estado</span><span>Conexión</span><span />
+      </div>}
+      {agruparPorTipo(ordenados, categorias).map(grupo => {
+        const problemas = grupo.espacios.filter(espacio => espacio.estado !== "operativo").length;
+        const sinDocumentar = grupo.espacios.filter(espacio => !puertosDe(espacio.id).length).length;
+        const cerrado = gruposCerrados.has(grupo.id);
+        return (
+          <section className={`net-space-group ${cerrado ? "collapsed" : ""}`} key={grupo.id || "sin-tipo"} aria-labelledby={`grupo-${grupo.id || "sin-tipo"}`}>
+            <button
+              type="button"
+              className="net-space-group-head"
+              aria-expanded={!cerrado}
+              aria-controls={`contenido-${grupo.id || "sin-tipo"}`}
+              onClick={() => setGruposCerrados(actual => {
+                const siguiente = new Set(actual);
+                if (siguiente.has(grupo.id)) siguiente.delete(grupo.id);
+                else siguiente.add(grupo.id);
+                return siguiente;
+              })}
+            >
+              <span className="net-space-group-title" id={`grupo-${grupo.id || "sin-tipo"}`}>
+                <strong>{grupo.nombre}</strong>
+                <small>{grupo.espacios.length}</small>
+              </span>
+              <span className="net-space-group-summary">
+                {problemas ? <span>{pluralizar(problemas, "problema")}</span> : <span className="ok">Sin problemas</span>}
+                <span>{pluralizar(sinDocumentar, "conexión", "conexiones")} sin documentar</span>
+              </span>
+              <span className="net-space-group-toggle" aria-hidden="true">⌃</span>
+            </button>
+            <div id={`contenido-${grupo.id || "sin-tipo"}`} hidden={cerrado}>{contenido(grupo.espacios)}</div>
+          </section>
+        );
+      })}
     </div>
   );
 }
