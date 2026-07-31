@@ -226,7 +226,7 @@ export default function PaginaRed() {
   };
 
   const restablecerOrden = () => {
-    if (!window.confirm("¿Volver al orden automático del diagrama? Se pierde el orden que definiste a mano.")) return;
+    if (!window.confirm("¿Volver al orden automático? Se pierde el orden que definiste a mano, tanto en el diagrama como en los racks.")) return;
     void conGuardado(async () => {
       await pedir("/api/red/orden", { method: "DELETE" }, "No fue posible restablecer el orden.");
     }, "Orden restablecido.");
