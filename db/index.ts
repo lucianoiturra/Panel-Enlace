@@ -158,6 +158,15 @@ const prepararEsquema = unaVezPorClave(async (url: string) => {
     "CREATE INDEX IF NOT EXISTS net_enlace_a_idx ON net_enlaces (a)",
     "CREATE INDEX IF NOT EXISTS net_enlace_b_idx ON net_enlaces (b)",
     "CREATE INDEX IF NOT EXISTS net_bitacora_objetivo_idx ON net_bitacora (objetivo)",
+    `CREATE TABLE IF NOT EXISTS mon_devices (
+      mac TEXT PRIMARY KEY,
+      ip TEXT NOT NULL DEFAULT '',
+      name TEXT NOT NULL DEFAULT '',
+      vendor TEXT NOT NULL DEFAULT '',
+      last_connection TEXT NOT NULL DEFAULT '',
+      present BOOLEAN NOT NULL DEFAULT FALSE,
+      refreshed_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`,
   ];
   for (const statement of statements) await sql.unsafe(statement);
 

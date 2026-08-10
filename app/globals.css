@@ -611,3 +611,21 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offs
 @media(prefers-reduced-motion:reduce){
   .net-space-row,.net-space-card,.net-space-open,.net-space-card-head>span,.net-space-group-toggle,.net-mobile-filter-toggle i{transition:none}
 }
+
+/* Monitoreo: red viva vs documentación */
+.mon-toggle{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;font-weight:700;white-space:nowrap}
+.mon-summary{display:flex;flex-wrap:wrap;gap:10px;margin:20px 0}
+.mon-summary .chip{position:relative;display:flex;flex-direction:column;gap:3px;padding:11px 16px 11px 22px;border:1px solid var(--line);border-radius:9px;background:var(--surface);min-width:92px}
+.mon-summary .chip::before{content:"";position:absolute;left:10px;top:15px;width:7px;height:7px;border-radius:50%;background:var(--dot,#888)}
+.mon-summary .chip b{font-size:23px;line-height:1}
+.mon-summary .chip span{color:var(--muted);font:700 9px var(--font-mono);letter-spacing:.07em;text-transform:uppercase}
+.mon-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:9px;background:var(--surface)}
+.mon-table{width:100%;border-collapse:collapse;font-size:13px;min-width:720px}
+.mon-table th,.mon-table td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+.mon-table tbody tr:last-child td{border-bottom:0}
+.mon-table th{color:var(--muted);font:700 10px var(--font-mono);letter-spacing:.06em;text-transform:uppercase}
+.mon-badge{display:inline-flex;align-items:center;gap:7px;font-weight:700;font-size:12px}
+.mon-badge::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--dot,#888);flex-shrink:0}
+.mon-mono{font-family:var(--font-mono);font-size:12px}
+.mon-muted{color:var(--muted)}
+.mon-empty{color:var(--muted);text-align:center;padding:22px}

@@ -1,4 +1,4 @@
-import { boolean, index, integer, pgTable, serial, text, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 export const cubicles = pgTable("cubicles", {
   id: integer("id").primaryKey(),
@@ -141,4 +141,16 @@ export const netBitacora = pgTable(
 export const netOrden = pgTable("net_orden", {
   id: text("id").primaryKey(),
   orden: integer("orden").notNull(),
+});
+
+// Instantánea de la red viva (NetAlertX), refrescada por el sidecar
+// panel-mon-export. Es un caché de solo lectura: se reemplaza cada ciclo.
+export const monDevices = pgTable("mon_devices", {
+  mac: text("mac").primaryKey(),
+  ip: text("ip").notNull().default(""),
+  name: text("name").notNull().default(""),
+  vendor: text("vendor").notNull().default(""),
+  lastConnection: text("last_connection").notNull().default(""),
+  present: boolean("present").notNull().default(false),
+  refreshedAt: timestamp("refreshed_at", { withTimezone: true }).notNull().defaultNow(),
 });
