@@ -102,6 +102,9 @@ export const netEspacios = pgTable("net_espacios", {
   x: integer("x").notNull().default(0),
   y: integer("y").notNull().default(0),
   nota: text("nota").notNull().default(""),
+  // MAC del dispositivo testigo (AP o equipo fijo) que decide el estado en
+  // vivo del espacio según su presencia en mon_devices.
+  testigoMac: text("testigo_mac").notNull().default(""),
 });
 
 export const netCategorias = pgTable("net_categorias", {

@@ -126,6 +126,7 @@ const prepararEsquema = unaVezPorClave(async (url: string) => {
       nota TEXT NOT NULL DEFAULT ''
     )`,
     "ALTER TABLE net_espacios ADD COLUMN IF NOT EXISTS ubicacion TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE net_espacios ADD COLUMN IF NOT EXISTS testigo_mac TEXT NOT NULL DEFAULT ''",
     `CREATE TABLE IF NOT EXISTS net_categorias (
       id TEXT PRIMARY KEY,
       nombre TEXT NOT NULL DEFAULT '',
