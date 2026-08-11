@@ -1,4 +1,4 @@
-import { boolean, index, integer, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, doublePrecision, index, integer, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 export const cubicles = pgTable("cubicles", {
   id: integer("id").primaryKey(),
@@ -156,4 +156,13 @@ export const monDevices = pgTable("mon_devices", {
   lastConnection: text("last_connection").notNull().default(""),
   present: boolean("present").notNull().default(false),
   refreshedAt: timestamp("refreshed_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Foto de la salud del stack, reescrita entera cada 5 min por el timer
+// salud-cabserver del host. Hechos crudos: el juicio vive en lib/salud.
+export const monSalud = pgTable("mon_salud", {
+  clave: text("clave").primaryKey(),
+  valor: text("valor").notNull().default(""),
+  numero: doublePrecision("numero"),
+  medidoAt: timestamp("medido_at", { withTimezone: true }).notNull().defaultNow(),
 });

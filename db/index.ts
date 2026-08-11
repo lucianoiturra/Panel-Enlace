@@ -168,6 +168,12 @@ const prepararEsquema = unaVezPorClave(async (url: string) => {
       present BOOLEAN NOT NULL DEFAULT FALSE,
       refreshed_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )`,
+    `CREATE TABLE IF NOT EXISTS mon_salud (
+      clave TEXT PRIMARY KEY,
+      valor TEXT NOT NULL DEFAULT '',
+      numero DOUBLE PRECISION,
+      medido_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`,
   ];
   for (const statement of statements) await sql.unsafe(statement);
 
