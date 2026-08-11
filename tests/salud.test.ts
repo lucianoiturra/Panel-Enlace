@@ -239,3 +239,19 @@ test("host.disco_libre_gb en 0 sigue apareciendo en el detalle (A8)", () => {
   const detalle = fila(evaluarSalud(hechos, RECIEN, 21, AHORA), "host.disco_uso_pct").detalle;
   assert.match(detalle, /0 GB libres/);
 });
+
+// --- A3: la rama "sin copias" del pg_dump ahora tambien emite pgdump_bytes -
+// (para que las dos ramas del if/else sumen las mismas 21 filas). El 0 que
+// emite no debe cambiar el mensaje: "sin copias" manda sobre "copia vacia".
+
+test("pg_dump sin copias es falla por falta de copia, no por copia vacia (A3)", () => {
+  const hechos = stackSano().map((h) => {
+    if (h.clave === "backup.pgdump_edad_seg") return { ...h, valor: "sin copias", numero: null };
+    if (h.clave === "backup.pgdump_bytes") return { ...h, numero: 0 };
+    return h;
+  });
+  const f = fila(evaluarSalud(hechos, RECIEN, 21, AHORA), "backup.pgdump_edad_seg");
+  assert.equal(f.estado, "falla");
+  assert.equal(f.detalle, "sin copias todavía");
+  assert.notEqual(f.detalle, "la última copia está vacía");
+});

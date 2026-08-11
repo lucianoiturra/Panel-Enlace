@@ -38,6 +38,7 @@ if [ -n "$ultimo_pg" ]; then
   emit backup.pgdump_bytes "" "$(stat -c %s "$ultimo_pg")"
 else
   emit backup.pgdump_edad_seg "sin copias"
+  emit backup.pgdump_bytes "" 0
 fi
 
 # --- respaldo al disco externo ---------------------------------------------
