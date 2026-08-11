@@ -39,6 +39,17 @@ function peorDe(estados: EstadoSalud[]): EstadoSalud {
   return ORDEN.find((e) => RANGO[e] === alto) ?? "ok";
 }
 
+// Etiqueta de un bloque: el peor estado que REALMENTE tienen sus filas. Se
+// distingue de peorDe, que mide severidad para el punto de la nav: ahi un
+// bloque entero en sin-datos pesa como atencion, pero decir "Atencion" en el
+// encabezado de siete filas que dicen "Sin datos" seria nombrar un estado que
+// nadie tiene.
+function estadoPresente(estados: EstadoSalud[]): EstadoSalud {
+  if (!estados.length) return "sin-datos";
+  const alto = Math.max(...estados.map((e) => RANGO[e]));
+  return ORDEN.find((e) => RANGO[e] === alto && estados.includes(e)) ?? "ok";
+}
+
 function hace(segundos: number): string {
   if (segundos < 60) return "hace instantes";
   const min = Math.round(segundos / 60);
@@ -199,10 +210,10 @@ export function evaluarSalud(
   ];
 
   const bloques: BloqueSalud[] = [
-    { id: "monitoreo", titulo: "Monitoreo", estado: peorDe(monitoreo.map((f) => f.estado)), filas: monitoreo },
-    { id: "servidor", titulo: "Servidor", estado: peorDe(servidor.map((f) => f.estado)), filas: servidor },
-    { id: "respaldos", titulo: "Respaldos", estado: peorDe(respaldos.map((f) => f.estado)), filas: respaldos },
-    { id: "servicios", titulo: "Servicios", estado: peorDe(servicios.map((f) => f.estado)), filas: servicios },
+    { id: "monitoreo", titulo: "Monitoreo", estado: estadoPresente(monitoreo.map((f) => f.estado)), filas: monitoreo },
+    { id: "servidor", titulo: "Servidor", estado: estadoPresente(servidor.map((f) => f.estado)), filas: servidor },
+    { id: "respaldos", titulo: "Respaldos", estado: estadoPresente(respaldos.map((f) => f.estado)), filas: respaldos },
+    { id: "servicios", titulo: "Servicios", estado: estadoPresente(servicios.map((f) => f.estado)), filas: servicios },
   ];
 
   return { peor: peorDe(bloques.map((b) => b.estado)), medidoAt, bloques };

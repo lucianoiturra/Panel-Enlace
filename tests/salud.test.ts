@@ -161,3 +161,22 @@ test("con falla y atencion juntas, peor es falla", () => {
   });
   assert.equal(evaluarSalud(hechos, RECIEN, 21, AHORA).peor, "falla");
 });
+
+test("con el colector muerto, el bloque Servidor se titula sin-datos, no atencion", () => {
+  const viejo = new Date(AHORA - 40 * 60_000).toISOString();
+  const hechos = stackSano().map((h) => ({ ...h, medidoAt: viejo }));
+  const salud = evaluarSalud(hechos, RECIEN, 21, AHORA);
+  const servidor = salud.bloques.find((b) => b.id === "servidor");
+  assert.ok(servidor);
+  assert.equal(servidor.estado, "sin-datos");
+  // La severidad agregada sigue pesando como atencion para el punto de la nav.
+  assert.equal(salud.peor, "atencion");
+});
+
+test("un bloque con una falla real se titula falla, no sin-datos", () => {
+  const hechos = stackSano().map((h) =>
+    h.clave === "servicio.tailscale" ? { ...h, valor: "falla" } : h);
+  const servicios = evaluarSalud(hechos, RECIEN, 21, AHORA).bloques.find((b) => b.id === "servicios");
+  assert.ok(servicios);
+  assert.equal(servicios.estado, "falla");
+});
