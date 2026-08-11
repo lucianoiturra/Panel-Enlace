@@ -5,7 +5,7 @@ import { agruparPorTipo, ordenarEspacios } from "../lib/red/agrupar.ts";
 import type { Categoria, Espacio } from "../lib/red/modelo.ts";
 
 const espacio = (id: string, nombre: string, categoria: string, estado: Espacio["estado"] = "sin-verificar"): Espacio =>
-  ({ id, nombre, ubicacion: "", categoria, estado, x: 0, y: 0, nota: "" });
+  ({ id, nombre, ubicacion: "", categoria, estado, x: 0, y: 0, nota: "", testigoMac: "" });
 
 const categorias: Categoria[] = [
   { id: "sala", nombre: "Sala", orden: 0, fija: true },

@@ -1,16 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { cadenaComoTexto, saltosDesdeIsp, type Cadena } from "../../lib/red/trazado";
-import { CATEGORIA_POR_DEFECTO, estadosEspacio, estadosPuerto, etiquetaCategoria, etiquetaEndpoint, etiquetaPuerto, etiquetasEstadoEspacio, etiquetasEstadoPuerto, numeroCubiculo, planEliminarEspacio, prefijoDe, type CategoriaEspacio, type EstadoRed } from "../../lib/red/modelo";
+import { CATEGORIA_POR_DEFECTO, estadosEspacio, estadosPuerto, etiquetaCategoria, etiquetaEndpoint, etiquetaPuerto, etiquetasEstadoEspacio, etiquetasEstadoPuerto, numeroCubiculo, planEliminarEspacio, prefijoDe, type CategoriaEspacio } from "../../lib/red/modelo";
+import type { RedEfectiva } from "../../lib/red/estado-efectivo";
+import type { CandidatoTestigo } from "./page";
 import { pareceIp } from "../../lib/red/inventario";
 import type { RecursoNuevo } from "./nuevo-recurso";
 import { useDialogFocus } from "../use-dialog-focus";
 
 type Props = {
-  estado: EstadoRed;
+  estado: RedEfectiva;
   endpointId: string;
   cadena: Cadena;
   guardando: boolean;
+  candidatosTestigo: CandidatoTestigo[];
+  onGuardarTestigo: (id: string, testigoMac: string) => Promise<void>;
   onCerrar: () => void;
   onGuardarCampos: (cambios: { estado?: string; nota?: string }) => Promise<void>;
   onGuardarRecurso: (cambios: RecursoNuevo & { id: string }) => Promise<void>;
@@ -19,7 +23,7 @@ type Props = {
   onEliminarEspacio: (id: string) => void;
 };
 
-export default function Ficha({ estado, endpointId, cadena, guardando, onCerrar, onGuardarCampos, onGuardarRecurso, onCrearEnlace, onBorrarEnlace, onEliminarEspacio }: Props) {
+export default function Ficha({ estado, endpointId, cadena, guardando, candidatosTestigo, onGuardarTestigo, onCerrar, onGuardarCampos, onGuardarRecurso, onCrearEnlace, onBorrarEnlace, onEliminarEspacio }: Props) {
   const dialogRef = useDialogFocus<HTMLElement>(onCerrar);
   const tipo = prefijoDe(endpointId);
   const espacio = estado.espacios.find(candidato => candidato.id === endpointId);
@@ -160,7 +164,26 @@ export default function Ficha({ estado, endpointId, cadena, guardando, onCerrar,
           <button className="secondary" type="button" disabled={guardando || !recursoModificado || !nombreRecurso.trim()} onClick={() => void guardarDatosRecurso()}>{guardando ? "Guardando…" : "Guardar datos"}</button>
         </section>}
 
-        {espacio && <label>Estado<select value={espacio.estado} disabled={guardando} onChange={event => void onGuardarCampos({ estado: event.target.value })}>{estadosEspacio.map(valor => <option key={valor} value={valor}>{etiquetasEstadoEspacio[valor]}</option>)}</select></label>}
+        {espacio && <section className="net-testigo" aria-label="Estado del espacio">
+          <label>Estado
+            <select value={espacio.estado} disabled={guardando || espacio.origen === "auto"} onChange={event => void onGuardarCampos({ estado: event.target.value })}>
+              {estadosEspacio.map(valor => <option key={valor} value={valor}>{etiquetasEstadoEspacio[valor]}</option>)}
+            </select>
+          </label>
+          {espacio.origen === "auto"
+            ? <p className="net-pista">Lo decide el testigo <b>{espacio.testigoMac}</b>, ahora {espacio.testigoPresente ? "presente" : "ausente"} en la red. Para escribirlo a mano, quítale el testigo.</p>
+            : espacio.testigoMac
+              ? <p className="net-pista">Tiene testigo asignado, pero los datos de red no están frescos: manda el estado manual.</p>
+              : <p className="net-pista">Sin testigo: este estado lo escribes tú y no se actualiza solo.</p>}
+          <label>Dispositivo testigo
+            <select value={espacio.testigoMac} disabled={guardando} onChange={event => void onGuardarTestigo(espacio.id, event.target.value)}>
+              <option value="">— sin testigo (estado manual) —</option>
+              {espacio.testigoMac && !candidatosTestigo.some(candidato => candidato.mac === espacio.testigoMac) && <option value={espacio.testigoMac}>{espacio.testigoMac} (no visto)</option>}
+              {candidatosTestigo.map(candidato => <option key={candidato.mac} value={candidato.mac}>{`${candidato.ip} · ${candidato.vendor || "?"}${candidato.present ? "" : " (ausente)"}`}</option>)}
+            </select>
+          </label>
+          {espacio.testigoMac && <button className="secondary" type="button" disabled={guardando} onClick={() => void onGuardarTestigo(espacio.id, "")}>Quitar testigo y volver a manual</button>}
+        </section>}
         {puerto && <label>Estado<select value={puerto.estado} disabled={guardando} onChange={event => void onGuardarCampos({ estado: event.target.value })}>{estadosPuerto.map(valor => <option key={valor} value={valor}>{etiquetasEstadoPuerto[valor]}</option>)}</select></label>}
 
         {(espacio || puerto) && <label>Nota<textarea value={nota} maxLength={500} rows={3} disabled={guardando} onChange={event => setNota(event.target.value)} onBlur={() => { const original = espacio?.nota ?? puerto?.nota ?? ""; if (!guardando && nota !== original) void onGuardarCampos({ nota }); }} placeholder="Roseta, canalización, hallazgos en terreno…" /><small className="character-count">{nota.length}/500</small></label>}

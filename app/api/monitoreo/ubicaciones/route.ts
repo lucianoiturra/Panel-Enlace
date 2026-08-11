@@ -26,7 +26,10 @@ export async function GET() {
       .map((dispositivo) => ({ mac: dispositivo.mac, ip: dispositivo.ip, name: dispositivo.name, vendor: dispositivo.vendor, present: dispositivo.present }))
       .sort((a, b) => Number(b.present) - Number(a.present) || a.ip.localeCompare(b.ip, undefined, { numeric: true }));
 
-    return noStoreJson({ ubicaciones, resumen, candidatos });
+    // Todas las filas se reescriben juntas en cada ciclo del sidecar, así que
+    // cualquiera sirve como marca de tiempo del volcado.
+    const refrescado = vivos.length ? vivos[0].refreshedAt : null;
+    return noStoreJson({ ubicaciones, resumen, candidatos, refrescado });
   } catch (error) {
     return apiErrorResponse(error, "No fue posible cargar el estado por ubicación.");
   }

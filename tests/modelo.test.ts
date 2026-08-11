@@ -131,7 +131,7 @@ test("etiquetaCategoria cae al id cuando el tipo ya no existe", () => {
 
 test("planEliminarEspacio protege la Sala de Computación", () => {
   const estado = fixture();
-  estado.espacios.push({ id: ID_SALA_COMPUTACION, nombre: "Sala de Computación", ubicacion: "", categoria: "sala", estado: "operativo", x: 0, y: 0, nota: "" });
+  estado.espacios.push({ id: ID_SALA_COMPUTACION, nombre: "Sala de Computación", ubicacion: "", categoria: "sala", estado: "operativo", x: 0, y: 0, nota: "", testigoMac: "" });
   const plan = planEliminarEspacio(estado, ID_SALA_COMPUTACION);
   assert.equal(plan.ok, false);
   assert.match(plan.ok === false ? plan.error : "", /no se puede eliminar/i);
@@ -146,7 +146,7 @@ test("planEliminarEspacio rechaza ids que no son espacios o que ya no están", (
 test("planEliminarEspacio lista los enlaces del espacio y libera su puerto", () => {
   const estado = fixture();
   // Un puerto de roseta que solo sirve a esta sala: al borrarla queda libre.
-  estado.espacios.push({ id: "esp:vecina", nombre: "Vecina", ubicacion: "", categoria: "sala", estado: "operativo", x: 0, y: 0, nota: "" });
+  estado.espacios.push({ id: "esp:vecina", nombre: "Vecina", ubicacion: "", categoria: "sala", estado: "operativo", x: 0, y: 0, nota: "", testigoMac: "" });
   estado.puertos.push({ id: "pto:R2-PP1-p20", equipo: "R2-PP1", n: 20, estado: "ocupado", nota: "" });
   estado.enlaces.push({ id: 9, a: "esp:vecina", b: "pto:R2-PP1-p20", tipo: "roseta", nota: "" });
 

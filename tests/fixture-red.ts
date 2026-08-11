@@ -24,9 +24,9 @@ export const fixture = (): EstadoRed => ({
     { id: "pto:ISP-p0", equipo: "ISP", n: 0, estado: "ocupado", nota: "" },
   ],
   espacios: [
-    { id: "esp:3-basico-b", nombre: "3° Básico B", ubicacion: "", categoria: "sala", estado: "sin-verificar", x: -3560, y: 432, nota: "" },
-    { id: "esp:4-basico-a", nombre: "4° Básico A", ubicacion: "", categoria: "sala", estado: "sin-verificar", x: -3560, y: 300, nota: "" },
-    { id: "esp:secretaria", nombre: "Secretaría", ubicacion: "", categoria: "oficina", estado: "sin-verificar", x: -3560, y: -600, nota: "" },
+    { id: "esp:3-basico-b", nombre: "3° Básico B", ubicacion: "", categoria: "sala", estado: "sin-verificar", x: -3560, y: 432, nota: "", testigoMac: "" },
+    { id: "esp:4-basico-a", nombre: "4° Básico A", ubicacion: "", categoria: "sala", estado: "sin-verificar", x: -3560, y: 300, nota: "", testigoMac: "" },
+    { id: "esp:secretaria", nombre: "Secretaría", ubicacion: "", categoria: "oficina", estado: "sin-verificar", x: -3560, y: -600, nota: "", testigoMac: "" },
   ],
   enlaces: [
     { id: 1, a: "esp:3-basico-b", b: "pto:R2-PP1-p14", tipo: "roseta", nota: "" },

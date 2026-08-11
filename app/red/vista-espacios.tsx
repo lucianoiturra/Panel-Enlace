@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { agruparPorTipo, ordenarEspacios, type CriterioOrden } from "../../lib/red/agrupar";
-import { etiquetasEstadoEspacio, ID_SALA_COMPUTACION, type Categoria, type Cubiculo, type Espacio, type Puerto } from "../../lib/red/modelo";
+import { etiquetasEstadoEspacio, ID_SALA_COMPUTACION, type Categoria, type Cubiculo, type Puerto } from "../../lib/red/modelo";
+import type { EspacioEfectivo } from "../../lib/red/estado-efectivo";
 
 export type FormatoEspacios = "lista" | "cuadricula";
 
 type Props = {
-  espacios: Espacio[];
+  espacios: EspacioEfectivo[];
   categorias: Categoria[];
   orden: CriterioOrden;
   agrupar: boolean;
@@ -39,7 +40,7 @@ export default function VistaEspacios({ espacios, categorias, orden, agrupar, fo
   const ordenados = ordenarEspacios(espacios, orden, categorias);
   const etiquetaTipo = (id: string) => categorias.find(categoria => categoria.id === id)?.nombre ?? "Sin tipo";
 
-  const datosDe = (espacio: Espacio) => {
+  const datosDe = (espacio: EspacioEfectivo) => {
     const puertos = puertosDe(espacio.id);
     return {
       puertos,
@@ -49,21 +50,31 @@ export default function VistaEspacios({ espacios, categorias, orden, agrupar, fo
     };
   };
 
-  const estado = (espacio: Espacio) => (
-    <span className={`net-space-status ${espacio.estado}`}>
-      <i aria-hidden="true" />
-      {etiquetasEstadoEspacio[espacio.estado]}
+  // La etiqueta de origen sin explicación se leería como ruido: el title dice
+  // cuál testigo lo decide y en qué estado está.
+  const estado = (espacio: EspacioEfectivo) => (
+    <span className="net-space-state">
+      <span className={`net-space-status ${espacio.estado}`}>
+        <i aria-hidden="true" />
+        {etiquetasEstadoEspacio[espacio.estado]}
+      </span>
+      <small
+        className={`net-space-origin ${espacio.origen}`}
+        title={espacio.origen === "auto"
+          ? `Automático: el testigo ${espacio.testigoMac} está ${espacio.testigoPresente ? "presente" : "ausente"} en la red.`
+          : "Manual: lo escribiste en la ficha. Asígnale un testigo para que se actualice solo."}
+      >{espacio.origen === "auto" ? "auto" : "manual"}</small>
     </span>
   );
 
-  const conexion = (espacio: Espacio) => {
+  const conexion = (espacio: EspacioEfectivo) => {
     const datos = datosDe(espacio);
     return datos.puertos.length
       ? <span className="net-space-connection documented"><i aria-hidden="true">↳</i>{datos.conexion}</span>
       : <span className="net-space-connection undocumented"><i aria-hidden="true">!</i>Sin documentar</span>;
   };
 
-  const fila = (espacio: Espacio) => {
+  const fila = (espacio: EspacioEfectivo) => {
     const datos = datosDe(espacio);
     return (
       <button
@@ -86,7 +97,7 @@ export default function VistaEspacios({ espacios, categorias, orden, agrupar, fo
     );
   };
 
-  const tarjeta = (espacio: Espacio) => {
+  const tarjeta = (espacio: EspacioEfectivo) => {
     const datos = datosDe(espacio);
     return (
       <button
@@ -113,7 +124,7 @@ export default function VistaEspacios({ espacios, categorias, orden, agrupar, fo
     );
   };
 
-  const contenido = (items: Espacio[], mostrarCabecera = false) => formato === "lista" ? (
+  const contenido = (items: EspacioEfectivo[], mostrarCabecera = false) => formato === "lista" ? (
     <div className="net-space-list">
       {mostrarCabecera && <div className="net-space-list-head" aria-hidden="true">
         <span>Espacio</span><span>Tipo</span><span>Ubicación</span><span>Estado</span><span>Conexión</span><span />

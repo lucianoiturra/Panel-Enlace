@@ -508,6 +508,11 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offs
 .net-space-status.solo-wifi{background:#fff2cc;color:#795600}
 .net-space-status.sin-internet{background:#f8e5e8;color:#922c39}
 .net-space-status.sin-verificar i{border:1px dashed currentColor;background:transparent}
+.net-testigo{display:flex;flex-direction:column;gap:9px;border:1px solid var(--line);border-radius:6px;padding:11px}
+.net-testigo .net-pista{margin:0;color:var(--muted);font-size:11px;line-height:1.45}
+.net-space-state{display:inline-flex;align-items:center;gap:6px;min-width:0}
+.net-space-origin{border-radius:3px;padding:2px 5px;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:#eef2f6;color:var(--muted)}
+.net-space-origin.auto{background:#e8eefc;color:#2a4d9b}
 .net-space-connection{display:flex;min-width:0;align-items:center;gap:7px;font:700 11px var(--font-mono);line-height:1.35}
 .net-space-connection i{display:grid;width:16px;height:16px;flex:0 0 16px;place-items:center;border-radius:3px;font-size:10px;font-style:normal}
 .net-space-connection.documented{overflow:hidden;color:var(--green);text-overflow:ellipsis;white-space:nowrap}

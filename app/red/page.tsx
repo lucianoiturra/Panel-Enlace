@@ -18,11 +18,17 @@ import EliminarEspacio from "./eliminar-espacio";
 import { cadenaComoTexto, trazarCircuito } from "../../lib/red/trazado";
 import { aliasCubiculo, normalizar } from "../../lib/red/busqueda";
 import { criteriosOrden, etiquetasCriterioOrden, type CriterioOrden } from "../../lib/red/agrupar";
+import { aplicarEstadoVivo, datosFrescos, MINUTOS_FRESCURA } from "../../lib/red/estado-efectivo";
+import type { EspacioVivo } from "../../lib/red/estado-ubicacion";
 import { estadosEspacio, etiquetaEndpoint, etiquetaPuerto, etiquetasEstadoEspacio, planEliminarEspacio, puertosDeEndpoint, type Enlace, type EstadoEspacio, type EstadoRed } from "../../lib/red/modelo";
 
 const estadoVacio: EstadoRed = { racks: [], equipos: [], puertos: [], espacios: [], enlaces: [], bitacora: [], cubiculos: [], categorias: [], orden: {} };
 
 type FiltroConexion = "todos" | "con-puerto" | "sin-puerto";
+type FiltroOrigen = "todos" | "auto" | "manual";
+
+export type CandidatoTestigo = { mac: string; ip: string; name: string; vendor: string; present: boolean };
+type DatosUbic = { ubicaciones: EspacioVivo[]; candidatos: CandidatoTestigo[]; refrescado: string | null };
 
 const coincideBusqueda = (valor: string, consulta: string) => {
   const objetivo = normalizar(valor);
@@ -45,6 +51,8 @@ export default function PaginaRed() {
   const [errorCarga, setErrorCarga] = useState("");
   const [filtro, setFiltro] = useState<EstadoEspacio | "todos">("todos");
   const [filtroConexion, setFiltroConexion] = useState<FiltroConexion>("todos");
+  const [filtroOrigen, setFiltroOrigen] = useState<FiltroOrigen>("todos");
+  const [ubic, setUbic] = useState<DatosUbic | null>(null);
   const [filtroCategoria, setFiltroCategoria] = useState("todos");
   const [consulta, setConsulta] = useState("");
   const buscadorRef = useRef<HTMLInputElement>(null);
@@ -86,6 +94,18 @@ export default function PaginaRed() {
     return () => window.clearTimeout(temporizador);
   }, [aviso, avisoId]);
 
+  // Va aparte de `cargar` a propósito: si el monitoreo falla, RED tiene que
+  // seguir dibujándose con los estados manuales.
+  const cargarVivo = async () => {
+    try {
+      const response = await fetch("/api/monitoreo/ubicaciones", { cache: "no-store" });
+      if (!response.ok) throw new Error("sin monitoreo");
+      setUbic(await response.json() as DatosUbic);
+    } catch {
+      setUbic(null);
+    }
+  };
+
   const cargar = async () => {
     setCargando(true);
     setErrorCarga("");
@@ -93,6 +113,7 @@ export default function PaginaRed() {
       const response = await fetch("/api/red");
       if (!response.ok) throw new Error(await leerError(response, "No fue posible cargar la red."));
       setEstado(await response.json() as EstadoRed);
+      void cargarVivo();
       setUltimaSync(new Date());
       return true;
     } catch (error) {
@@ -132,6 +153,14 @@ export default function PaginaRed() {
     const tipo = fichaAbierta.startsWith("esp:") ? "espacio" : "puerto";
     await pedir("/api/red", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tipo, id: fichaAbierta, ...cambios }) }, "No fue posible guardar los cambios.");
   }, "Cambio guardado.");
+
+  // El testigo se guarda por la misma ruta que usa MONITOREO. Después hay que
+  // recargar el estado vivo, no la red: lo que cambia es de dónde sale el
+  // estado del espacio, no su documentación.
+  const guardarTestigo = (id: string, testigoMac: string) => conGuardado(async () => {
+    await pedir("/api/monitoreo/ubicaciones", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, testigoMac }) }, "No fue posible guardar el testigo.");
+    await cargarVivo();
+  }, testigoMac ? "Testigo asignado." : "Testigo quitado: el espacio vuelve a estado manual.");
 
   // Un AP es una fila de net_equipos como cualquier switch, así que viaja por la
   // ruta de equipos. La ubicación sigue guardándose en su nota, como siempre.
@@ -360,6 +389,14 @@ export default function PaginaRed() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Los datos de red se mueven cada 3 minutos (sidecar panel-mon-export) y la
+  // consulta es una sola tabla chica: refrescarla sola sale mucho más barato
+  // que recargar toda la red.
+  useEffect(() => {
+    const intervalo = window.setInterval(() => void cargarVivo(), 90_000);
+    return () => window.clearInterval(intervalo);
+  }, []);
+
   useEffect(() => {
     const temporizador = window.setTimeout(() => {
       const inicial = new URLSearchParams(window.location.search).get("endpoint") ?? "";
@@ -387,13 +424,24 @@ export default function PaginaRed() {
     return () => window.removeEventListener("keydown", enfocarBuscador);
   }, []);
 
-  const conteos = useMemo(() => Object.fromEntries(estadosEspacio.map(valor => [valor, estado.espacios.filter(espacio => espacio.estado === valor).length])) as Record<EstadoEspacio, number>, [estado.espacios]);
+  // El estado que se muestra en toda la pestaña: el del testigo donde hay uno y
+  // los datos de red están frescos, el escrito a mano en el resto. No se guarda
+  // en ninguna parte; se recalcula en cada render.
+  const frescos = useMemo(() => datosFrescos(ubic?.refrescado ?? null), [ubic]);
+  const redEfectiva = useMemo(() => aplicarEstadoVivo(estado, ubic?.ubicaciones ?? [], frescos), [estado, ubic, frescos]);
+
+  const conteos = useMemo(() => Object.fromEntries(estadosEspacio.map(valor => [valor, redEfectiva.espacios.filter(espacio => espacio.estado === valor).length])) as Record<EstadoEspacio, number>, [redEfectiva.espacios]);
 
   const conteosCategorias = useMemo(() => {
     const total: Record<string, number> = {};
-    for (const espacio of estado.espacios) total[espacio.categoria] = (total[espacio.categoria] ?? 0) + 1;
+    for (const espacio of redEfectiva.espacios) total[espacio.categoria] = (total[espacio.categoria] ?? 0) + 1;
     return total;
-  }, [estado.espacios]);
+  }, [redEfectiva.espacios]);
+
+  const conteosOrigen = useMemo(() => {
+    const auto = redEfectiva.espacios.filter(espacio => espacio.origen === "auto").length;
+    return { auto, manual: redEfectiva.espacios.length - auto };
+  }, [redEfectiva.espacios]);
 
   const conteosConexion = useMemo(() => {
     const conPuerto = estado.espacios.filter(espacio => puertosDeEndpoint(estado, espacio.id).length).length;
@@ -408,8 +456,9 @@ export default function PaginaRed() {
 
   const espaciosVisibles = useMemo(() => {
     const texto = normalizar(consulta);
-    return estado.espacios.filter(espacio => {
+    return redEfectiva.espacios.filter(espacio => {
       if (filtro !== "todos" && espacio.estado !== filtro) return false;
+      if (filtroOrigen !== "todos" && espacio.origen !== filtroOrigen) return false;
       if (filtroCategoria !== "todos" && espacio.categoria !== filtroCategoria) return false;
       const puertosDelEspacio = puertosDeEndpoint(estado, espacio.id);
       if (filtroConexion === "con-puerto" && !puertosDelEspacio.length) return false;
@@ -420,7 +469,7 @@ export default function PaginaRed() {
       const contenido = `${espacio.nombre} ${espacio.ubicacion} ${espacio.categoria} ${tipo} ${etiquetasEstadoEspacio[espacio.estado]} ${puertos}`;
       return coincideBusqueda(contenido, texto);
     });
-  }, [estado, filtro, filtroCategoria, filtroConexion, consulta]);
+  }, [estado, redEfectiva.espacios, filtro, filtroCategoria, filtroConexion, filtroOrigen, consulta]);
 
   const coincidenciaBuscador = useMemo(() => {
     const texto = normalizar(consulta);
@@ -454,11 +503,12 @@ export default function PaginaRed() {
     }
   })();
 
-  const hayFiltrosEspacios = filtro !== "todos" || filtroConexion !== "todos" || filtroCategoria !== "todos" || Boolean(consulta.trim());
+  const hayFiltrosEspacios = filtro !== "todos" || filtroConexion !== "todos" || filtroCategoria !== "todos" || filtroOrigen !== "todos" || Boolean(consulta.trim());
   const limpiarFiltrosEspacios = () => {
     setFiltro("todos");
     setFiltroConexion("todos");
     setFiltroCategoria("todos");
+    setFiltroOrigen("todos");
     setConsulta("");
   };
 
@@ -466,11 +516,12 @@ export default function PaginaRed() {
     <main>
       <header className="topbar">
         <div className="brand"><span className="brand-mark">SE</span><div><strong>Sala de Enlace</strong><span>Red del colegio</span></div><NavSecciones activa="red" /></div>
-        <div className="header-actions"><button className="icon-button" onClick={() => void cargar()} aria-label={cargando ? "Actualizando datos" : "Actualizar datos"} disabled={cargando}>{cargando ? "…" : "↻"}</button><div className="date-chip"><span>ÚLTIMA SINCRONIZACIÓN</span><b>{ultimaSync ? new Intl.DateTimeFormat("es-CL", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" }).format(ultimaSync) : "Sin sincronizar"}</b></div></div>
+        <div className="header-actions"><button className="icon-button" onClick={() => void cargar()} aria-label={cargando ? "Actualizando datos" : "Actualizar datos"} disabled={cargando}>{cargando ? "…" : "↻"}</button><div className="date-chip"><span>ÚLTIMA SINCRONIZACIÓN</span><b>{ultimaSync ? new Intl.DateTimeFormat("es-CL", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" }).format(ultimaSync) : "Sin sincronizar"}</b></div><div className="date-chip"><span>DATOS DE RED</span><b>{ubic ? (frescos ? "En vivo" : "Desactualizados") : "Sin conexión"}</b></div></div>
       </header>
 
       <section className="shell">
         {errorCarga && <div className="error-banner" role="alert"><span>{errorCarga}</span><button type="button" onClick={() => void cargar()} disabled={cargando}>{cargando ? "Reintentando…" : "Reintentar"}</button></div>}
+        {ubic && !frescos && ubic.ubicaciones.some(ubicacion => ubicacion.testigoMac) && <div className="error-banner" role="status"><span>Los datos de red no se refrescan hace más de {MINUTOS_FRESCURA} minutos, así que los espacios con testigo vuelven a mostrar su estado manual. Revisa el contenedor <b>panel-mon-export</b>.</span></div>}
         <div className="workspace-head"><div><h1>Red del colegio</h1><p className="subtitle">{estado.racks.length} racks · {estado.puertos.filter(puerto => puerto.n > 0).length} puertos · {estado.espacios.length} espacios · {estado.cubiculos.length} cubículos.</p></div><div className="workspace-actions"><button className="secondary toolbar-action" onClick={() => setNuevoAbierto(true)}>Agregar elemento</button><button className="secondary toolbar-action" onClick={() => setCapturaAbierta(true)}>Captura rápida</button><details className="workspace-menu"><summary>Más acciones</summary><div><button type="button" className="workspace-action-link" onClick={evento => { evento.currentTarget.closest("details")?.removeAttribute("open"); setTiposAbierto(true); }}>Administrar tipos de espacio <small>Crear, renombrar o reasignar</small></button><div className="workspace-menu-separator" /><button type="button" className="danger-link" disabled={!estado.enlaces.length || guardando} onClick={evento => { evento.currentTarget.closest("details")?.removeAttribute("open"); setLimpiezaAbierta(true); }}>Limpiar todas las conexiones <small>{estado.enlaces.length} registradas</small></button></div></details></div></div>
 
         <section className="room-surface">
@@ -509,6 +560,14 @@ export default function PaginaRed() {
                 </div>
               </div>
               <div className="net-filter-row">
+                <span className="net-filter-label">Origen</span>
+                <div className="net-filter-chips connection">
+                  <button type="button" className={filtroOrigen === "todos" ? "on" : ""} aria-pressed={filtroOrigen === "todos"} onClick={() => setFiltroOrigen("todos")}>Todos <strong>{redEfectiva.espacios.length}</strong></button>
+                  <button type="button" className={filtroOrigen === "auto" ? "on" : ""} aria-pressed={filtroOrigen === "auto"} onClick={() => setFiltroOrigen("auto")}>Automático <strong>{conteosOrigen.auto}</strong></button>
+                  <button type="button" className={filtroOrigen === "manual" ? "on" : ""} aria-pressed={filtroOrigen === "manual"} onClick={() => setFiltroOrigen("manual")}>Manual <strong>{conteosOrigen.manual}</strong></button>
+                </div>
+              </div>
+              <div className="net-filter-row">
                 <span className="net-filter-label">Documentación</span>
                 <div className="net-filter-chips connection">
                   <button type="button" className={filtroConexion === "todos" ? "on" : ""} aria-pressed={filtroConexion === "todos"} onClick={() => setFiltroConexion("todos")}>Todos <strong>{estado.espacios.length}</strong></button>
@@ -537,6 +596,7 @@ export default function PaginaRed() {
                 {consulta && <button type="button" onClick={() => setConsulta("")}>Búsqueda: “{consulta}” <i aria-hidden="true">×</i></button>}
                 {filtro !== "todos" && <button type="button" onClick={() => setFiltro("todos")}>Estado: {etiquetasEstadoEspacio[filtro]} <i aria-hidden="true">×</i></button>}
                 {filtroConexion !== "todos" && <button type="button" onClick={() => setFiltroConexion("todos")}>{filtroConexion === "con-puerto" ? "Con puerto" : "Sin documentar"} <i aria-hidden="true">×</i></button>}
+                {filtroOrigen !== "todos" && <button type="button" onClick={() => setFiltroOrigen("todos")}>Origen: {filtroOrigen === "auto" ? "Automático" : "Manual"} <i aria-hidden="true">×</i></button>}
                 {filtroCategoria !== "todos" && <button type="button" onClick={() => setFiltroCategoria("todos")}>Tipo: {estado.categorias.find(categoria => categoria.id === filtroCategoria)?.nombre ?? filtroCategoria} <i aria-hidden="true">×</i></button>}
               </div>
               <button type="button" className="net-clear-filters" onClick={limpiarFiltrosEspacios}>Limpiar todo</button>
@@ -546,17 +606,17 @@ export default function PaginaRed() {
           {coincidenciaBuscador && <div className="net-quick"><span className="net-quick-chain">{cadenaComoTexto(cadenaBuscador)}</span><div className="net-quick-actions"><button className="secondary" type="button" onClick={() => void copiarCadenaBuscador()}>Copiar</button><button className="secondary" type="button" onClick={() => abrirFicha(coincidenciaBuscador)}>Abrir ficha</button></div></div>}
           <div className={cargando ? "net-body is-loading" : "net-body"}>
             {vista === "espacios"
-              ? <VistaEspacios espacios={espaciosVisibles} categorias={estado.categorias} orden={ordenEspacios} agrupar={agrupar} formato={formatoEspacios} puertosDe={puertosDe} etiquetaDePuerto={etiquetaDePuerto} cubiculos={estado.cubiculos} seleccionado={seleccionado} onAbrir={abrirFicha} onLimpiar={limpiarFiltrosEspacios} />
+              ? <VistaEspacios espacios={espaciosVisibles} categorias={redEfectiva.categorias} orden={ordenEspacios} agrupar={agrupar} formato={formatoEspacios} puertosDe={puertosDe} etiquetaDePuerto={etiquetaDePuerto} cubiculos={redEfectiva.cubiculos} seleccionado={seleccionado} onAbrir={abrirFicha} onLimpiar={limpiarFiltrosEspacios} />
               : vista === "racks"
-                ? <VistaRacks estado={estado} rackActivo={rackVisible} onRack={setRackActivo} formato={formatoRacks} onFormato={setFormatoRacks} seleccionado={seleccionado} onAbrir={abrirFicha} onEditarRack={setRackEnFicha} onEditarEquipo={id => { setErrorEquipo(""); setEquipoEnFicha(id); }} onNuevoRack={() => setAltaInventario({ modo: "rack", rack: "" })} onNuevoEquipo={rack => setAltaInventario({ modo: "equipo", rack })} onReordenar={reordenar} />
+                ? <VistaRacks estado={redEfectiva} rackActivo={rackVisible} onRack={setRackActivo} formato={formatoRacks} onFormato={setFormatoRacks} seleccionado={seleccionado} onAbrir={abrirFicha} onEditarRack={setRackEnFicha} onEditarEquipo={id => { setErrorEquipo(""); setEquipoEnFicha(id); }} onNuevoRack={() => setAltaInventario({ modo: "rack", rack: "" })} onNuevoEquipo={rack => setAltaInventario({ modo: "equipo", rack })} onReordenar={reordenar} />
                 : vista === "cobertura"
-                  ? <VistaCobertura estado={estado} onAbrir={abrirFicha} />
-                  : <Diagrama estado={estado} seleccionado={seleccionado} centrarEn={vista === "diagrama" ? coincidenciaBuscador : ""} onAbrir={abrirFicha} onSeleccionar={setSeleccionado} onConectar={asignarRapido} onDesconectar={borrarEnlace} onReenlazar={reenlazar} onReordenar={reordenar} onRestablecerOrden={restablecerOrden} hayOrden={Object.keys(estado.orden).length > 0} guardando={guardando} onAviso={mensaje => mostrarAviso(mensaje, "error")} onCopiar={copiarTexto} />}
+                  ? <VistaCobertura estado={redEfectiva} onAbrir={abrirFicha} />
+                  : <Diagrama estado={redEfectiva} seleccionado={seleccionado} centrarEn={vista === "diagrama" ? coincidenciaBuscador : ""} onAbrir={abrirFicha} onSeleccionar={setSeleccionado} onConectar={asignarRapido} onDesconectar={borrarEnlace} onReenlazar={reenlazar} onReordenar={reordenar} onRestablecerOrden={restablecerOrden} hayOrden={Object.keys(estado.orden).length > 0} guardando={guardando} onAviso={mensaje => mostrarAviso(mensaje, "error")} onCopiar={copiarTexto} />}
           </div>
         </section>
       </section>
 
-      {fichaAbierta && <Ficha key={fichaAbierta} estado={estado} endpointId={fichaAbierta} cadena={cadenaFicha} guardando={guardando} onCerrar={() => setFichaAbierta("")} onGuardarCampos={guardarCampos} onGuardarRecurso={guardarRecurso} onCrearEnlace={crearEnlace} onBorrarEnlace={borrarEnlace} onEliminarEspacio={setPorEliminar} />}
+      {fichaAbierta && <Ficha key={fichaAbierta} estado={redEfectiva} endpointId={fichaAbierta} cadena={cadenaFicha} guardando={guardando} candidatosTestigo={ubic?.candidatos ?? []} onGuardarTestigo={guardarTestigo} onCerrar={() => setFichaAbierta("")} onGuardarCampos={guardarCampos} onGuardarRecurso={guardarRecurso} onCrearEnlace={crearEnlace} onBorrarEnlace={borrarEnlace} onEliminarEspacio={setPorEliminar} />}
       {fichaAbierta && <button className="backdrop" onClick={() => setFichaAbierta("")} aria-label="Cerrar ficha" />}
       {capturaAbierta && <Captura estado={estado} sesion={sesion} puertoInicial={seleccionado.startsWith("pto:") ? seleccionado : ""} onCerrar={() => setCapturaAbierta(false)} onAsignar={asignarRapido} onMarcarLibre={marcarLibre} onDeshacer={deshacerAsignacion} />}
       {nuevoAbierto && <NuevoRecurso categorias={estado.categorias} guardando={guardando} onCerrar={() => setNuevoAbierto(false)} onCrear={crearRecurso} />}
