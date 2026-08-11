@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export default function NavSecciones({ activa }: { activa: "sala" | "red" | "monitoreo" }) {
+export default function NavSecciones({ activa }: { activa: "sala" | "red" | "monitoreo" | "salud" }) {
   return (
     <nav className="net-tabs" aria-label="Secciones del panel">
       <Link href="/" className={activa === "sala" ? "active" : ""} aria-current={activa === "sala" ? "page" : undefined}>SALA</Link>

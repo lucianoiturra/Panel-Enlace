@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import NavSecciones from "../nav-secciones";
+import { haceCuanto } from "../../lib/formato-tiempo";
 import type { EstadoReconciliacion, Reconciliacion } from "../../lib/red/reconciliacion";
 import type { EspacioVivo, EstadoVivoUbicacion } from "../../lib/red/estado-ubicacion";
 
@@ -43,16 +44,6 @@ function etiquetaCandidato(candidato: Candidato): string {
   const nombre = candidato.name && candidato.name !== "(unknown)" && candidato.name !== "(name not found)" ? ` · ${candidato.name}` : "";
   const estado = candidato.present ? "" : " (ausente)";
   return `${candidato.ip} · ${candidato.vendor || "?"}${nombre}${estado}`;
-}
-
-function haceCuanto(iso: string | null): string {
-  if (!iso) return "sin datos";
-  const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
-  if (min < 1) return "hace instantes";
-  if (min === 1) return "hace 1 minuto";
-  if (min < 60) return `hace ${min} minutos`;
-  const h = Math.round(min / 60);
-  return h === 1 ? "hace 1 hora" : `hace ${h} horas`;
 }
 
 export default function Monitoreo() {

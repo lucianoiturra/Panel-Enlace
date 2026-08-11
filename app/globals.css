@@ -636,3 +636,10 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offs
 .mon-empty{color:var(--muted);text-align:center;padding:22px}
 .mon-select{max-width:340px;width:100%;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);font-size:12px;font-family:var(--font-mono)}
 .mon-select:disabled{opacity:.6}
+
+/* Salud: estado del servidor en cuatro bloques */
+.salud-bloques{display:grid;gap:22px;margin-top:20px}
+.salud-bloque h2{display:flex;align-items:center;gap:12px;font-size:15px;margin:0 0 9px}
+.salud-bloque .mon-table{min-width:520px}
+.salud-bloque .mon-table td:first-child{width:34%}
+.salud-bloque .mon-table td:nth-child(2){width:22%}
