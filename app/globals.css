@@ -643,3 +643,6 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offs
 .salud-bloque .mon-table{min-width:520px}
 .salud-bloque .mon-table td:first-child{width:34%}
 .salud-bloque .mon-table td:nth-child(2){width:22%}
+
+.net-tabs a{position:relative}
+.nav-punto{display:inline-block;width:7px;height:7px;border-radius:50%;margin-left:5px;vertical-align:middle}
