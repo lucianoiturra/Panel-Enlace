@@ -137,28 +137,29 @@ export function evaluarSalud(
   const contenedores: FilaSalud[] = CONTENEDORES_ESPERADOS.map((nombre) =>
     delHost(`docker.${nombre}`, nombre, (hecho) => {
       const valor = hecho.valor || "ausente";
-      const sano = valor === "running" || valor === "running/healthy";
-      return {
-        estado: sano ? "ok" : "falla",
-        detalle: valor === "ausente" ? "no existe el contenedor" : valor,
-      };
+      if (valor === "running" || valor === "running/healthy") return { estado: "ok", detalle: valor };
+      if (valor === "running/starting") return { estado: "atencion", detalle: "arrancando (healthcheck en curso)" };
+      return { estado: "falla", detalle: valor === "ausente" ? "no existe el contenedor" : valor };
     }),
   );
 
   const servidor: FilaSalud[] = [
     ...contenedores,
     delHost("host.ram_disponible_mb", "RAM disponible", (hecho) => {
-      const mb = hecho.numero ?? 0;
+      if (hecho.numero === null) return { estado: "sin-datos", detalle: "sin lectura de memoria" };
+      const mb = hecho.numero;
       const estado: EstadoSalud =
         mb < UMBRALES.ramFallaMb ? "falla" : mb < UMBRALES.ramAtencionMb ? "atencion" : "ok";
       return { estado, detalle: `${(mb / 1024).toFixed(1)} GB libres` };
     }),
     delHost("host.disco_uso_pct", "Disco del sistema", (hecho) => {
-      const pct = hecho.numero ?? 0;
+      if (hecho.numero === null) return { estado: "sin-datos", detalle: "sin lectura del disco" };
+      const pct = hecho.numero;
       const estado: EstadoSalud =
         pct > UMBRALES.discoFallaPct ? "falla" : pct > UMBRALES.discoAtencionPct ? "atencion" : "ok";
       const libre = porClave.get("host.disco_libre_gb")?.numero;
-      return { estado, detalle: `${pct} % usado${libre ? ` · ${libre} GB libres` : ""}` };
+      const sufijo = libre !== null && libre !== undefined ? ` · ${libre} GB libres` : "";
+      return { estado, detalle: `${pct} % usado${sufijo}` };
     }),
   ];
 
@@ -171,7 +172,8 @@ export function evaluarSalud(
       const bytes = porClave.get("backup.pgdump_bytes")?.numero ?? 0;
       if (bytes === 0) return { estado: "falla", detalle: "la última copia está vacía" };
       const estado = porEdad(hecho.numero, UMBRALES.respaldoAtencionH, UMBRALES.respaldoFallaH);
-      return { estado, detalle: `${hace(hecho.numero)} · ${(bytes / 1048576).toFixed(1)} MB` };
+      const tamano = bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`;
+      return { estado, detalle: `${hace(hecho.numero)} · ${tamano}` };
     }),
     delHost("backup.usb_montado", "Disco externo", (hecho) => (
       hecho.valor === "true"
@@ -187,11 +189,16 @@ export function evaluarSalud(
       const copias = porClave.get("backup.usb_copias")?.numero ?? 0;
       return { estado, detalle: `${hace(hecho.numero)} · ${copias} copias` };
     }),
-    delHost("backup.servicio_fallido", "Tarea de respaldo", (hecho) => (
-      hecho.valor === "failed"
-        ? { estado: "falla", detalle: "la última ejecución falló" }
-        : { estado: "ok", detalle: porClave.get("backup.timer_estado")?.valor === "active" ? "programada 03:15" : "timer detenido" }
-    )),
+    delHost("backup.servicio_fallido", "Tarea de respaldo", (hecho) => {
+      if (hecho.valor === "failed") return { estado: "falla", detalle: "la última ejecución falló" };
+      // `is-active` de una unidad inexistente tambien dice "inactive": un timer
+      // borrado y uno detenido se ven igual, y ambos significan que no hay respaldo.
+      const timer = porClave.get("backup.timer_estado")?.valor ?? "";
+      if (timer !== "active") {
+        return { estado: "falla", detalle: timer ? `el timer está ${timer}` : "el timer no existe" };
+      }
+      return { estado: "ok", detalle: "programada a diario" };
+    }),
   ];
 
   // --- servicios ------------------------------------------------------------

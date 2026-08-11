@@ -7,8 +7,12 @@ set -u
 ESPERADOS="vaultwarden netalertx adguard panel-enlace panel-db panel-backup panel-mon-export"
 DIR_PG=/srv/apps/backups/panel-enlace
 DIR_USB=/mnt/respaldo
+# Cuantas filas debe traer una foto completa. Si agregas o quitas un emit,
+# actualiza este numero: es lo que impide commitear una foto a medias con
+# fecha fresca, que se leeria como "el colector murio" siendo mentira.
+FILAS_ESPERADAS=21
 AHORA=$(date +%s)
-TMP=$(mktemp)
+TMP=$(mktemp) || exit 1
 trap 'rm -f "$TMP"' EXIT
 
 # clave, valor, numero. \N es NULL en el formato texto de COPY.
@@ -63,14 +67,14 @@ emit backup.servicio_fallido "$(systemctl is-failed respaldo-cabserver.service 2
 # --- servicios vecinos ------------------------------------------------------
 # AdGuard se prueba RESOLVIENDO, no respondiendo la web: su panel escucha en la
 # IP del tailnet, y una web viva con el DNS muerto deja a la escuela sin navegar.
-if dig +short +time=2 +tries=1 @127.0.0.1 example.com >/dev/null 2>&1; then
+if [ -n "$(dig +short +time=2 +tries=1 @127.0.0.1 example.com 2>/dev/null)" ]; then
   emit servicio.adguard_dns ok
 else
   emit servicio.adguard_dns falla
 fi
 
 sonda_http() {
-  if curl -sS -m 3 -o /dev/null "$2" >/dev/null 2>&1; then emit "$1" ok; else emit "$1" falla; fi
+  if curl -sSf -m 3 -o /dev/null "$2" >/dev/null 2>&1; then emit "$1" ok; else emit "$1" falla; fi
 }
 sonda_http servicio.netalertx http://127.0.0.1:20211/
 sonda_http servicio.vaultwarden http://127.0.0.1:8081/alive
@@ -84,6 +88,10 @@ fi
 # --- escritura --------------------------------------------------------------
 # Todo en una transaccion: o queda la foto completa, o queda la anterior
 # envejeciendo a la vista. Nunca media foto.
+if [ "$(wc -l < "$TMP")" -ne "$FILAS_ESPERADAS" ]; then
+  echo "salud-cabserver: foto incompleta ($(wc -l < "$TMP") de $FILAS_ESPERADAS filas), no se escribe" >&2
+  exit 1
+fi
 {
   echo "CREATE TABLE IF NOT EXISTS mon_salud (clave TEXT PRIMARY KEY, valor TEXT NOT NULL DEFAULT '', numero DOUBLE PRECISION, medido_at TIMESTAMPTZ NOT NULL DEFAULT now());"
   echo "BEGIN;"

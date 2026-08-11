@@ -180,3 +180,62 @@ test("un bloque con una falla real se titula falla, no sin-datos", () => {
   assert.ok(servicios);
   assert.equal(servicios.estado, "falla");
 });
+
+// --- A4: el timer de respaldo decide el estado, no solo el texto -----------
+
+test("timer de respaldo inactive es falla, y arrastra el peor global (A4)", () => {
+  const hechos = stackSano().map((h) =>
+    h.clave === "backup.timer_estado" ? { ...h, valor: "inactive" } : h);
+  const salud = evaluarSalud(hechos, RECIEN, 21, AHORA);
+  assert.equal(fila(salud, "backup.servicio_fallido").estado, "falla");
+  assert.equal(salud.peor, "falla");
+});
+
+test("timer de respaldo inexistente (unidad borrada, valor vacio) es falla (A4)", () => {
+  const hechos = stackSano().map((h) =>
+    h.clave === "backup.timer_estado" ? { ...h, valor: "" } : h);
+  assert.equal(fila(evaluarSalud(hechos, RECIEN, 21, AHORA), "backup.servicio_fallido").estado, "falla");
+});
+
+// --- A5: running/starting es atencion, no falla espuria en cada reinicio ---
+
+test("contenedor running/starting es atencion, no falla (A5)", () => {
+  const hechos = stackSano().map((h) =>
+    h.clave === "docker.netalertx" ? { ...h, valor: "running/starting" } : h);
+  const salud = evaluarSalud(hechos, RECIEN, 21, AHORA);
+  assert.equal(fila(salud, "docker.netalertx").estado, "atencion");
+  assert.notEqual(salud.peor, "falla");
+});
+
+// --- A6: un numero ausente es sin-datos, no un falso ok ni un falso falla --
+
+test("host.disco_uso_pct con numero null es sin-datos, no ok (A6)", () => {
+  const hechos = stackSano().map((h) =>
+    h.clave === "host.disco_uso_pct" ? { ...h, numero: null } : h);
+  assert.equal(fila(evaluarSalud(hechos, RECIEN, 21, AHORA), "host.disco_uso_pct").estado, "sin-datos");
+});
+
+test("host.ram_disponible_mb con numero null es sin-datos, no falla (A6)", () => {
+  const hechos = stackSano().map((h) =>
+    h.clave === "host.ram_disponible_mb" ? { ...h, numero: null } : h);
+  assert.equal(fila(evaluarSalud(hechos, RECIEN, 21, AHORA), "host.ram_disponible_mb").estado, "sin-datos");
+});
+
+// --- A7: dumps chicos (KB reales) no se muestran como "0.0 MB" -------------
+
+test("un dump de 18789 bytes se muestra en KB, no en 0.0 MB (A7)", () => {
+  const hechos = stackSano().map((h) =>
+    h.clave === "backup.pgdump_bytes" ? { ...h, numero: 18789 } : h);
+  const detalle = fila(evaluarSalud(hechos, RECIEN, 21, AHORA), "backup.pgdump_edad_seg").detalle;
+  assert.match(detalle, /18 KB/);
+  assert.doesNotMatch(detalle, /0\.0 MB/);
+});
+
+// --- A8: "0 GB libres" no debe desaparecer del detalle ----------------------
+
+test("host.disco_libre_gb en 0 sigue apareciendo en el detalle (A8)", () => {
+  const hechos = stackSano().map((h) =>
+    h.clave === "host.disco_libre_gb" ? { ...h, numero: 0 } : h);
+  const detalle = fila(evaluarSalud(hechos, RECIEN, 21, AHORA), "host.disco_uso_pct").detalle;
+  assert.match(detalle, /0 GB libres/);
+});
