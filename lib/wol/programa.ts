@@ -94,6 +94,33 @@ export function etiquetaObjetivo(objetivo: string): string {
   return `${ids.length} cubículos`;
 }
 
+// Cuánto tarda un encendido en poder juzgarse: el PC arranca, NetAlertX lo ve
+// en su próximo barrido y el sidecar lo copia en su próximo ciclo. Mientras
+// tanto la pantalla no puede decir nada todavía, y sobre todo no puede volver a
+// ofrecer el botón como si no hubiera pasado nada.
+export const MINUTOS_EN_CURSO = 12;
+
+/**
+ * ¿Se puede pedir un encendido ahora?
+ *
+ * No basta con mirar la cola: un pedido se marca atendido apenas salen los
+ * paquetes, así que entre ese instante y la verificación el botón volvía a
+ * decir "Encender ahora" sin que nada visible hubiera cambiado. Apretarlo de
+ * nuevo era lo natural, y mandaba una segunda ráfaga idéntica.
+ */
+export function estadoBoton(
+  resumen: { hubo: boolean; cuando: string; sinVerificar: number },
+  pedidoPendiente: unknown,
+  ahora: number,
+): { puede: boolean; etiqueta: string } {
+  if (pedidoPendiente) return { puede: false, etiqueta: "En cola…" };
+  if (resumen.hubo && resumen.sinVerificar > 0) {
+    const minutos = (ahora - new Date(resumen.cuando).getTime()) / 60_000;
+    if (minutos >= 0 && minutos < MINUTOS_EN_CURSO) return { puede: false, etiqueta: "Verificando…" };
+  }
+  return { puede: true, etiqueta: "Encender ahora" };
+}
+
 // Resumen del último encendido: lo que se quiere leer en la mañana no es
 // "se mandaron 38 paquetes", es quién no contestó.
 export function resumirUltimoEncendido(eventos: EventoWol[]): {
@@ -108,12 +135,23 @@ export function resumirUltimoEncendido(eventos: EventoWol[]): {
   if (!eventos.length) {
     return { hubo: false, cuando: "", enviados: 0, yaEncendidos: 0, despertaron: 0, dormidos: [], sinVerificar: 0 };
   }
-  // Un encendido es una ráfaga: todos los eventos que caen dentro de los cinco
-  // minutos del más reciente. Así un envío manual de las 08:00 no se mezcla con
-  // el programado de las 07:45.
+  // Un encendido es una ráfaga: los eventos dentro de los cinco minutos del más
+  // reciente. Así un envío manual de las 08:00 no se mezcla con el programado
+  // de las 07:45.
   const masReciente = eventos.reduce((mayor, e) => (e.enviadoAt > mayor ? e.enviadoAt : mayor), eventos[0].enviadoAt);
   const corte = new Date(masReciente).getTime() - 5 * 60_000;
-  const rafaga = eventos.filter(e => new Date(e.enviadoAt).getTime() >= corte);
+
+  // Un cubículo aparece UNA vez, con su noticia más reciente. Sin esto, dos
+  // pulsaciones seguidas del botón caían en la misma ventana y cada equipo se
+  // contaba dos veces: pasó de verdad el 2026-08-12 y la pantalla informó
+  // "68 enviados" sobre 34 equipos, con la lista de dormidos repetida en pares.
+  const ultimoPorCubiculo = new Map<number, EventoWol>();
+  for (const evento of eventos) {
+    if (new Date(evento.enviadoAt).getTime() < corte) continue;
+    const previo = ultimoPorCubiculo.get(evento.cubiculo);
+    if (!previo || evento.enviadoAt > previo.enviadoAt) ultimoPorCubiculo.set(evento.cubiculo, evento);
+  }
+  const rafaga = [...ultimoPorCubiculo.values()];
 
   const enviados = rafaga.filter(e => e.resultado === "enviado");
   return {

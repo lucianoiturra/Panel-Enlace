@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { haceCuanto } from "../lib/formato-tiempo";
 import { useAhora, useRefrescoPeriodico } from "./use-refresco";
-import { DIAS, etiquetaDias, etiquetaObjetivo, normalizarDias } from "../lib/wol/programa";
+import { DIAS, estadoBoton, etiquetaDias, etiquetaObjetivo, normalizarDias } from "../lib/wol/programa";
 
 type Programa = { id: number; nombre: string; dias: string; hora: string; objetivo: string; activo: boolean };
 type Resumen = {
@@ -88,6 +88,9 @@ export default function EncendidoProgramado({ onAviso }: { onAviso: (mensaje: st
   }));
 
   const resumen = datos?.resumen;
+  const boton = datos
+    ? estadoBoton(datos.resumen, datos.pedidoPendiente, ahora)
+    : { puede: false, etiqueta: "Encender ahora" };
   return (
     <>
       <div className="wol-linea">
@@ -110,8 +113,9 @@ export default function EncendidoProgramado({ onAviso }: { onAviso: (mensaje: st
           )}
         </div>
         <div className="wol-linea-acciones">
-          <button type="button" className="secondary" disabled={ocupado || !datos} onClick={() => void encenderAhora()}>
-            {datos?.pedidoPendiente ? "En cola…" : "Encender ahora"}
+          <button type="button" className="secondary" disabled={ocupado || !boton.puede} onClick={() => void encenderAhora()}
+            title={boton.puede ? undefined : "Hay un encendido en curso: los equipos tardan unos minutos en aparecer en la red."}>
+            {boton.etiqueta}
           </button>
           <button type="button" className="secondary" onClick={() => setAbierto(true)}>Horarios</button>
         </div>

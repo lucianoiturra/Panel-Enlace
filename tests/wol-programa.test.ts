@@ -5,6 +5,7 @@ import {
   etiquetaObjetivo,
   normalizarDias,
   normalizarObjetivo,
+  estadoBoton,
   resumirUltimoEncendido,
   validarPrograma,
   type EventoWol,
@@ -99,4 +100,67 @@ test("solo se resume la ultima rafaga, no todo el historial", () => {
   ]);
   assert.equal(resumen.enviados, 2);
   assert.deepEqual(resumen.dormidos, [7]);
+});
+
+// --- el boton de "encender ahora" -------------------------------------------
+// Regresion de un caso real: el 2026-08-12 se pidio encender la sala y salieron
+// DOS rafagas identicas con 59 s de diferencia. El pedido se marca atendido
+// apenas salen los paquetes, asi que el boton volvia a decir "Encender ahora"
+// mientras la verificacion seguia corriendo, y apretarlo de nuevo era lo
+// natural: no habia pasado nada visible.
+const T0 = Date.parse("2026-08-12T12:42:49.000Z");
+const enCurso = { hubo: true, cuando: new Date(T0).toISOString(), sinVerificar: 34 };
+
+test("con un pedido en cola el boton no acepta otro", () => {
+  assert.deepEqual(estadoBoton(enCurso, { id: 2 }, T0), { puede: false, etiqueta: "En cola…" });
+});
+
+test("con la rafaga ya enviada pero sin verificar, el boton espera", () => {
+  // Justo el momento en que antes se ofrecia de nuevo: pedido atendido, cero en
+  // cola, verificacion todavia corriendo.
+  assert.deepEqual(estadoBoton(enCurso, null, T0 + 60_000), { puede: false, etiqueta: "Verificando…" });
+  assert.deepEqual(estadoBoton(enCurso, null, T0 + 11 * 60_000), { puede: false, etiqueta: "Verificando…" });
+});
+
+test("pasada la ventana, el boton vuelve", () => {
+  assert.deepEqual(estadoBoton(enCurso, null, T0 + 13 * 60_000), { puede: true, etiqueta: "Encender ahora" });
+});
+
+test("si ya se verifico todo, no hay que esperar la ventana completa", () => {
+  const verificado = { hubo: true, cuando: new Date(T0).toISOString(), sinVerificar: 0 };
+  assert.deepEqual(estadoBoton(verificado, null, T0 + 60_000), { puede: true, etiqueta: "Encender ahora" });
+});
+
+test("sin encendidos previos el boton esta disponible", () => {
+  assert.deepEqual(estadoBoton({ hubo: false, cuando: "", sinVerificar: 0 }, null, T0), { puede: true, etiqueta: "Encender ahora" });
+});
+
+// Regresion del 2026-08-12: dos pulsaciones del boton con 59 s de diferencia
+// generaron dos rafagas identicas. Ambas caian dentro de la ventana de cinco
+// minutos, asi que cada cubiculo se contaba dos veces y la pantalla informo
+// "68 enviados" sobre 34 equipos, con los dormidos repetidos en pares.
+test("dos rafagas seguidas no cuentan cada equipo dos veces", () => {
+  const dobles: EventoWol[] = [
+    { cubiculo: 12, resultado: "enviado", desperto: false, enviadoAt: "2026-08-12T12:42:49.000Z" },
+    { cubiculo: 16, resultado: "enviado", desperto: false, enviadoAt: "2026-08-12T12:42:49.000Z" },
+    { cubiculo: 3, resultado: "ya-encendido", desperto: true, enviadoAt: "2026-08-12T12:42:49.000Z" },
+    { cubiculo: 12, resultado: "enviado", desperto: false, enviadoAt: "2026-08-12T12:43:48.000Z" },
+    { cubiculo: 16, resultado: "enviado", desperto: false, enviadoAt: "2026-08-12T12:43:48.000Z" },
+    { cubiculo: 3, resultado: "ya-encendido", desperto: true, enviadoAt: "2026-08-12T12:43:48.000Z" },
+  ];
+  const resumen = resumirUltimoEncendido(dobles);
+  assert.equal(resumen.enviados, 2, "34 equipos no pueden ser 68");
+  assert.equal(resumen.yaEncendidos, 1);
+  assert.deepEqual(resumen.dormidos, [12, 16], "sin numeros repetidos");
+});
+
+// El segundo intento es el que vale: si el equipo desperto recien en la segunda
+// rafaga, no puede quedar registrado como dormido por lo que dijo la primera.
+test("de un cubiculo manda su noticia mas reciente", () => {
+  const resumen = resumirUltimoEncendido([
+    { cubiculo: 12, resultado: "enviado", desperto: false, enviadoAt: "2026-08-12T12:42:49.000Z" },
+    { cubiculo: 12, resultado: "enviado", desperto: true, enviadoAt: "2026-08-12T12:43:48.000Z" },
+  ]);
+  assert.equal(resumen.despertaron, 1);
+  assert.deepEqual(resumen.dormidos, []);
 });

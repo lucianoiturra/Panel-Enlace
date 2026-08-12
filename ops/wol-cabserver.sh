@@ -21,9 +21,13 @@ BROADCAST="${WOL_BROADCAST:-192.168.1.255}"
 # el switch todavia no tiene la MAC en su tabla.
 REPETICIONES=3
 ESPERA_ENTRE=2
-# A los 8 minutos ya paso un barrido de NetAlertX (5 min) y un ciclo del sidecar
-# (3 min), asi que mon_devices ya sabe si el equipo desperto.
-MINUTOS_VERIFICAR=8
+# La cadena hasta que mon_devices se entera: el PC arranca Windows (~1-2 min),
+# NetAlertX lo ve en su proximo barrido (hasta 5 min) y el sidecar lo copia en
+# su proximo ciclo (hasta 3 min). El peor caso son ~10 minutos, asi que los 8
+# que habia estaban justo SOBRE el borde: bastaba que las fases se alinearan mal
+# para declarar dormido a un equipo que si desperto. Doce da margen, y el parte
+# llegando cuatro minutos mas tarde no le cambia el dia a nadie.
+MINUTOS_VERIFICAR=12
 
 # PGTZ no es cosmetico: el contenedor de Postgres corre en Etc/UTC, asi que sin
 # esto los horarios saldrian cuatro horas corridos. "El 27 no desperto a las
