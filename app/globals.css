@@ -518,12 +518,13 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offs
 .net-space-status.sin-verificar i{border:1px dashed currentColor;background:transparent}
 .net-testigo{display:flex;flex-direction:column;gap:9px;border:1px solid var(--line);border-radius:6px;padding:11px}
 .net-testigo .net-pista{margin:0;color:var(--muted);font-size:11px;line-height:1.45}
-.net-space-state{display:inline-flex;align-items:center;gap:6px;min-width:0}
+.net-space-state{display:inline-flex;align-items:center;gap:6px;min-width:0;flex-wrap:wrap}
 .net-space-origin{border-radius:3px;padding:2px 5px;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:#eef2f6;color:var(--muted)}
 .net-space-origin.auto{background:#e8eefc;color:#2a4d9b}
 .net-space-connection{display:flex;min-width:0;align-items:center;gap:7px;font:700 11px var(--font-mono);line-height:1.35}
 .net-space-connection i{display:grid;width:16px;height:16px;flex:0 0 16px;place-items:center;border-radius:3px;font-size:10px;font-style:normal}
-.net-space-connection.documented{overflow:hidden;color:var(--green);text-overflow:ellipsis;white-space:nowrap}
+.net-space-connection-texto{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.net-space-connection.documented{color:var(--green)}
 .net-space-connection.documented i{background:#e6f2ec;color:var(--ok)}
 .net-space-connection.undocumented{color:#795600}
 .net-space-connection.undocumented i{border:1px dashed #b88918;background:#fff6da}
@@ -552,8 +553,12 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offs
 .net-space-card-head>span{color:var(--muted);font-size:22px;line-height:1;transition:transform .16s ease}
 .net-space-card-meta{display:flex;min-height:16px;align-items:center;gap:5px;flex-wrap:wrap;color:var(--muted);font-size:11px}
 .net-space-card-meta span:not(:last-child)::after{content:"·";margin-left:5px;color:#a2aab4}
-.net-space-card-foot{display:flex;align-items:flex-end;justify-content:space-between;gap:9px;margin-top:auto}
-.net-space-card-foot .net-space-connection{justify-content:flex-end;overflow:hidden;text-align:right;text-overflow:ellipsis;white-space:nowrap}
+/* Grid de una columna y no flex con space-between: los dos hijos llevan
+   white-space:nowrap y conservan min-width:auto, así que en una tarjeta angosta
+   no encogían, desbordaban y se pintaban encima. Dos elementos que no comparten
+   fila no pueden solaparse a ningún ancho. */
+.net-space-card-foot{display:grid;gap:var(--esp-2);justify-items:start;margin-top:auto}
+.net-space-card-foot .net-space-connection{max-width:100%}
 
 .net-spaces-empty{display:flex;align-items:center;justify-content:center;gap:18px;min-height:230px;padding:28px;border-block:1px solid var(--line);background:#f7f8f9}
 .net-spaces-empty>span{font-size:36px;color:var(--muted)}
@@ -566,6 +571,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offs
   .net-space-list-head>span:nth-child(3),.net-space-row>.net-space-location{display:none}
   .net-space-controls{align-items:flex-start;flex-direction:column}
   .net-space-controls>div{justify-content:flex-start}
+  .net-space-row>span{min-width:0}
 }
 
 @media(max-width:760px){
@@ -612,7 +618,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offs
   .net-space-type{display:block!important;grid-column:1;grid-row:2;font-size:11px}
   .net-space-location{display:block!important;grid-column:2;grid-row:2;text-align:right}
   .net-space-status{grid-column:1;grid-row:3;min-height:30px}
-  .net-space-connection{grid-column:2;grid-row:3;justify-self:end;max-width:48vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .net-space-connection{grid-column:2;grid-row:3;justify-self:end;max-width:48vw}
   .net-space-grid{grid-template-columns:1fr}
   .net-space-card{min-height:124px;padding:13px}
   .net-space-card-foot{align-items:flex-start;flex-direction:column}

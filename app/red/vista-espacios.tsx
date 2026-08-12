@@ -67,11 +67,14 @@ export default function VistaEspacios({ espacios, categorias, orden, agrupar, fo
     </span>
   );
 
+  // El texto va en su propio span y no suelto dentro del contenedor flex:
+  // text-overflow no tiene efecto sobre un contenedor flex, así que el
+  // ellipsis que esta fila declaraba nunca llegó a recortar nada.
   const conexion = (espacio: EspacioEfectivo) => {
     const datos = datosDe(espacio);
     return datos.puertos.length
-      ? <span className="net-space-connection documented"><i aria-hidden="true">↳</i>{datos.conexion}</span>
-      : <span className="net-space-connection undocumented"><i aria-hidden="true">!</i>Sin documentar</span>;
+      ? <span className="net-space-connection documented"><i aria-hidden="true">↳</i><span className="net-space-connection-texto">{datos.conexion}</span></span>
+      : <span className="net-space-connection undocumented"><i aria-hidden="true">!</i><span className="net-space-connection-texto">Sin documentar</span></span>;
   };
 
   const fila = (espacio: EspacioEfectivo) => {
