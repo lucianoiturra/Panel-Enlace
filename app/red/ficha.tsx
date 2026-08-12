@@ -43,6 +43,15 @@ export default function Ficha({ estado, endpointId, cadena, guardando, candidato
   const [copiado, setCopiado] = useState(false);
   const [errorCopia, setErrorCopia] = useState("");
   const copyTimerRef = useRef<number | null>(null);
+  // El select no guarda al cambiar: rozarlo reescribía de dónde sale el estado
+  // del espacio sin confirmación. Elegir es local; guardar es un botón.
+  const [testigoElegido, setTestigoElegido] = useState(espacio?.testigoMac ?? "");
+
+  // Reencuadra el valor local contra el guardado cada vez que llega uno nuevo
+  // del servidor. Si el PUT salió bien, confirma; si falló, `testigoMac` no
+  // cambió y esto devuelve el select a lo que de verdad está guardado, en vez
+  // de dejarlo mostrando una elección que nunca llegó a la base.
+  useEffect(() => { setTestigoElegido(espacio?.testigoMac ?? ""); }, [espacio?.testigoMac]);
 
   const enlaces = estado.enlaces.filter(enlace => enlace.a === endpointId || enlace.b === endpointId);
   const historial = estado.bitacora.filter(entrada => entrada.objetivo === endpointId);
@@ -176,13 +185,18 @@ export default function Ficha({ estado, endpointId, cadena, guardando, candidato
               ? <p className="net-pista">Tiene testigo asignado, pero los datos de red no están frescos: manda el estado manual.</p>
               : <p className="net-pista">Sin testigo: este estado lo escribes tú y no se actualiza solo.</p>}
           <label>Dispositivo testigo
-            <select value={espacio.testigoMac} disabled={guardando} onChange={event => void onGuardarTestigo(espacio.id, event.target.value)}>
+            <select value={testigoElegido} disabled={guardando} onChange={event => setTestigoElegido(event.target.value)}>
               <option value="">— sin testigo (estado manual) —</option>
               {espacio.testigoMac && !candidatosTestigo.some(candidato => candidato.mac === espacio.testigoMac) && <option value={espacio.testigoMac}>{espacio.testigoMac} (no visto)</option>}
               {candidatosTestigo.map(candidato => <option key={candidato.mac} value={candidato.mac}>{`${candidato.ip} · ${candidato.vendor || "?"}${candidato.present ? "" : " (ausente)"}`}</option>)}
             </select>
           </label>
-          {espacio.testigoMac && <button className="secondary" type="button" disabled={guardando} onClick={() => void onGuardarTestigo(espacio.id, "")}>Quitar testigo y volver a manual</button>}
+          <button
+            className="secondary"
+            type="button"
+            disabled={guardando || testigoElegido === espacio.testigoMac}
+            onClick={() => void onGuardarTestigo(espacio.id, testigoElegido)}
+          >{guardando ? "Guardando…" : testigoElegido ? "Guardar testigo" : "Quitar testigo y volver a manual"}</button>
         </section>}
         {puerto && <label>Estado<select value={puerto.estado} disabled={guardando} onChange={event => void onGuardarCampos({ estado: event.target.value })}>{estadosPuerto.map(valor => <option key={valor} value={valor}>{etiquetasEstadoPuerto[valor]}</option>)}</select></label>}
 
