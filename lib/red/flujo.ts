@@ -209,6 +209,55 @@ export const cruces = (flujo: Flujo): number => {
   return total;
 };
 
+import { aristasParaDibujar } from "./aristas.ts";
+
+// Grosor proporcional pero acotado: sin tope, el par R2/SW3 ══ R2/PP3 con 24
+// enlaces taparía las tarjetas que une.
+export const grosorDeCinta = (cuenta: number) => Math.min(14, 2 + Math.log2(Math.max(cuenta, 1)) * 2.5);
+
+const alcanzablesDesdeIsp = (estado: EstadoRed): Set<string> => {
+  const isp = estado.equipos.find(equipo => equipo.tipo === "isp");
+  const arranque = estado.puertos.find(puerto => puerto.equipo === isp?.id);
+  const vistos = new Set<string>();
+  if (!arranque) return vistos;
+  const vecinos = new Map<string, string[]>();
+  for (const enlace of estado.enlaces) {
+    const a = nodoDeExtremo(estado, enlace.a);
+    const b = nodoDeExtremo(estado, enlace.b);
+    if (a === b) continue;
+    vecinos.set(a, [...(vecinos.get(a) ?? []), b]);
+    vecinos.set(b, [...(vecinos.get(b) ?? []), a]);
+  }
+  const cola = [nodoDeExtremo(estado, arranque.id)];
+  while (cola.length) {
+    const actual = cola.shift()!;
+    if (vistos.has(actual)) continue;
+    vistos.add(actual);
+    for (const vecino of vecinos.get(actual) ?? []) if (!vistos.has(vecino)) cola.push(vecino);
+  }
+  return vistos;
+};
+
+export const anclasDeFlujo = (flujo: Flujo): Map<string, { x: number; y: number }> => {
+  const anclas = new Map<string, { x: number; y: number }>();
+  for (const nodo of flujo.nodos) {
+    const centro = { x: nodo.x + nodo.w / 2, y: nodo.y + nodo.h / 2 };
+    anclas.set(nodo.id, centro);
+    for (const id of nodo.idsPuerto) anclas.set(id, centro);
+    for (const puerto of nodo.puertos) {
+      anclas.set(puerto.id, { x: nodo.x + puerto.x + puerto.w / 2, y: nodo.y + puerto.y + puerto.h / 2 });
+    }
+  }
+  // Un grupo de destinos colapsado no dibuja a sus miembros, pero sus cintas
+  // siguen apuntándoles: caen a la cabecera del grupo, que es lo que hace que
+  // la cinta agregada salga de un punto y no del vacío.
+  for (const bloque of flujo.bloques) {
+    if (!bloque.colapsable || bloque.abierto) continue;
+    anclas.set(bloque.id, { x: bloque.x + bloque.w / 2, y: bloque.y + ALTO_CABECERA_GRUPO / 2 });
+  }
+  return anclas;
+};
+
 export type OpcionesFlujo = { baricentro?: boolean };
 
 export const construirFlujo = (
@@ -330,8 +379,42 @@ export const construirFlujo = (
     }
   }
 
+  const alcanzables = alcanzablesDesdeIsp(estado);
+  for (const nodo of nodos) nodo.sinRuta = !alcanzables.has(nodo.id);
+
+  // Un destino dentro de un grupo cerrado no se dibuja, así que su cinta se
+  // redirige a la cabecera del grupo y las de un mismo grupo se agregan en una.
+  const grupoDe = new Map(destinos.map(destino => [destino.id, destino.grupo]));
+  const visible = (id: string) => nodos.some(nodo => nodo.id === id) ? id : grupoDe.get(id) ?? id;
+  const capaDe = new Map<string, Capa>(nodos.map(nodo => [nodo.id, nodo.capa]));
+  for (const bloque of bloques) if (bloque.colapsable) capaDe.set(bloque.id, "destinos");
+
+  const agregadas = new Map<string, CintaFlujo>();
+  for (const arista of aristasParaDibujar(estado, abiertas)) {
+    const a = visible(nodoDeExtremo(estado, arista.a) === arista.a ? arista.a : nodoDeExtremo(estado, arista.a));
+    const b = visible(nodoDeExtremo(estado, arista.b) === arista.b ? arista.b : nodoDeExtremo(estado, arista.b));
+    if (a === b) continue;
+    const capaA = CAPAS.indexOf(capaDe.get(a) ?? "destinos");
+    const capaB = CAPAS.indexOf(capaDe.get(b) ?? "destinos");
+    // Se orienta siempre de la capa menor a la mayor: es lo que garantiza que
+    // ninguna cinta se dibuje hacia atrás.
+    const [desde, hasta] = capaA <= capaB ? [a, b] : [b, a];
+    const clave = `${desde}|${hasta}`;
+    const previa = agregadas.get(clave);
+    if (previa) {
+      previa.cuenta += arista.cuenta;
+      previa.enlaceId = 0;
+      continue;
+    }
+    agregadas.set(clave, {
+      clave, a: desde, b: hasta, tipo: arista.tipo, cuenta: arista.cuenta,
+      enlaceId: arista.enlaceId, intraCapa: capaA === capaB,
+    });
+  }
+  const cintas = [...agregadas.values()];
+
   return {
-    columnas, bloques, nodos, cintas: [], bandeja: bandejaDe(estado), grupos,
+    columnas, bloques, nodos, cintas, bandeja: bandejaDe(estado), grupos,
     ancho: columnas.length ? columnas[columnas.length - 1].x + columnas[columnas.length - 1].w : 0,
     alto,
   };

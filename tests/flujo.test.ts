@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import semilla from "../lib/red/semilla.json" with { type: "json" };
 import { CATEGORIAS_BASE, type EstadoRed } from "../lib/red/modelo.ts";
-import { ANCHO_ABIERTA, CAPAS, capaDeEquipo, construirFlujo, cruces } from "../lib/red/flujo.ts";
+import { ANCHO_ABIERTA, anclasDeFlujo, CAPAS, capaDeEquipo, construirFlujo, cruces } from "../lib/red/flujo.ts";
 
 const real = (): EstadoRed => ({ ...semilla, bitacora: [], cubiculos: [], categorias: CATEGORIAS_BASE, orden: {} } as unknown as EstadoRed);
 
@@ -149,4 +149,48 @@ test("el mismo estado produce siempre el mismo dibujo", () => {
     construirFlujo(estado).nodos.map(nodo => [nodo.id, nodo.x, nodo.y]),
     construirFlujo(estado).nodos.map(nodo => [nodo.id, nodo.x, nodo.y]),
   );
+});
+
+test("ninguna cinta va hacia una capa anterior", () => {
+  const flujo = construirFlujo(real(), new Set(["grp:sala", "grp:oficina", "grp:cubiculos", "grp:aps"]));
+  const capaDe = new Map(flujo.nodos.map(nodo => [nodo.id, CAPAS.indexOf(nodo.capa)]));
+  for (const cinta of flujo.cintas) {
+    const a = capaDe.get(cinta.a);
+    const b = capaDe.get(cinta.b);
+    if (a === undefined || b === undefined) continue;
+    assert.ok(a <= b, `${cinta.a} (capa ${a}) → ${cinta.b} (capa ${b}) va hacia atrás`);
+  }
+});
+
+test("los uplinks entre switches quedan marcados como intra-capa", () => {
+  const flujo = construirFlujo(real());
+  const uplinks = flujo.cintas.filter(cinta => cinta.tipo === "uplink");
+  assert.equal(uplinks.length, 3);
+  assert.equal(uplinks.every(cinta => cinta.intraCapa), true);
+});
+
+test("las anclas cubren nodos, puertos abiertos y puertos de tarjeta cerrada", () => {
+  const estado = real();
+  const anclas = anclasDeFlujo(construirFlujo(estado));
+  assert.ok(anclas.has("eq:R2-SW1"));
+  // Con la tarjeta cerrada, el puerto cae al centro de su tarjeta: si no, la
+  // ruta que trazarCircuito() devuelve en ids de puerto no iluminaría nada.
+  assert.deepEqual(anclas.get("pto:R2-SW1-p9"), anclas.get("eq:R2-SW1"));
+  const abierto = anclasDeFlujo(construirFlujo(estado, new Set(["eq:R2-SW1"])));
+  assert.notDeepEqual(abierto.get("pto:R2-SW1-p9"), abierto.get("eq:R2-SW1"));
+});
+
+// El ISP es alcanzable desde sí mismo por definición del BFS: lo que importa
+// es que todo lo demás, cortado el único enlace de borde, quede sin ruta.
+test("lo que no alcanza al ISP queda marcado sin ruta", () => {
+  const estado = real();
+  estado.enlaces = estado.enlaces.filter(enlace => enlace.tipo !== "borde");
+  const flujo = construirFlujo(estado);
+  assert.equal(flujo.nodos.filter(nodo => nodo.id !== "pto:ISP-p0").every(nodo => nodo.sinRuta), true);
+});
+
+test("un estado sin ISP no lanza", () => {
+  const estado = real();
+  estado.equipos = estado.equipos.filter(equipo => equipo.tipo !== "isp");
+  assert.doesNotThrow(() => construirFlujo(estado));
 });
