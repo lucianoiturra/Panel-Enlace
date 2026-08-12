@@ -5,6 +5,7 @@ import NavSecciones from "../nav-secciones";
 import { haceCuanto } from "../../lib/formato-tiempo";
 import { useAhora, useRefrescoPeriodico } from "../use-refresco";
 import { UMBRALES, type EstadoSalud, type Salud } from "../../lib/salud/evaluar";
+import type { DispositivoVivo, Reconciliacion } from "../../lib/red/reconciliacion";
 
 type SaludRespuesta = Salud & { ahoraServidor: string };
 
@@ -29,6 +30,10 @@ export default function SaludPagina() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [ahora, anclarReloj] = useAhora();
+  // Vive en SALUD por decisión registrada en el spec: se planteó ponerlo junto a
+  // Cobertura en RED, que es donde vive «lo que falta documentar», y se decidió
+  // que fuera acá.
+  const [sinDocumentar, setSinDocumentar] = useState<DispositivoVivo[]>([]);
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -39,6 +44,8 @@ export default function SaludPagina() {
       const datos = await respuesta.json() as SaludRespuesta;
       anclarReloj(datos.ahoraServidor);
       setSalud(datos);
+      const monitoreo = await fetch("/api/monitoreo", { cache: "no-store" });
+      if (monitoreo.ok) setSinDocumentar(((await monitoreo.json()) as Reconciliacion).sinDocumentar);
     } catch (fallo) {
       setError(fallo instanceof Error ? fallo.message : "No se pudo cargar la salud del sistema.");
     } finally {
@@ -116,6 +123,25 @@ export default function SaludPagina() {
             </section>
           ))}
         </div>
+
+        <section className="salud-bloque" aria-label="Equipos sin documentar">
+          <h2>Equipos sin documentar<span className="mon-badge" style={dot(sinDocumentar.length ? "#d08700" : "#1f9d55")}>{sinDocumentar.length || "Ninguno"}</span></h2>
+          <p className="subtitle">MAC vivas en la red que no están en ningún cubículo. Candidatos a documentar, o equipos que no deberían estar.</p>
+          {sinDocumentar.length > 0 && <div className="mon-scroll">
+            <table className="mon-table">
+              <thead><tr><th>IP</th><th>MAC</th><th>Nombre</th><th>Fabricante</th><th>Presente</th></tr></thead>
+              <tbody>
+                {sinDocumentar.map(dispositivo => <tr key={dispositivo.mac}>
+                  <td className="mon-mono">{dispositivo.ip || "—"}</td>
+                  <td className="mon-mono">{dispositivo.mac}</td>
+                  <td>{dispositivo.nombre && dispositivo.nombre !== "(unknown)" && dispositivo.nombre !== "(name not found)" ? dispositivo.nombre : <span className="mon-muted">—</span>}</td>
+                  <td>{dispositivo.fabricante || <span className="mon-muted">—</span>}</td>
+                  <td><span className="mon-badge" style={dot(dispositivo.presente ? "#1f9d55" : "#8a8f98")}>{dispositivo.presente ? "Sí" : "No"}</span></td>
+                </tr>)}
+              </tbody>
+            </table>
+          </div>}
+        </section>
       </section>
     </main>
   );
