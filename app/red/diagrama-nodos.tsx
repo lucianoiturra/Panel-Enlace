@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { anclasDeFlujo, grosorDeCinta, recortarAlAncho, type CintaFlujo, type Flujo, type NodoFlujo } from "../../lib/red/flujo";
+import { anclasDeFlujo, grosorDeCinta, opacidadDeCinta, recortarAlAncho, type CintaFlujo, type Flujo, type NodoFlujo } from "../../lib/red/flujo";
 import { type PuertoNodo, type ResumenPuertos } from "../../lib/red/layout";
 import { claveDePar } from "../../lib/red/aristas";
 
@@ -194,7 +194,13 @@ export default function DiagramaNodos({
         return <g key={cinta.clave} className={`net-d-link ${nivelDeArista} ${conManijas ? "editable" : ""}`}>
           {conManijas && <path className="net-d-zarpa" d={d} />}
           {nivelDeArista === "ruta" && <path className="net-d-ruta-halo" d={d} />}
-          <path d={d} stroke={COLOR_ENLACE[cinta.tipo] ?? "#68717e"} strokeWidth={grosorDeCinta(cinta.cuenta)} fill="none" />
+          <path
+            d={d}
+            stroke={COLOR_ENLACE[cinta.tipo] ?? "#68717e"}
+            strokeWidth={grosorDeCinta(cinta.tipo, cinta.cuenta)}
+            strokeOpacity={opacidadDeCinta(cinta.tipo)}
+            fill="none"
+          />
           {cinta.cuenta > 1 && <text className="net-d-cuenta" x={medio.x} y={medio.y}>×{cinta.cuenta}</text>}
           {conManijas && ([[cinta.a, cinta.b, a, b], [cinta.b, cinta.a, b, a]] as [string, string, Punto, Punto][]).map(([suelto, fijo, desde, hacia]) => {
             const punto = manija(desde, hacia);

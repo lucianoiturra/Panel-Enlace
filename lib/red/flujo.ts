@@ -220,9 +220,29 @@ export const cruces = (flujo: Flujo): number => {
 
 import { aristasParaDibujar } from "./aristas.ts";
 
-// Grosor proporcional pero acotado: sin tope, el par R2/SW3 ══ R2/PP3 con 24
-// enlaces taparía las tarjetas que une.
-export const grosorDeCinta = (cuenta: number) => Math.min(14, 2 + Math.log2(Math.max(cuenta, 1)) * 2.5);
+// El peso lo fija el tipo y la cantidad solo modula dentro de su banda. Al revés
+// —que es como estaba— nueve rosetas de una sala se dibujan más gruesas que el
+// uplink que las alimenta, y la jerarquía queda invertida.
+//
+// El máximo de cada banda tiene que quedar por debajo de la base de la banda
+// siguiente: si no, una cinta de roseta con muchos enlaces alcanza o supera a
+// un patch con uno solo, y la inversión que esto viene a arreglar reaparece
+// arriba de la escala en vez de abajo. Por eso el máximo de roseta queda en
+// 1.9 y no en 2.4: a 2.4 empata con la base de patch (2) en vez de quedar por
+// debajo.
+const BANDA: Record<TipoEnlace, { base: number; max: number; opacidad: number }> = {
+  borde: { base: 5, max: 7, opacidad: 1 },
+  uplink: { base: 4.5, max: 6.5, opacidad: 0.95 },
+  patch: { base: 2, max: 4, opacidad: 0.55 },
+  roseta: { base: 1.2, max: 1.9, opacidad: 0.3 },
+};
+
+export const grosorDeCinta = (tipo: TipoEnlace, cuenta: number): number => {
+  const banda = BANDA[tipo] ?? BANDA.patch;
+  return Math.min(banda.max, banda.base + Math.log2(Math.max(cuenta, 1)) * 0.5);
+};
+
+export const opacidadDeCinta = (tipo: TipoEnlace): number => (BANDA[tipo] ?? BANDA.patch).opacidad;
 
 const alcanzablesDesdeIsp = (estado: EstadoRed): Set<string> => {
   const isp = estado.equipos.find(equipo => equipo.tipo === "isp");

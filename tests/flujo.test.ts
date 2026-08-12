@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import semilla from "../lib/red/semilla.json" with { type: "json" };
 import { CATEGORIAS_BASE, puertosDeEndpoint, type EstadoRed } from "../lib/red/modelo.ts";
-import { ANCHO_ABIERTA, anclasDeFlujo, CAPAS, capaDeEquipo, construirFlujo, cruces, recortarAlAncho } from "../lib/red/flujo.ts";
+import { ANCHO_ABIERTA, anclasDeFlujo, CAPAS, capaDeEquipo, construirFlujo, cruces, grosorDeCinta, opacidadDeCinta, recortarAlAncho } from "../lib/red/flujo.ts";
 import { anchoDeTexto } from "../lib/red/layout.ts";
 
 const real = (): EstadoRed => ({ ...semilla, bitacora: [], cubiculos: [], categorias: CATEGORIAS_BASE, orden: {} } as unknown as EstadoRed);
@@ -260,4 +260,24 @@ test("un equipo sin puertos ocupados va al final de su bloque", () => {
   const ocupados = enR2.map(nodo => (nodo.resumen?.ocupados ?? 0) > 0);
   assert.deepEqual(ocupados, [...ocupados].sort((a, b) => Number(b) - Number(a)),
     "los que tienen puertos ocupados van primero");
+});
+
+// La prueba que fija la jerarquía. Hoy falla: nueve rosetas se dibujan más
+// gruesas que el uplink que las alimenta, y el ojo lee las capilares como
+// espina dorsal.
+test("una roseta nunca pesa más que un uplink, por muchas que sean", () => {
+  assert.ok(grosorDeCinta("roseta", 9) < grosorDeCinta("uplink", 1));
+  assert.ok(grosorDeCinta("roseta", 40) < grosorDeCinta("patch", 1));
+  assert.ok(grosorDeCinta("patch", 24) < grosorDeCinta("borde", 1));
+});
+
+test("la cantidad modula dentro de la banda de su tipo", () => {
+  assert.ok(grosorDeCinta("patch", 9) > grosorDeCinta("patch", 1));
+  assert.ok(grosorDeCinta("patch", 100) <= 4);
+  assert.ok(grosorDeCinta("borde", 100) <= 7);
+});
+
+test("la opacidad baja del borde a la capilar", () => {
+  assert.ok(opacidadDeCinta("borde") > opacidadDeCinta("patch"));
+  assert.ok(opacidadDeCinta("patch") > opacidadDeCinta("roseta"));
 });
