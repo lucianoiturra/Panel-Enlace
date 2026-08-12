@@ -25,7 +25,12 @@ ESPERA_ENTRE=2
 # (3 min), asi que mon_devices ya sabe si el equipo desperto.
 MINUTOS_VERIFICAR=8
 
-psql_() { docker exec -i panel-db psql -U panel -d panel -q -tA -F'	' -v ON_ERROR_STOP=1 "$@"; }
+# PGTZ no es cosmetico: el contenedor de Postgres corre en Etc/UTC, asi que sin
+# esto los horarios saldrian cuatro horas corridos. "El 27 no desperto a las
+# 07:45" leido como 11:45 no le sirve a nadie. Solo afecta la presentacion; las
+# comparaciones de TIMESTAMPTZ son absolutas y no dependen de la zona.
+ZONA="${WOL_ZONA:-America/Santiago}"
+psql_() { docker exec -i -e "PGTZ=$ZONA" panel-db psql -U panel -d panel -q -tA -F'	' -v ON_ERROR_STOP=1 "$@"; }
 
 # --- envio -------------------------------------------------------------------
 # Las MAC se guardan con guiones (1C-83-41-1C-7D-A7) y wakeonlan las quiere con
@@ -153,6 +158,24 @@ SQL
   done
 }
 
+# Pedidos de "encender ahora" hechos desde la pantalla. Se marcan atendidos
+# ANTES de mandar: si algo revienta a mitad de camino, el peor caso es un
+# encendido perdido y no un bucle que despierta la sala cada minuto para siempre.
+pedidos() {
+  cola=$(psql_ -c "UPDATE wol_pedidos SET atendido_at = now()
+                   WHERE atendido_at IS NULL AND pedido_at > now() - interval '10 minutes'
+                   RETURNING id, objetivo")
+  # Un pedido mas viejo que eso ya no interesa: se descarta sin encender nada.
+  psql_ -c "UPDATE wol_pedidos SET atendido_at = now()
+            WHERE atendido_at IS NULL AND pedido_at <= now() - interval '10 minutes'" >/dev/null
+  [ -n "$cola" ] || return 0
+  printf '%s\n' "$cola" | while IFS="$(printf '\t')" read -r id objetivo; do
+    [ -n "${objetivo:-}" ] || continue
+    echo "wol: atendiendo pedido $id -> $objetivo"
+    enviar 'NULL' "$objetivo"
+  done
+}
+
 # --- entrada -----------------------------------------------------------------
 case "${1:-}" in
   --ahora)
@@ -165,13 +188,13 @@ case "${1:-}" in
     echo "wol: verificacion en $MINUTOS_VERIFICAR minutos (la hace el timer)"
     ;;
   --estado)
-    echo "ultimos 20 eventos:"
+    echo "ultimos 20 eventos (hora local, $ZONA):"
     psql_ -c "SELECT to_char(enviado_at,'DD/MM HH24:MI'), cubiculo, resultado,
                      CASE WHEN verificado_at IS NULL THEN 'sin verificar'
                           WHEN desperto THEN 'desperto' ELSE 'NO desperto' END
               FROM wol_eventos ORDER BY id DESC LIMIT 20"
     ;;
   --verificar) verificar ;;
-  "")          programados; verificar ;;
+  "")          pedidos; programados; verificar ;;
   *)           echo "modo desconocido: $1" >&2; exit 1 ;;
 esac

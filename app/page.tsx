@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import NavSecciones from "./nav-secciones";
+import EncendidoProgramado from "./encendido-programado";
 import { useRefrescoPeriodico } from "./use-refresco";
 import { isValidIpv4, isValidMac, isValidPin } from "../lib/room-validation";
 
@@ -463,6 +464,8 @@ export default function Home() {
           </div>
           <p className="pending-line"><span><strong>{loaded ? pendingSummary.checklist : "—"}</strong> revisiones pendientes</span><span><strong>{loaded ? pendingSummary.tasks : "—"}</strong> tareas</span></p>
         </section>
+
+        <EncendidoProgramado onAviso={showNotice} />
 
         <section className="room-surface">
           <div className="room-toolbar"><h2>Plano de la sala</h2><label className="search"><span aria-hidden="true">⌕</span><span className="sr-only">Buscar cubículo, IP, MAC, serie o inventario</span><input value={query} aria-label="Buscar cubículo, IP, MAC, serie o inventario" onChange={e => setQuery(e.target.value)} placeholder="Buscar cubículo, IP, MAC o serie" /></label></div>

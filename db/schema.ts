@@ -166,3 +166,56 @@ export const monSalud = pgTable("mon_salud", {
   numero: doublePrecision("numero"),
   medidoAt: timestamp("medido_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// mon_salud sólo tiene el presente. Acá quedan los cambios: una fila por
+// cambio, no una por medición.
+export const monSaludHistoria = pgTable(
+  "mon_salud_historia",
+  {
+    id: serial("id").primaryKey(),
+    clave: text("clave").notNull(),
+    valor: text("valor").notNull().default(""),
+    desde: timestamp("desde", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("mon_salud_historia_idx").on(table.clave, table.desde)],
+);
+
+// --- Encendido programado (Wake-on-LAN) -------------------------------------
+// El paquete mágico lo manda el timer wol-cabserver del host; esta app sólo
+// lee y escribe estas tres tablas. Un contenedor sin NET_RAW no puede mandar
+// un broadcast crudo, y montarle privilegios para esto sería peor.
+
+export const wolProgramas = pgTable("wol_programas", {
+  id: serial("id").primaryKey(),
+  nombre: text("nombre").notNull().default(""),
+  // Días ISO como dígitos pegados: '12345' = lunes a viernes.
+  dias: text("dias").notNull().default(""),
+  hora: text("hora").notNull().default(""),
+  // 'todos' o una lista de cubículos: '3,7,12'.
+  objetivo: text("objetivo").notNull().default("todos"),
+  activo: boolean("activo").notNull().default(true),
+  creadoAt: text("creado_at").notNull().default(""),
+});
+
+export const wolEventos = pgTable(
+  "wol_eventos",
+  {
+    id: serial("id").primaryKey(),
+    // NULL = envío manual, no lo disparó ningún programa.
+    programa: integer("programa"),
+    cubiculo: integer("cubiculo").notNull(),
+    mac: text("mac").notNull().default(""),
+    resultado: text("resultado").notNull().default("enviado"),
+    enviadoAt: timestamp("enviado_at", { withTimezone: true }).notNull().defaultNow(),
+    verificadoAt: timestamp("verificado_at", { withTimezone: true }),
+    desperto: boolean("desperto"),
+  },
+  (table) => [index("wol_evento_cubiculo_idx").on(table.cubiculo, table.enviadoAt)],
+);
+
+export const wolPedidos = pgTable("wol_pedidos", {
+  id: serial("id").primaryKey(),
+  objetivo: text("objetivo").notNull().default("todos"),
+  pedidoAt: timestamp("pedido_at", { withTimezone: true }).notNull().defaultNow(),
+  atendidoAt: timestamp("atendido_at", { withTimezone: true }),
+});
