@@ -1,6 +1,14 @@
 @import "tailwindcss";
 
-:root { --ink:#182334; --muted:#596474; --canvas:#f3f4f6; --surface:#ffffff; --green:#294f7c; --ok:#237a52; --warning:#986900; --line:#d7dce2; --orange:#a65330; --red:#a33442; --gray:#68717e; --focus:#0e5aa7; }
+/* Escala de espaciado. Antes de esto convivían 3, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+   14, 16, 18, 20, 22, 25, 27 y 28px, elegidos uno por uno; los más bajos dejaban
+   el texto pegado al filo de su caja.
+   NO aplicar la escala a lo que mide algo: .station (58px, define el plano de la
+   sala), .net-pt y .net-strip (la tira de puertos), .wol-dias button (36x36),
+   .brand-mark, .icon-button, .task-check, .task-delete, y los mínimos de 44px de
+   @media(pointer:coarse). Ahí el tamaño es la geometría, no el estilo. */
+:root { --ink:#182334; --muted:#596474; --canvas:#f3f4f6; --surface:#ffffff; --green:#294f7c; --ok:#237a52; --warning:#986900; --line:#d7dce2; --orange:#a65330; --red:#a33442; --gray:#68717e; --focus:#0e5aa7;
+  --esp-1:4px; --esp-2:8px; --esp-3:12px; --esp-4:16px; --esp-5:24px; --esp-6:32px; }
 * { box-sizing:border-box; }
 body { margin:0; background:var(--canvas); color:var(--ink); font-family:var(--font-manrope),sans-serif; }
 button,input,select,textarea { font:inherit; }
@@ -62,7 +70,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offs
 .net-tabs{display:flex;gap:2px;margin-left:18px}.net-tabs a{padding:7px 13px;font:700 10px var(--font-mono);letter-spacing:.09em;color:var(--muted);border-bottom:2px solid transparent;text-decoration:none}.net-tabs a:hover{color:var(--ink)}.net-tabs a.active{color:var(--ink);border-bottom-color:var(--ink)}
 .net-body{padding:0 0 8px;transition:.2s}.net-body.is-loading{opacity:.5}
 .net-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:6px}
-.net-card{display:grid;gap:4px;text-align:left;min-height:62px;padding:9px 10px;border:1px solid #cfd5dc;border-radius:3px;background:var(--surface);color:var(--ink);transition:.16s}
+.net-card{display:grid;gap:4px;text-align:left;min-height:62px;padding:var(--esp-3) var(--esp-4);border:1px solid #cfd5dc;border-radius:3px;background:var(--surface);color:var(--ink);transition:.16s}
 .net-card:hover{border-color:var(--ink);transform:translateY(-1px)}.net-card.selected{outline:2px solid var(--ink);outline-offset:1px}
 .net-card-name{font-size:12px;font-weight:800;line-height:1.25}
 .net-card-location{font-size:9px;color:var(--muted);line-height:1.35}
@@ -110,19 +118,19 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offs
 .net-eq-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:5px}
 .net-eq-head b{font:700 10px var(--font-mono)}.net-eq-head small{color:var(--muted);font-size:10px}
 
-.net-rack-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;border:1px solid var(--line);border-left:4px solid var(--green);border-radius:5px;padding:13px 15px;margin-bottom:14px}
+.net-rack-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;border:1px solid var(--line);border-left:4px solid var(--green);border-radius:5px;padding:var(--esp-4) var(--esp-5);margin-bottom:14px}
 .net-rack-cod{font:700 9px var(--font-mono);letter-spacing:.13em;color:var(--muted)}
 .net-rack-head h3{margin:2px 0 0;font-size:16px;letter-spacing:-.01em}
 .net-rack-donde{margin:2px 0 0;font-size:11px;color:var(--muted)}
 .net-rack-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
-.net-chip{border:1px solid var(--line);border-radius:4px;background:#f7f8f9;padding:3px 8px;font:700 9px var(--font-mono);letter-spacing:.04em;color:#40506a}
+.net-chip{border:1px solid var(--line);border-radius:4px;background:#f7f8f9;padding:var(--esp-1) var(--esp-3);font:700 9px var(--font-mono);letter-spacing:.04em;color:#40506a}
 .net-chip.vacio{border-style:dashed;color:#9aa3af;font-style:italic}
 .net-rack-nota{margin:9px 0 0;font-size:11px;color:var(--muted);max-width:62ch;white-space:pre-line}
 
 .net-eq-fila{display:grid;grid-template-columns:210px 1fr;border:1px solid var(--line);border-bottom:0}
 .net-eq-fila:last-of-type{border-bottom:1px solid var(--line);border-radius:0 0 5px 5px}
 .net-eq-fila:first-of-type{border-radius:5px 5px 0 0}
-.net-eq-id{background:#f7f8f9;border-right:1px solid var(--line);padding:9px 11px;display:flex;flex-direction:column;gap:6px}
+.net-eq-id{background:#f7f8f9;border-right:1px solid var(--line);padding:var(--esp-3) var(--esp-4);display:flex;flex-direction:column;gap:6px}
 .net-eq-id-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .net-eq-mover{display:flex;gap:3px}
 .net-eq-mover button{border:1px solid var(--line);border-radius:3px;background:var(--surface);width:22px;height:20px;font-size:11px;color:var(--muted);padding:0}
@@ -134,7 +142,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offs
 .net-eq-abrir small{font-size:10px;color:var(--muted);line-height:1.35}
 .net-eq-abrir small.falta{color:#b3bac3;font-style:italic}
 .net-eq-ocup{font-size:10px;color:var(--ok);margin-top:4px}
-.net-eq-puertos{padding:9px 11px;min-width:0}
+.net-eq-puertos{padding:var(--esp-3) var(--esp-4);min-width:0}
 .net-endpoint{border:1px dashed #c3cad3;border-radius:4px;background:var(--surface);color:var(--muted);padding:6px 11px;font:700 9px var(--font-mono);letter-spacing:.04em}
 .net-endpoint:hover{border-color:var(--ink);color:var(--ink)}
 
@@ -165,8 +173,8 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offs
 .net-pt.selected{outline:2px solid var(--ink);outline-offset:1px}
 .net-table-wrap{overflow-x:auto}
 .net-table{width:100%;border-collapse:collapse;font-size:11px}
-.net-table th{text-align:left;font:700 8px var(--font-mono);letter-spacing:.09em;color:var(--muted);border-bottom:1px solid var(--line);padding:7px 8px;white-space:nowrap}
-.net-table td{padding:6px 8px;border-bottom:1px solid #edeff2}
+.net-table th{text-align:left;font:700 8px var(--font-mono);letter-spacing:.09em;color:var(--muted);border-bottom:1px solid var(--line);padding:var(--esp-2) var(--esp-3);white-space:nowrap}
+.net-table td{padding:var(--esp-2) var(--esp-3);border-bottom:1px solid #edeff2}
 .net-table tbody tr:hover{background:#f7f8f9;cursor:pointer}
 .net-table tr.selected{background:#eaf0f7}
 .net-table tr.net-group td{background:#f4f6f8;font:700 8px var(--font-mono);letter-spacing:.06em}
@@ -492,9 +500,9 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offs
 .net-clear-filters:hover{text-decoration:underline}
 
 .net-space-list-head,.net-space-row{display:grid;grid-template-columns:minmax(210px,1.55fr) minmax(100px,.72fr) minmax(110px,.9fr) minmax(125px,.9fr) minmax(180px,1.25fr) 22px;align-items:center;column-gap:14px}
-.net-space-list-head{min-height:32px;padding:0 12px;border-bottom:1px solid var(--line);color:var(--muted);font-size:10px;font-weight:800}
+.net-space-list-head{min-height:32px;padding:0 var(--esp-4);border-bottom:1px solid var(--line);color:var(--muted);font-size:10px;font-weight:800}
 .net-space-list-head.global{position:sticky;top:64px;z-index:8;background:var(--surface)}
-.net-space-row{width:100%;min-height:58px;border:0;border-bottom:1px solid #e4e7eb;padding:9px 12px;background:var(--surface);color:var(--ink);text-align:left;transition:background-color .16s ease}
+.net-space-row{width:100%;min-height:58px;border:0;border-bottom:1px solid #e4e7eb;padding:var(--esp-3) var(--esp-4);background:var(--surface);color:var(--ink);text-align:left;transition:background-color .16s ease}
 .net-space-row:hover{background:#f3f5f7}
 .net-space-row.selected{position:relative;z-index:1;outline:2px solid var(--ink);outline-offset:-2px;background:#eef2f6}
 .net-space-primary{display:flex;min-width:0;flex-direction:column;gap:3px}
@@ -536,7 +544,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offs
 .net-space-group.collapsed .net-space-group-toggle{transform:rotate(180deg)}
 
 .net-space-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:7px}
-.net-space-card{display:flex;min-height:116px;flex-direction:column;gap:10px;border:1px solid var(--line);border-radius:5px;padding:12px;background:var(--surface);color:var(--ink);text-align:left;transition:border-color .16s ease,background-color .16s ease}
+.net-space-card{display:flex;min-height:116px;flex-direction:column;gap:10px;border:1px solid var(--line);border-radius:5px;padding:var(--esp-4);background:var(--surface);color:var(--ink);text-align:left;transition:border-color .16s ease,background-color .16s ease}
 .net-space-card:hover{border-color:var(--ink);background:#fafbfc}
 .net-space-card.selected{outline:2px solid var(--ink);outline-offset:1px}
 .net-space-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
@@ -626,7 +634,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offs
 .mon-summary .chip span{color:var(--muted);font:700 9px var(--font-mono);letter-spacing:.07em;text-transform:uppercase}
 .mon-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:9px;background:var(--surface)}
 .mon-table{width:100%;border-collapse:collapse;font-size:13px;min-width:720px}
-.mon-table th,.mon-table td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+.mon-table th,.mon-table td{text-align:left;padding:var(--esp-3) var(--esp-4);border-bottom:1px solid var(--line);white-space:nowrap}
 .mon-table tbody tr:last-child td{border-bottom:0}
 .mon-table th{color:var(--muted);font:700 10px var(--font-mono);letter-spacing:.06em;text-transform:uppercase}
 .mon-badge{display:inline-flex;align-items:center;gap:7px;font-weight:700;font-size:12px}
@@ -650,7 +658,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offs
 /* --- Encendido programado ------------------------------------------------ */
 /* Vive entre el rail de estados y el plano: es informacion de la sala entera,
    no de un cubiculo, y la pregunta que responde se hace una vez al dia. */
-.wol-linea{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:0 0 18px;padding:13px 16px;border:1px solid var(--line);border-left:3px solid var(--ink);border-radius:4px;background:var(--surface)}
+.wol-linea{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:0 0 18px;padding:var(--esp-4) var(--esp-5);border:1px solid var(--line);border-left:3px solid var(--ink);border-radius:4px;background:var(--surface)}
 .wol-linea-texto{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;min-width:0}
 .wol-etiqueta{font:700 9px var(--font-mono);letter-spacing:.12em;color:var(--muted)}
 .wol-linea-texto b{font-size:13px}
