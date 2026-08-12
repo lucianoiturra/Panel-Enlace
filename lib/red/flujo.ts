@@ -170,7 +170,52 @@ const bandejaDe = (estado: EstadoRed): FichaBandeja[] => [
     })),
 ];
 
-export const construirFlujo = (estado: EstadoRed, abiertas: Set<string> = new Set()): Flujo => {
+import { nodoDeExtremo } from "./aristas.ts";
+
+// Baricentro: cada nodo se coloca en la media de las posiciones de sus vecinos
+// de la capa anterior. Dos pasadas alcanzan sobre una topología de 25 equipos y
+// el resultado es determinista, que es lo que permite probarlo.
+const PASADAS_BARICENTRO = 2;
+
+const ordenarPorBaricentro = (
+  ids: string[],
+  vecinos: Map<string, string[]>,
+  posicionPrevia: Map<string, number>,
+): string[] => {
+  const base = new Map(ids.map((id, indice) => [id, indice]));
+  const media = (id: string) => {
+    const lista = (vecinos.get(id) ?? []).map(vecino => posicionPrevia.get(vecino)).filter((valor): valor is number => valor !== undefined);
+    return lista.length ? lista.reduce((suma, valor) => suma + valor, 0) / lista.length : base.get(id)!;
+  };
+  // El desempate por el índice original es lo que hace determinista al orden:
+  // sin él, dos nodos con la misma media quedarían a merced del sort.
+  return [...ids].sort((a, b) => media(a) - media(b) || base.get(a)! - base.get(b)!);
+};
+
+export const cruces = (flujo: Flujo): number => {
+  const y = new Map(flujo.nodos.map(nodo => [nodo.id, nodo.y]));
+  const x = new Map(flujo.nodos.map(nodo => [nodo.id, nodo.x]));
+  const aristas = flujo.cintas.filter(cinta => !cinta.intraCapa && y.has(cinta.a) && y.has(cinta.b));
+  let total = 0;
+  for (let i = 0; i < aristas.length; i += 1) {
+    for (let j = i + 1; j < aristas.length; j += 1) {
+      const una = aristas[i];
+      const otra = aristas[j];
+      if (x.get(una.a) !== x.get(otra.a) || x.get(una.b) !== x.get(otra.b)) continue;
+      const cruzan = (y.get(una.a)! - y.get(otra.a)!) * (y.get(una.b)! - y.get(otra.b)!) < 0;
+      if (cruzan) total += 1;
+    }
+  }
+  return total;
+};
+
+export type OpcionesFlujo = { baricentro?: boolean };
+
+export const construirFlujo = (
+  estado: EstadoRed,
+  abiertas: Set<string> = new Set(),
+  opciones: OpcionesFlujo = {},
+): Flujo => {
   const nodos = estado.equipos
     .filter(equipo => equipo.tipo !== "ap")
     .map(equipo => nodoDeEquipo(estado, equipo, abiertas));
@@ -195,70 +240,94 @@ export const construirFlujo = (estado: EstadoRed, abiertas: Set<string> = new Se
     for (const destino of lista) nodos.push(nodoDeDestino(destino));
   }
 
-  const bloques: BloqueFlujo[] = [];
-  const grupos: string[][] = [];
+  const vecinosPorNodo = new Map<string, string[]>();
+  for (const enlace of estado.enlaces) {
+    const a = nodoDeExtremo(estado, enlace.a);
+    const b = nodoDeExtremo(estado, enlace.b);
+    if (a === b) continue;
+    vecinosPorNodo.set(a, [...(vecinosPorNodo.get(a) ?? []), b]);
+    vecinosPorNodo.set(b, [...(vecinosPorNodo.get(b) ?? []), a]);
+  }
+  const posicionPrevia = new Map<string, number>();
+
+  let bloques: BloqueFlujo[] = [];
+  let grupos: string[][] = [];
   let alto = 0;
 
-  for (const columna of columnas) {
-    let y = ALTO_TITULO_COLUMNA;
+  // Dos pasadas: en la primera `posicionPrevia` está vacía y el baricentro cae
+  // al orden alfabético; en la segunda ya tiene las `y` reales de la capa
+  // anterior y es cuando de verdad reduce cruces.
+  for (let pasada = 0; pasada < PASADAS_BARICENTRO; pasada += 1) {
+    bloques = [];
+    grupos = [];
+    alto = 0;
+    for (const columna of columnas) {
+      let y = ALTO_TITULO_COLUMNA;
 
-    if (columna.capa === "destinos") {
-      for (const [grupo, lista] of porGrupo) {
-        const abierto = abiertas.has(grupo);
-        const inicio = y;
-        y += ALTO_CABECERA_GRUPO;
-        if (abierto) {
-          const ids = ordenarPor(estado.orden, lista.map(destino => destino.id));
-          grupos.push(ids);
-          const porId = new Map(nodos.map(nodo => [nodo.id, nodo]));
-          for (const id of ids) {
-            const nodo = porId.get(id);
-            if (!nodo) continue;
-            nodo.x = columna.x + RELLENO / 2;
-            nodo.y = y;
-            y += ALTO_DESTINO + SEPARACION_DESTINO;
+      if (columna.capa === "destinos") {
+        for (const [grupo, lista] of porGrupo) {
+          const abierto = abiertas.has(grupo);
+          const inicio = y;
+          y += ALTO_CABECERA_GRUPO;
+          if (abierto) {
+            const ids = ordenarPor(estado.orden, lista.map(destino => destino.id));
+            grupos.push(ids);
+            const porId = new Map(nodos.map(nodo => [nodo.id, nodo]));
+            for (const id of ids) {
+              const nodo = porId.get(id);
+              if (!nodo) continue;
+              nodo.x = columna.x + RELLENO / 2;
+              nodo.y = y;
+              y += ALTO_DESTINO + SEPARACION_DESTINO;
+            }
           }
+          bloques.push({
+            id: grupo, capa: "destinos", titulo: tituloGrupo.get(grupo) ?? grupo,
+            x: columna.x, y: inicio, w: columna.w, h: y - inicio,
+            colapsable: true, abierto, cuenta: lista.length,
+          });
+          y += SEPARACION_BLOQUE;
         }
-        bloques.push({
-          id: grupo, capa: "destinos", titulo: tituloGrupo.get(grupo) ?? grupo,
-          x: columna.x, y: inicio, w: columna.w, h: y - inicio,
-          colapsable: true, abierto, cuenta: lista.length,
-        });
-        y += SEPARACION_BLOQUE;
-      }
-      alto = Math.max(alto, y);
-      continue;
-    }
+        alto = Math.max(alto, y);
+      } else {
+        // Fuera de los destinos, el bloque es el rack: los tres racks son 100 %
+        // intra-rack salvo los tres uplinks, así que agrupar por rack no es
+        // cosmético, es la estructura real del cableado.
+        const dentro = nodos.filter(nodo => nodo.capa === columna.capa);
+        const porBloque = new Map<string, NodoFlujo[]>();
+        for (const nodo of dentro) porBloque.set(nodo.bloque, [...(porBloque.get(nodo.bloque) ?? []), nodo]);
 
-    // Fuera de los destinos, el bloque es el rack: los tres racks son 100 %
-    // intra-rack salvo los tres uplinks, así que agrupar por rack no es
-    // cosmético, es la estructura real del cableado.
-    const dentro = nodos.filter(nodo => nodo.capa === columna.capa);
-    const porBloque = new Map<string, NodoFlujo[]>();
-    for (const nodo of dentro) porBloque.set(nodo.bloque, [...(porBloque.get(nodo.bloque) ?? []), nodo]);
-
-    for (const [bloqueId, lista] of porBloque) {
-      const inicio = y;
-      const conTitulo = columna.capa !== "borde";
-      if (conTitulo) y += ALTO_TITULO_BLOQUE;
-      const ids = ordenarPor(estado.orden, lista.map(nodo => nodo.id).sort());
-      grupos.push(ids);
-      const porId = new Map(lista.map(nodo => [nodo.id, nodo]));
-      for (const id of ids) {
-        const nodo = porId.get(id)!;
-        nodo.x = columna.x;
-        nodo.y = y;
-        y += nodo.h + SEPARACION_NODO;
+        for (const [bloqueId, lista] of porBloque) {
+          const inicio = y;
+          const conTitulo = columna.capa !== "borde";
+          if (conTitulo) y += ALTO_TITULO_BLOQUE;
+          const alfabetico = lista.map(nodo => nodo.id).sort();
+          const automatico = opciones.baricentro === false
+            ? alfabetico
+            : ordenarPorBaricentro(alfabetico, vecinosPorNodo, posicionPrevia);
+          const ids = ordenarPor(estado.orden, automatico);
+          grupos.push(ids);
+          const porId = new Map(lista.map(nodo => [nodo.id, nodo]));
+          for (const id of ids) {
+            const nodo = porId.get(id)!;
+            nodo.x = columna.x;
+            nodo.y = y;
+            y += nodo.h + SEPARACION_NODO;
+          }
+          bloques.push({
+            id: bloqueId, capa: columna.capa,
+            titulo: conTitulo ? (estado.racks.find(rack => rack.id === bloqueId)?.nombre ?? bloqueId) : "",
+            x: columna.x, y: inicio, w: columna.w, h: y - inicio,
+            colapsable: false, abierto: true, cuenta: lista.length,
+          });
+          y += SEPARACION_BLOQUE;
+        }
+        alto = Math.max(alto, y);
       }
-      bloques.push({
-        id: bloqueId, capa: columna.capa,
-        titulo: conTitulo ? (estado.racks.find(rack => rack.id === bloqueId)?.nombre ?? bloqueId) : "",
-        x: columna.x, y: inicio, w: columna.w, h: y - inicio,
-        colapsable: false, abierto: true, cuenta: lista.length,
-      });
-      y += SEPARACION_BLOQUE;
+
+      // Al cerrar cada columna, alimentar posicionPrevia para la siguiente.
+      for (const nodo of nodos.filter(item => item.capa === columna.capa)) posicionPrevia.set(nodo.id, nodo.y);
     }
-    alto = Math.max(alto, y);
   }
 
   return {

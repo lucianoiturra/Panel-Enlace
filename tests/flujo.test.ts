@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import semilla from "../lib/red/semilla.json" with { type: "json" };
 import { CATEGORIAS_BASE, type EstadoRed } from "../lib/red/modelo.ts";
-import { ANCHO_ABIERTA, CAPAS, capaDeEquipo, construirFlujo } from "../lib/red/flujo.ts";
+import { ANCHO_ABIERTA, CAPAS, capaDeEquipo, construirFlujo, cruces } from "../lib/red/flujo.ts";
 
 const real = (): EstadoRed => ({ ...semilla, bitacora: [], cubiculos: [], categorias: CATEGORIAS_BASE, orden: {} } as unknown as EstadoRed);
 
@@ -119,4 +119,34 @@ test("cada bloque publica su grupo reordenable", () => {
   const flujo = construirFlujo(real());
   const switches = flujo.nodos.filter(nodo => nodo.capa === "switches" && nodo.bloque === "R2").map(nodo => nodo.id);
   assert.ok(flujo.grupos.some(grupo => grupo.length === switches.length && grupo.every(id => switches.includes(id))));
+});
+
+// El baricentro es una heurística: no garantiza el mínimo, sí garantiza no
+// empeorar respecto del orden alfabético, que es con lo que se compara.
+test("el baricentro no produce más cruces que el orden alfabético", () => {
+  const estado = real();
+  const conBaricentro = cruces(construirFlujo(estado));
+  const alfabetico = construirFlujo(estado, new Set(), { baricentro: false });
+  assert.ok(conBaricentro <= cruces(alfabetico), `baricentro ${conBaricentro} vs alfabético ${cruces(alfabetico)}`);
+});
+
+// El orden se aplica por bloque y se lee de flujo.grupos, igual que en la
+// prueba equivalente del orden manual sobre el automático.
+test("el orden manual sigue mandando sobre el baricentro", () => {
+  const estado = real();
+  const idsR2 = construirFlujo(estado).nodos.filter(nodo => nodo.capa === "patch" && nodo.bloque === "R2").map(nodo => nodo.id);
+  const grupoR2 = (flujo: ReturnType<typeof construirFlujo>) =>
+    flujo.grupos.find(grupo => grupo.length === idsR2.length && grupo.every(id => idsR2.includes(id)))!;
+  const sinOrden = grupoR2(construirFlujo(estado));
+  estado.orden = Object.fromEntries([...sinOrden].reverse().map((id, indice) => [id, indice]));
+  const conOrden = grupoR2(construirFlujo(estado));
+  assert.deepEqual(conOrden, [...sinOrden].reverse());
+});
+
+test("el mismo estado produce siempre el mismo dibujo", () => {
+  const estado = real();
+  assert.deepEqual(
+    construirFlujo(estado).nodos.map(nodo => [nodo.id, nodo.x, nodo.y]),
+    construirFlujo(estado).nodos.map(nodo => [nodo.id, nodo.x, nodo.y]),
+  );
 });
