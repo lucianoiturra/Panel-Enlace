@@ -303,20 +303,27 @@ modo de falla real y documentado: los hallazgos B1 y B2 de
 cero. Sin este guardia, un sidecar caído pinta 38 cubículos en rojo y manda a
 alguien a revisar una sala que está bien.
 
-### 4.2 · Estado por ubicación + testigo → RED
+### 4.2 · Estado por ubicación se borra; el testigo ya está en RED
 
-La tabla de 52 filas es **redundante desde el 2026-08-11**: `estado-efectivo.ts`
-ya mezcla `/api/red` con `/api/monitoreo/ubicaciones` y la lista de espacios de RED
-ya muestra el estado efectivo con su insignia `AUTO`/`MANUAL`. No se muda: se borra.
+**Corrección al diseño, hecha al leer el código antes de planificar: aquí no hay
+nada que mudar. Ya está mudado.** El trabajo del 2026-08-11 lo dejó hecho:
 
-Lo único que se muda de verdad es **el selector de dispositivo testigo**, a la
-ficha del espacio en RED. Y se muda cambiando de mecanismo: hoy guarda en el
-`onChange` del `<select>`, así que rozar el desplegable en una tabla de 52 filas
-reescribe de dónde sale el estado de un espacio sin confirmación (hallazgo U7 de la
-revisión). En la ficha pasa a ser un campo con **botón Guardar explícito**, y el
-error aparece junto al campo y no en un banner al principio de una página larga.
+- `app/red/page.tsx:103` ya pide `/api/monitoreo/ubicaciones`.
+- `app/red/page.tsx:435-436` ya calcula `datosFrescos` y aplica `aplicarEstadoVivo`.
+- `app/red/ficha.tsx:167-186` ya tiene el selector de dispositivo testigo, con sus
+  candidatos, su explicación de qué decide el estado y su botón «Quitar testigo».
+- `app/red/page.tsx:165` ya tiene el `PUT` que lo guarda.
 
-La ficha pide los candidatos a `/api/monitoreo/ubicaciones` al abrirse.
+Entonces la sección «Estado por ubicación» de MONITOREO no se muda: **es una copia
+redundante y se borra con la pestaña**, sin escribir una línea en RED.
+
+Lo único que queda por hacer de este punto es un arreglo de una línea que la
+mudanza habría traído de todos modos: **el selector de testigo de la ficha guarda
+en el `onChange` del `<select>`** (`app/red/ficha.tsx:179`), así que rozar el
+desplegable reescribe de dónde sale el estado del espacio sin confirmación —el
+hallazgo U7 de la revisión, que sobrevivió a la mudanza. Pasa a ser un campo con
+**botón Guardar explícito**: el `<select>` solo cambia un estado local y el `PUT`
+sale al presionar el botón.
 
 ### 4.3 · Sin documentar → SALUD
 
