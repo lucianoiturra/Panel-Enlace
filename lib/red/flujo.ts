@@ -14,7 +14,7 @@ export type Capa = "borde" | "switches" | "patch" | "destinos";
 export const CAPAS: Capa[] = ["borde", "switches", "patch", "destinos"];
 
 export const TITULO_CAPA: Record<Capa, string> = {
-  borde: "Borde · salida a internet",
+  borde: "Borde",
   switches: "Switches",
   patch: "Patch panels",
   destinos: "Destinos",
@@ -54,6 +54,15 @@ export type Flujo = {
   ancho: number; alto: number;
 };
 export type ColumnaFlujo = { capa: Capa; titulo: string; x: number; w: number };
+
+// Un rótulo que no cabe es un dato de entrada posible, no un accidente: los
+// tipos de espacio se renombran desde la interfaz.
+export const recortarAlAncho = (texto: string, ancho: number): string => {
+  if (anchoDeTexto(texto) <= ancho) return texto;
+  let corte = texto.length;
+  while (corte > 1 && anchoDeTexto(`${texto.slice(0, corte)}…`) > ancho) corte -= 1;
+  return `${texto.slice(0, corte).trimEnd()}…`;
+};
 
 const nodoDeEquipo = (estado: EstadoRed, equipo: Equipo, abiertas: Set<string>): NodoFlujo => {
   const puertos = estado.puertos.filter(puerto => puerto.equipo === equipo.id).sort((a, b) => a.n - b.n);
@@ -274,7 +283,7 @@ export const construirFlujo = (
   for (const capa of CAPAS) {
     const w = capa === "destinos" ? ANCHO_GRUPO_DESTINO : anchoDeColumna(capa, estado);
     if (!w) continue;
-    columnas.push({ capa, titulo: TITULO_CAPA[capa], x, w });
+    columnas.push({ capa, titulo: recortarAlAncho(TITULO_CAPA[capa], w), x, w });
     x += w + SEPARACION_COLUMNA;
   }
   const destinos = destinosConectados(estado);
@@ -368,7 +377,11 @@ export const construirFlujo = (
           const inicio = y;
           const conTitulo = columna.capa !== "borde";
           if (conTitulo) y += ALTO_TITULO_BLOQUE;
-          const alfabetico = lista.map(nodo => nodo.id).sort();
+          // Los vacíos al final: un 0/24 no es lo que alguien viene a mirar, y arriba
+          // empuja hacia abajo a los que sí tienen cableado.
+          const vacio = (id: string) => ((lista.find(nodo => nodo.id === id)?.resumen?.ocupados ?? 0) === 0 ? 1 : 0);
+          const alfabetico = lista.map(nodo => nodo.id).sort()
+            .sort((a, b) => vacio(a) - vacio(b));
           const automatico = opciones.baricentro === false
             ? alfabetico
             : ordenarPorBaricentro(alfabetico, vecinosPorNodo, posicionPrevia);

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { anclasDeFlujo, grosorDeCinta, type CintaFlujo, type Flujo, type NodoFlujo } from "../../lib/red/flujo";
+import { anclasDeFlujo, grosorDeCinta, recortarAlAncho, type CintaFlujo, type Flujo, type NodoFlujo } from "../../lib/red/flujo";
 import { type PuertoNodo, type ResumenPuertos } from "../../lib/red/layout";
 import { claveDePar } from "../../lib/red/aristas";
 
@@ -173,7 +173,7 @@ export default function DiagramaNodos({
                   onKeyDown={evento => { if (evento.key === "Enter" || evento.key === " ") { evento.preventDefault(); onAlternar(bloque.id); } }}
                   onClick={() => onAlternar(bloque.id)}
                 />
-                <text className="net-d-bloque-titulo" x={bloque.x + 10} y={bloque.y + 17}>{bloque.titulo}</text>
+                <text className="net-d-bloque-titulo" x={bloque.x + 10} y={bloque.y + 17}>{recortarAlAncho(bloque.titulo, bloque.w - 60)}</text>
                 <text className="net-d-bloque-cuenta" x={bloque.x + bloque.w - 10} y={bloque.y + 17}>{bloque.cuenta} {bloque.abierto ? "▾" : "▸"}</text>
               </>
             : bloque.titulo && <text className="net-d-bloque-rotulo" x={bloque.x} y={bloque.y + 12}>{bloque.titulo.toUpperCase()}</text>}

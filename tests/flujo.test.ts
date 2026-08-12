@@ -2,7 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import semilla from "../lib/red/semilla.json" with { type: "json" };
 import { CATEGORIAS_BASE, puertosDeEndpoint, type EstadoRed } from "../lib/red/modelo.ts";
-import { ANCHO_ABIERTA, anclasDeFlujo, CAPAS, capaDeEquipo, construirFlujo, cruces } from "../lib/red/flujo.ts";
+import { ANCHO_ABIERTA, anclasDeFlujo, CAPAS, capaDeEquipo, construirFlujo, cruces, recortarAlAncho } from "../lib/red/flujo.ts";
+import { anchoDeTexto } from "../lib/red/layout.ts";
 
 const real = (): EstadoRed => ({ ...semilla, bitacora: [], cubiculos: [], categorias: CATEGORIAS_BASE, orden: {} } as unknown as EstadoRed);
 
@@ -236,4 +237,27 @@ test("el orden manual manda sobre el baricentro de los grupos", () => {
   estado.orden = Object.fromEntries([...ids].reverse().map((id, indice) => [id, indice]));
   const resultado = construirFlujo(estado).bloques.filter(bloque => bloque.capa === "destinos").map(bloque => bloque.id);
   assert.deepEqual(resultado, [...ids].reverse());
+});
+
+test("un rótulo más largo que su columna se recorta", () => {
+  assert.equal(recortarAlAncho("Borde", 300), "Borde");
+  const largo = recortarAlAncho("Salón de Matemáticas y Ciencias Aplicadas", 120);
+  assert.ok(largo.endsWith("…"));
+  assert.ok(largo.length < "Salón de Matemáticas y Ciencias Aplicadas".length);
+});
+
+test("el rótulo del borde ya no invade la columna vecina", () => {
+  const flujo = construirFlujo(real());
+  const borde = flujo.columnas.find(columna => columna.capa === "borde")!;
+  assert.ok(anchoDeTexto(borde.titulo) <= borde.w, `«${borde.titulo}» mide más que su columna`);
+});
+
+// Los equipos con 0/24 estaban arriba empujando hacia abajo a los que sí tienen
+// cableado, que es lo que la gente viene a mirar.
+test("un equipo sin puertos ocupados va al final de su bloque", () => {
+  const flujo = construirFlujo(real());
+  const enR2 = flujo.nodos.filter(nodo => nodo.capa === "patch" && nodo.bloque === "R2").sort((a, b) => a.y - b.y);
+  const ocupados = enR2.map(nodo => (nodo.resumen?.ocupados ?? 0) > 0);
+  assert.deepEqual(ocupados, [...ocupados].sort((a, b) => Number(b) - Number(a)),
+    "los que tienen puertos ocupados van primero");
 });
