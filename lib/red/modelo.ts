@@ -5,7 +5,7 @@ export type EstadoEspacio = "operativo" | "solo-wifi" | "sin-internet" | "sin-ve
 // así que aquí son un id libre y no una unión cerrada.
 export type CategoriaEspacio = string;
 export type TipoEnlace = "patch" | "uplink" | "roseta" | "borde";
-export type TipoBitacora = "enlace-creado" | "enlace-borrado" | "enlaces-limpiados" | "estado-espacio" | "estado-puerto" | "nota" | "revisar" | "recurso-creado" | "recurso-editado" | "recurso-borrado" | "categoria-creada" | "categoria-editada" | "categoria-borrada";
+export type TipoBitacora = "enlace-creado" | "enlace-borrado" | "enlaces-limpiados" | "estado-espacio" | "estado-puerto" | "ip-adoptada" | "nota" | "revisar" | "recurso-creado" | "recurso-editado" | "recurso-borrado" | "categoria-creada" | "categoria-editada" | "categoria-borrada";
 
 export const tiposEquipo: TipoEquipo[] = ["switch", "patchpanel", "router", "firewall", "ap", "isp"];
 export const estadosPuerto: EstadoPuerto[] = ["libre", "ocupado", "desconocido", "dañado"];
