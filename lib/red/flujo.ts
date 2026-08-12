@@ -102,6 +102,74 @@ const anchoDeColumna = (capa: Capa, estado: EstadoRed): number => {
     equipo.puertos > 0 ? ANCHO_ABIERTA : anchoDeTexto(codigoDeEquipo(equipo.id))));
 };
 
+import { ordenarPor } from "./layout.ts";
+
+export const ID_GRUPO_CUBICULOS = "grp:cubiculos";
+export const ID_GRUPO_APS = "grp:aps";
+export const idGrupoDe = (categoria: string) => `grp:${categoria}`;
+
+export const ALTO_DESTINO = 26;
+export const SEPARACION_DESTINO = 5;
+export const ALTO_CABECERA_GRUPO = 26;
+export const SEPARACION_BLOQUE = 22;
+export const ALTO_TITULO_BLOQUE = 18;
+
+type Destino = { id: string; etiqueta: string; grupo: string; grupoTitulo: string };
+
+// Un destino solo existe en el diagrama si tiene por dónde llegar. Los que no,
+// viven en la bandeja de «sin puerto asignado», igual que hoy.
+const destinosConectados = (estado: EstadoRed): Destino[] => [
+  ...estado.espacios
+    .filter(espacio => puertosDeEndpoint(estado, espacio.id).length)
+    .map(espacio => ({
+      id: espacio.id, etiqueta: espacio.nombre,
+      grupo: idGrupoDe(espacio.categoria), grupoTitulo: etiquetaCategoria(estado, espacio.categoria),
+    })),
+  ...estado.cubiculos
+    .filter(cubiculo => puertosDeEndpoint(estado, `cub:${cubiculo.id}`).length)
+    .map(cubiculo => ({
+      id: `cub:${cubiculo.id}`, etiqueta: `Cubículo ${cubiculo.id}`,
+      grupo: ID_GRUPO_CUBICULOS, grupoTitulo: "Cubículos",
+    })),
+  ...estado.equipos
+    .filter(equipo => equipo.tipo === "ap")
+    .map(equipo => {
+      const puerto = estado.puertos.find(candidato => candidato.equipo === equipo.id);
+      if (!puerto || !puertosDeEndpoint(estado, puerto.id).length) return null;
+      return {
+        id: puerto.id, etiqueta: `${codigoDeEquipo(equipo.id)} · ${equipo.etiqueta}`,
+        grupo: ID_GRUPO_APS, grupoTitulo: "Puntos de acceso Wi-Fi",
+      };
+    })
+    .filter((destino): destino is Destino => destino !== null),
+];
+
+const nodoDeDestino = (destino: Destino): NodoFlujo => ({
+  id: destino.id,
+  clase: (destino.id.startsWith("cub:") ? "cubiculo" : destino.id.startsWith("esp:") ? "espacio" : "aparato") as ClaseNodo,
+  codigo: destino.etiqueta, etiqueta: destino.etiqueta,
+  capa: "destinos", bloque: destino.grupo, zona: "", fila: 2,
+  x: 0, y: 0, w: ANCHO_GRUPO_DESTINO - RELLENO, h: ALTO_DESTINO,
+  abierta: false, idsPuerto: [], puertos: [], resumen: null, estado: null, sinRuta: false,
+});
+
+const bandejaDe = (estado: EstadoRed): FichaBandeja[] => [
+  ...estado.espacios.filter(espacio => !puertosDeEndpoint(estado, espacio.id).length)
+    .map(espacio => ({ id: espacio.id, etiqueta: espacio.nombre, grupo: etiquetaCategoria(estado, espacio.categoria) })),
+  ...estado.cubiculos.filter(cubiculo => !puertosDeEndpoint(estado, `cub:${cubiculo.id}`).length)
+    .map(cubiculo => ({ id: `cub:${cubiculo.id}`, etiqueta: `Cubículo ${cubiculo.id}`, grupo: "Cubículos" })),
+  ...estado.equipos.filter(equipo => equipo.puertos === 0 && equipo.tipo === "ap")
+    .filter(equipo => {
+      const puerto = estado.puertos.find(candidato => candidato.equipo === equipo.id);
+      return !puerto || !puertosDeEndpoint(estado, puerto.id).length;
+    })
+    .map(equipo => ({
+      id: estado.puertos.find(candidato => candidato.equipo === equipo.id)?.id ?? `eq:${equipo.id}`,
+      etiqueta: `${codigoDeEquipo(equipo.id)} · ${equipo.etiqueta}`,
+      grupo: "Equipos sin enlace",
+    })),
+];
+
 export const construirFlujo = (estado: EstadoRed, abiertas: Set<string> = new Set()): Flujo => {
   const nodos = estado.equipos
     .filter(equipo => equipo.tipo !== "ap")
@@ -115,22 +183,86 @@ export const construirFlujo = (estado: EstadoRed, abiertas: Set<string> = new Se
     columnas.push({ capa, titulo: TITULO_CAPA[capa], x, w });
     x += w + SEPARACION_COLUMNA;
   }
-  const xDeCapa = new Map(columnas.map(columna => [columna.capa, columna.x]));
+  const destinos = destinosConectados(estado);
+  const porGrupo = new Map<string, Destino[]>();
+  const tituloGrupo = new Map<string, string>();
+  for (const destino of destinos) {
+    porGrupo.set(destino.grupo, [...(porGrupo.get(destino.grupo) ?? []), destino]);
+    tituloGrupo.set(destino.grupo, destino.grupoTitulo);
+  }
+  for (const [grupo, lista] of porGrupo) {
+    if (!abiertas.has(grupo)) continue;
+    for (const destino of lista) nodos.push(nodoDeDestino(destino));
+  }
 
+  const bloques: BloqueFlujo[] = [];
+  const grupos: string[][] = [];
   let alto = 0;
+
   for (const columna of columnas) {
-    const dentro = nodos.filter(nodo => nodo.capa === columna.capa);
     let y = ALTO_TITULO_COLUMNA;
-    for (const nodo of dentro) {
-      nodo.x = xDeCapa.get(nodo.capa) ?? 0;
-      nodo.y = y;
-      y += nodo.h + SEPARACION_NODO;
+
+    if (columna.capa === "destinos") {
+      for (const [grupo, lista] of porGrupo) {
+        const abierto = abiertas.has(grupo);
+        const inicio = y;
+        y += ALTO_CABECERA_GRUPO;
+        if (abierto) {
+          const ids = ordenarPor(estado.orden, lista.map(destino => destino.id));
+          grupos.push(ids);
+          const porId = new Map(nodos.map(nodo => [nodo.id, nodo]));
+          for (const id of ids) {
+            const nodo = porId.get(id);
+            if (!nodo) continue;
+            nodo.x = columna.x + RELLENO / 2;
+            nodo.y = y;
+            y += ALTO_DESTINO + SEPARACION_DESTINO;
+          }
+        }
+        bloques.push({
+          id: grupo, capa: "destinos", titulo: tituloGrupo.get(grupo) ?? grupo,
+          x: columna.x, y: inicio, w: columna.w, h: y - inicio,
+          colapsable: true, abierto, cuenta: lista.length,
+        });
+        y += SEPARACION_BLOQUE;
+      }
+      alto = Math.max(alto, y);
+      continue;
+    }
+
+    // Fuera de los destinos, el bloque es el rack: los tres racks son 100 %
+    // intra-rack salvo los tres uplinks, así que agrupar por rack no es
+    // cosmético, es la estructura real del cableado.
+    const dentro = nodos.filter(nodo => nodo.capa === columna.capa);
+    const porBloque = new Map<string, NodoFlujo[]>();
+    for (const nodo of dentro) porBloque.set(nodo.bloque, [...(porBloque.get(nodo.bloque) ?? []), nodo]);
+
+    for (const [bloqueId, lista] of porBloque) {
+      const inicio = y;
+      const conTitulo = columna.capa !== "borde";
+      if (conTitulo) y += ALTO_TITULO_BLOQUE;
+      const ids = ordenarPor(estado.orden, lista.map(nodo => nodo.id).sort());
+      grupos.push(ids);
+      const porId = new Map(lista.map(nodo => [nodo.id, nodo]));
+      for (const id of ids) {
+        const nodo = porId.get(id)!;
+        nodo.x = columna.x;
+        nodo.y = y;
+        y += nodo.h + SEPARACION_NODO;
+      }
+      bloques.push({
+        id: bloqueId, capa: columna.capa,
+        titulo: conTitulo ? (estado.racks.find(rack => rack.id === bloqueId)?.nombre ?? bloqueId) : "",
+        x: columna.x, y: inicio, w: columna.w, h: y - inicio,
+        colapsable: false, abierto: true, cuenta: lista.length,
+      });
+      y += SEPARACION_BLOQUE;
     }
     alto = Math.max(alto, y);
   }
 
   return {
-    columnas, bloques: [], nodos, cintas: [], bandeja: [], grupos: [],
+    columnas, bloques, nodos, cintas: [], bandeja: bandejaDe(estado), grupos,
     ancho: columnas.length ? columnas[columnas.length - 1].x + columnas[columnas.length - 1].w : 0,
     alto,
   };

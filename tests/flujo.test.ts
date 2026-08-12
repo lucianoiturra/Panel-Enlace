@@ -67,3 +67,56 @@ test("el equipo más grande cabe en tres filas de puertos", () => {
   assert.equal(nodo?.abierta, true);
   assert.ok((nodo?.w ?? 0) <= ANCHO_ABIERTA);
 });
+
+test("los switches se agrupan en un bloque por rack", () => {
+  const flujo = construirFlujo(real());
+  const bloques = flujo.bloques.filter(bloque => bloque.capa === "switches");
+  assert.deepEqual(bloques.map(bloque => bloque.id).sort(), ["R1", "R2", "R3"]);
+  assert.equal(bloques.every(bloque => bloque.colapsable === false), true);
+});
+
+test("los destinos se agrupan por tipo de espacio, más cubículos y APs", () => {
+  const estado = real();
+  estado.cubiculos = [{ id: 1, status: "operational", ip: "", mac: "", inventoryCode: "" }];
+  estado.enlaces = [...estado.enlaces, { id: 900, a: "cub:1", b: "pto:R2-PP1-p1", tipo: "roseta", nota: "" }];
+  const flujo = construirFlujo(estado);
+  const ids = flujo.bloques.filter(bloque => bloque.capa === "destinos").map(bloque => bloque.id);
+  assert.ok(ids.includes("grp:cubiculos"), `bloques: ${ids.join(", ")}`);
+  assert.ok(ids.some(id => id.startsWith("grp:") && id !== "grp:cubiculos" && id !== "grp:aps"));
+});
+
+test("un grupo de destinos colapsado no dibuja a sus miembros", () => {
+  const flujo = construirFlujo(real());
+  const grupo = flujo.bloques.find(bloque => bloque.capa === "destinos");
+  assert.ok(grupo, "tiene que haber al menos un grupo de destinos");
+  assert.equal(grupo.abierto, false);
+  assert.ok(grupo.cuenta > 0);
+  assert.equal(flujo.nodos.some(nodo => nodo.bloque === grupo.id), false);
+});
+
+test("abrir el grupo dibuja a sus miembros", () => {
+  const estado = real();
+  const grupo = construirFlujo(estado).bloques.find(bloque => bloque.capa === "destinos")!;
+  const flujo = construirFlujo(estado, new Set([grupo.id]));
+  assert.equal(flujo.nodos.filter(nodo => nodo.bloque === grupo.id).length, grupo.cuenta);
+});
+
+// El orden se aplica por bloque (rack) y se publica en flujo.grupos: nodos.x/y
+// reflejan el orden, pero el array flujo.nodos conserva el orden de creación
+// y no es donde se verifica el orden manual.
+test("el orden manual manda sobre el automático", () => {
+  const estado = real();
+  const idsR2 = construirFlujo(estado).nodos.filter(nodo => nodo.capa === "switches" && nodo.bloque === "R2").map(nodo => nodo.id);
+  const grupoR2 = (flujo: ReturnType<typeof construirFlujo>) =>
+    flujo.grupos.find(grupo => grupo.length === idsR2.length && grupo.every(id => idsR2.includes(id)))!;
+  const sinOrden = grupoR2(construirFlujo(estado));
+  estado.orden = Object.fromEntries([...sinOrden].reverse().map((id, indice) => [id, indice]));
+  const conOrden = grupoR2(construirFlujo(estado));
+  assert.deepEqual(conOrden, [...sinOrden].reverse());
+});
+
+test("cada bloque publica su grupo reordenable", () => {
+  const flujo = construirFlujo(real());
+  const switches = flujo.nodos.filter(nodo => nodo.capa === "switches" && nodo.bloque === "R2").map(nodo => nodo.id);
+  assert.ok(flujo.grupos.some(grupo => grupo.length === switches.length && grupo.every(id => switches.includes(id))));
+});
