@@ -1,10 +1,28 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import NavSecciones from "./nav-secciones";
 import EncendidoProgramado from "./encendido-programado";
 import { useRefrescoPeriodico } from "./use-refresco";
 import { isValidIpv4, isValidMac, isValidPin } from "../lib/room-validation";
+import { haceCuanto } from "../lib/formato-tiempo";
+import { useAhora } from "./use-refresco";
+import { vivoDeCubiculos, type ResumenVivo, type VivoCubiculo } from "../lib/red/estado-cubiculo";
+import type { EstadoReconciliacion, Reconciliacion } from "../lib/red/reconciliacion";
+
+// El sidecar vuelca cada 3 minutos; preguntar cada 90 s alcanza para no mirar
+// nunca un volcado que ya tuvo reemplazo. La sala documentada cambia sólo
+// cuando alguien la edita, y por eso sigue en 120 s.
+const CADA_MS_VIVO = 90_000;
+
+const ETIQUETA_VIVO: Record<EstadoReconciliacion, { texto: string; color: string }> = {
+  "en-linea": { texto: "En línea", color: "#237a52" },
+  "ip-distinta": { texto: "IP distinta", color: "#986900" },
+  "sin-verse": { texto: "Sin verse", color: "#a33442" },
+  "sin-mac": { texto: "Sin MAC", color: "#68717e" },
+  "sin-computador": { texto: "Sin PC", color: "#9aa3af" },
+};
+const ORDEN_VIVO: EstadoReconciliacion[] = ["en-linea", "ip-distinta", "sin-verse", "sin-mac"];
 
 // La sala cambia cuando alguien la edita, no sola, así que dos minutos alcanzan:
 // lo que se busca es que un panel dejado abierto no muestre lo de ayer.
@@ -90,6 +108,27 @@ export default function Home() {
   const [showStudentPin, setShowStudentPin] = useState(false);
   const [newTask, setNewTask] = useState("");
   const [redCadena, setRedCadena] = useState<{ texto: string; completa: boolean } | null>(null);
+  const [vivo, setVivo] = useState<{ porCubiculo: Map<number, VivoCubiculo>; resumen: ResumenVivo | null; refrescado: string | null }>({ porCubiculo: new Map(), resumen: null, refrescado: null });
+  const [filtroVivo, setFiltroVivo] = useState<EstadoReconciliacion | "">("");
+  const [ahora, anclarReloj] = useAhora();
+
+  const cargarVivo = useCallback(async () => {
+    try {
+      const respuesta = await fetch("/api/monitoreo", { cache: "no-store" });
+      if (!respuesta.ok) return;
+      const datos = await respuesta.json() as Reconciliacion & { refrescado: string | null; ahoraServidor: string };
+      anclarReloj(datos.ahoraServidor);
+      const { porCubiculo, resumen } = vivoDeCubiculos(datos.cubiculos, datos.refrescado);
+      setVivo({ porCubiculo, resumen, refrescado: datos.refrescado });
+    } catch {
+      // La capa viva no puede romper la pantalla de la sala: el plano
+      // documentado se dibuja igual y el rail dice que no hay datos.
+      setVivo({ porCubiculo: new Map(), resumen: null, refrescado: null });
+    }
+  }, [anclarReloj]);
+
+  useEffect(() => { void cargarVivo(); }, [cargarVivo]);
+  useRefrescoPeriodico(() => void cargarVivo(), CADA_MS_VIVO, draft === null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const drawerReturnFocusRef = useRef<HTMLElement | null>(null);
   const taskDeleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -198,7 +237,8 @@ export default function Home() {
   const search = normalizeSearch(query);
   const visible = (station: Station) => {
     const text = normalizeSearch(`${station.id} ${station.ip} ${station.mac} ${station.serialNumber} ${station.inventoryCode} ${station.brandModel}`);
-    return (filter === "all" || station.status === filter) && text.includes(search);
+    const pasaVivo = !filtroVivo || vivo.porCubiculo.get(station.id)?.estado === filtroVivo;
+    return (filter === "all" || station.status === filter) && pasaVivo && text.includes(search);
   };
 
   // `source` permite abrir la ficha con datos recién traídos del servidor sin
@@ -465,6 +505,23 @@ export default function Home() {
           <p className="pending-line"><span><strong>{loaded ? pendingSummary.checklist : "—"}</strong> revisiones pendientes</span><span><strong>{loaded ? pendingSummary.tasks : "—"}</strong> tareas</span></p>
         </section>
 
+        <section className="live-rail" aria-label="Estado en la red viva">
+          {vivo.resumen
+            ? <>
+                <span className="wol-etiqueta">RED VIVA · {haceCuanto(vivo.refrescado, ahora)}</span>
+                <div className="live-filters">
+                  {ORDEN_VIVO.map(clave => <button
+                    key={clave}
+                    type="button"
+                    className={filtroVivo === clave ? "on" : ""}
+                    aria-pressed={filtroVivo === clave}
+                    onClick={() => setFiltroVivo(filtroVivo === clave ? "" : clave)}
+                  ><i aria-hidden="true" style={{ background: ETIQUETA_VIVO[clave].color }} /><strong>{vivo.resumen![clave]}</strong> {ETIQUETA_VIVO[clave].texto}</button>)}
+                </div>
+              </>
+            : <span className="live-sin-datos">Sin datos de red viva. El plano muestra lo documentado.</span>}
+        </section>
+
         <EncendidoProgramado onAviso={showNotice} />
 
         <section className="room-surface">
@@ -473,7 +530,7 @@ export default function Home() {
             <div className="wall-label left">MURO INTERIOR</div>
             {[0, 1, 2, 3].map((row) => <section className={`computer-row row-${row + 1}`} key={row} aria-label={`Fila ${4 - row}`}>
               <div className="row-title"><span>FILA {4 - row}</span>{row !== 3 && <small>{row === 0 ? "Muro izquierdo" : "Isla central"}</small>}</div>
-              <div className="row-stations">{layoutStations.slice(row * 10, row * 10 + 10).map(station => <button key={station.id} disabled={!loaded || !visible(station)} className={`station ${station.status} ${selected === station.id ? "selected" : ""}`} onClick={() => openStation(station.id)} aria-label={loaded ? `Cubículo ${station.id}, ${statusInfo[station.status].label}` : `Cubículo ${station.id}, sin datos cargados`}><span className="station-top"><b>{String(station.id).padStart(2, "0")}</b><i>{loaded ? statusInfo[station.status].short : "—"}</i></span>{station.status !== "no_computer" && <span className="monitor"><i></i></span>}<small>{!loaded ? "Sin datos" : station.status === "no_computer" ? "Puesto vacío" : station.inventoryCode || station.brandModel || "Sin registrar"}</small></button>)}</div>
+              <div className="row-stations">{layoutStations.slice(row * 10, row * 10 + 10).map(station => <button key={station.id} disabled={!loaded || !visible(station)} className={`station ${station.status} ${selected === station.id ? "selected" : ""}`} onClick={() => openStation(station.id)} aria-label={loaded ? `Cubículo ${station.id}, ${statusInfo[station.status].label}${vivo.porCubiculo.get(station.id) ? `, en la red: ${ETIQUETA_VIVO[vivo.porCubiculo.get(station.id)!.estado].texto}` : ""}` : `Cubículo ${station.id}, sin datos cargados`}><span className="station-top"><b>{String(station.id).padStart(2, "0")}</b><i>{loaded ? statusInfo[station.status].short : "—"}</i></span>{(() => { const v = vivo.porCubiculo.get(station.id); return v ? <i className="live-dot" style={{ background: ETIQUETA_VIVO[v.estado].color }} title={ETIQUETA_VIVO[v.estado].texto} /> : null; })()}{station.status !== "no_computer" && <span className="monitor"><i></i></span>}<small>{!loaded ? "Sin datos" : station.status === "no_computer" ? "Puesto vacío" : station.inventoryCode || station.brandModel || "Sin registrar"}</small></button>)}</div>
             </section>)}
             <div className="wall-label right">VENTANALES</div>
             <div className="access-door"><i></i><span>PUERTA DE ACCESO</span></div>

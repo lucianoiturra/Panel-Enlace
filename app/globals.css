@@ -697,3 +697,18 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offs
 .wol-dias button.on{background:var(--ink);border-color:var(--ink);color:#fff}
 .wol-form-acciones{display:flex;justify-content:flex-end;gap:8px;margin-top:2px}
 @media(max-width:600px){.wol-linea{align-items:stretch;flex-direction:column}.wol-linea-acciones>button{flex:1;min-height:44px}.wol-form{padding:16px}.wol-form-acciones>button{flex:1;min-height:44px}}
+
+/* Red viva en SALA. El chip cuadrado del puesto sigue siendo el estado
+   documentado y el punto redondo es lo que la red ve ahora: son dos señales de
+   dos fuentes distintas y no se mezclan nunca en un solo color. */
+.live-rail{display:flex;align-items:center;gap:var(--esp-4);flex-wrap:wrap;margin:0 0 var(--esp-4);padding:var(--esp-3) var(--esp-4);border:1px solid var(--line);border-left:3px solid var(--green);border-radius:4px;background:var(--surface)}
+.live-filters{display:flex;gap:var(--esp-1);flex-wrap:wrap}
+.live-filters button{display:flex;align-items:center;gap:7px;border:1px solid transparent;border-radius:5px;padding:var(--esp-1) var(--esp-2);background:transparent;color:var(--muted);font-size:12px;font-weight:700}
+.live-filters button:hover{background:#eef0f3;color:var(--ink)}
+.live-filters button.on{border-color:var(--line);background:#eef1f4;color:var(--ink)}
+.live-filters strong{font:700 13px var(--font-mono);color:var(--ink)}
+.live-filters i{width:9px;height:9px;flex:0 0 9px;border-radius:50%}
+.live-sin-datos{color:var(--muted);font-size:12px}
+.station{position:relative}
+.live-dot{position:absolute;top:7px;right:44px;width:9px;height:9px;border-radius:50%}
+@media(max-width:600px){.live-rail{align-items:flex-start;flex-direction:column;gap:var(--esp-2)}.live-dot{top:9px;right:42px;width:11px;height:11px}}
