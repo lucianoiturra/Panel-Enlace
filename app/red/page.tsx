@@ -19,6 +19,7 @@ import { cadenaComoTexto, trazarCircuito } from "../../lib/red/trazado";
 import { aliasCubiculo, normalizar } from "../../lib/red/busqueda";
 import { criteriosOrden, etiquetasCriterioOrden, type CriterioOrden } from "../../lib/red/agrupar";
 import { aplicarEstadoVivo, datosFrescos, MINUTOS_FRESCURA } from "../../lib/red/estado-efectivo";
+import { useAhora, useRefrescoPeriodico } from "../use-refresco";
 import type { EspacioVivo } from "../../lib/red/estado-ubicacion";
 import { estadosEspacio, etiquetaEndpoint, etiquetaPuerto, etiquetasEstadoEspacio, planEliminarEspacio, puertosDeEndpoint, type Enlace, type EstadoEspacio, type EstadoRed } from "../../lib/red/modelo";
 
@@ -28,7 +29,7 @@ type FiltroConexion = "todos" | "con-puerto" | "sin-puerto";
 type FiltroOrigen = "todos" | "auto" | "manual";
 
 export type CandidatoTestigo = { mac: string; ip: string; name: string; vendor: string; present: boolean };
-type DatosUbic = { ubicaciones: EspacioVivo[]; candidatos: CandidatoTestigo[]; refrescado: string | null };
+type DatosUbic = { ubicaciones: EspacioVivo[]; candidatos: CandidatoTestigo[]; refrescado: string | null; ahoraServidor: string };
 
 const coincideBusqueda = (valor: string, consulta: string) => {
   const objetivo = normalizar(valor);
@@ -53,6 +54,7 @@ export default function PaginaRed() {
   const [filtroConexion, setFiltroConexion] = useState<FiltroConexion>("todos");
   const [filtroOrigen, setFiltroOrigen] = useState<FiltroOrigen>("todos");
   const [ubic, setUbic] = useState<DatosUbic | null>(null);
+  const [ahora, anclarReloj] = useAhora();
   const [filtroCategoria, setFiltroCategoria] = useState("todos");
   const [consulta, setConsulta] = useState("");
   const buscadorRef = useRef<HTMLInputElement>(null);
@@ -100,7 +102,9 @@ export default function PaginaRed() {
     try {
       const response = await fetch("/api/monitoreo/ubicaciones", { cache: "no-store" });
       if (!response.ok) throw new Error("sin monitoreo");
-      setUbic(await response.json() as DatosUbic);
+      const datos = await response.json() as DatosUbic;
+      anclarReloj(datos.ahoraServidor);
+      setUbic(datos);
     } catch {
       setUbic(null);
     }
@@ -391,11 +395,9 @@ export default function PaginaRed() {
 
   // Los datos de red se mueven cada 3 minutos (sidecar panel-mon-export) y la
   // consulta es una sola tabla chica: refrescarla sola sale mucho más barato
-  // que recargar toda la red.
-  useEffect(() => {
-    const intervalo = window.setInterval(() => void cargarVivo(), 90_000);
-    return () => window.clearInterval(intervalo);
-  }, []);
+  // que recargar toda la red. Se detiene con la pestaña de fondo y vuelve a
+  // pedir apenas se mira de nuevo.
+  useRefrescoPeriodico(() => void cargarVivo(), 90_000);
 
   useEffect(() => {
     const temporizador = window.setTimeout(() => {
@@ -427,7 +429,10 @@ export default function PaginaRed() {
   // El estado que se muestra en toda la pestaña: el del testigo donde hay uno y
   // los datos de red están frescos, el escrito a mano en el resto. No se guarda
   // en ninguna parte; se recalcula en cada render.
-  const frescos = useMemo(() => datosFrescos(ubic?.refrescado ?? null), [ubic]);
+  // El reloj va anclado al del servidor: con el del navegador, un PC con la hora
+  // corrida declararía "desactualizado" un volcado recién hecho —y mandaría 21
+  // salas de vuelta a manual— o al revés, daría por vivo un dato muerto.
+  const frescos = useMemo(() => datosFrescos(ubic?.refrescado ?? null, ahora), [ubic, ahora]);
   const redEfectiva = useMemo(() => aplicarEstadoVivo(estado, ubic?.ubicaciones ?? [], frescos), [estado, ubic, frescos]);
 
   const conteos = useMemo(() => Object.fromEntries(estadosEspacio.map(valor => [valor, redEfectiva.espacios.filter(espacio => espacio.estado === valor).length])) as Record<EstadoEspacio, number>, [redEfectiva.espacios]);

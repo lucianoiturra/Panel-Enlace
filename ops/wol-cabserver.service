@@ -1,0 +1,16 @@
+[Unit]
+Description=Encendido programado (Wake-on-LAN) de la Sala de Enlace
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/wol-cabserver.sh
+# Tres rondas sobre los 38 con 2 s entre medio: unos seis segundos. El margen
+# sobra, y evita que un timer de un minuto se encuentre a si mismo corriendo.
+TimeoutStartSec=60
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true

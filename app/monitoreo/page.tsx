@@ -3,10 +3,15 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import NavSecciones from "../nav-secciones";
 import { haceCuanto } from "../../lib/formato-tiempo";
+import { useAhora, useRefrescoPeriodico } from "../use-refresco";
 import type { EstadoReconciliacion, Reconciliacion } from "../../lib/red/reconciliacion";
 import type { EspacioVivo, EstadoVivoUbicacion } from "../../lib/red/estado-ubicacion";
 
-type DatosRecon = Reconciliacion & { refrescado: string | null };
+// El sidecar vuelca la red cada 3 minutos; preguntar cada 90 s alcanza para no
+// mirar nunca un volcado que ya tuvo reemplazo.
+const CADA_MS = 90_000;
+
+type DatosRecon = Reconciliacion & { refrescado: string | null; ahoraServidor: string };
 type Candidato = { mac: string; ip: string; name: string; vendor: string; present: boolean };
 type DatosUbic = {
   ubicaciones: EspacioVivo[];
@@ -53,6 +58,7 @@ export default function Monitoreo() {
   const [error, setError] = useState<string | null>(null);
   const [soloDiferencias, setSoloDiferencias] = useState(false);
   const [guardando, setGuardando] = useState<string | null>(null);
+  const [ahora, anclarReloj] = useAhora();
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -63,16 +69,21 @@ export default function Monitoreo() {
         fetch("/api/monitoreo/ubicaciones", { cache: "no-store" }),
       ]);
       if (!rRecon.ok || !rUbic.ok) throw new Error("No se pudo cargar el monitoreo.");
-      setRecon(await rRecon.json() as DatosRecon);
+      const datosRecon = await rRecon.json() as DatosRecon;
+      anclarReloj(datosRecon.ahoraServidor);
+      setRecon(datosRecon);
       setUbic(await rUbic.json() as DatosUbic);
     } catch (fallo) {
       setError(fallo instanceof Error ? fallo.message : "No se pudo cargar el monitoreo.");
     } finally {
       setCargando(false);
     }
-  }, []);
+  }, [anclarReloj]);
 
   useEffect(() => { void cargar(); }, [cargar]);
+  // Mientras se está asignando un testigo no se recarga: la respuesta llegaría
+  // encima del select que el usuario tiene abierto.
+  useRefrescoPeriodico(() => void cargar(), CADA_MS, guardando === null);
 
   const asignarTestigo = useCallback(async (id: string, testigoMac: string) => {
     setGuardando(id);
@@ -111,7 +122,7 @@ export default function Monitoreo() {
         </div>
         <div className="header-actions">
           <button className="icon-button" onClick={() => void cargar()} aria-label="Actualizar" disabled={cargando}>{cargando ? "…" : "↻"}</button>
-          <div className="date-chip"><span>DATOS DE RED</span><b>{recon ? haceCuanto(recon.refrescado) : "—"}</b></div>
+          <div className="date-chip"><span>DATOS DE RED</span><b>{recon ? haceCuanto(recon.refrescado, ahora) : "—"}</b></div>
         </div>
       </header>
 

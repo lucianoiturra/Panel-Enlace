@@ -26,13 +26,17 @@ export async function GET() {
       medidoAt: fila.medidoAt.toISOString(),
     }));
 
+    // El mismo instante que juzga las filas viaja al cliente, para que el
+    // encabezado ("medido hace 3 minutos") no lo calcule con el reloj del
+    // navegador y termine contradiciendo a las filas de más abajo.
+    const ahora = Date.now();
     const salud = evaluarSalud(
       hechos,
       frescura[0]?.refrescado?.toISOString() ?? null,
       conTestigo[0]?.total ?? 0,
-      Date.now(),
+      ahora,
     );
-    return noStoreJson(salud);
+    return noStoreJson({ ...salud, ahoraServidor: new Date(ahora).toISOString() });
   } catch (error) {
     return apiErrorResponse(error, "No fue posible cargar la salud del sistema.");
   }

@@ -2,7 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import NavSecciones from "./nav-secciones";
+import { useRefrescoPeriodico } from "./use-refresco";
 import { isValidIpv4, isValidMac, isValidPin } from "../lib/room-validation";
+
+// La sala cambia cuando alguien la edita, no sola, así que dos minutos alcanzan:
+// lo que se busca es que un panel dejado abierto no muestre lo de ayer.
+const CADA_MS = 120_000;
 
 type Status = "operational" | "attention" | "offline" | "pending" | "no_computer";
 type PinStatus = "unreviewed" | "configured" | "no_pin" | "not_applicable";
@@ -105,8 +110,11 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, [notice, noticeId]);
 
-  const load = async () => {
-    setLoading(true);
+  // `silencioso` es para el refresco de fondo: no atenúa el plano ni levanta un
+  // toast. El error sí se muestra —callarlo dejaría la sala envejeciendo sin
+  // avisar, que es justo lo que se quiere evitar—, pero sin interrumpir.
+  const load = async (silencioso = false) => {
+    if (!silencioso) setLoading(true);
     setLoadError("");
     try {
       const response = await fetch("/api/room");
@@ -119,10 +127,10 @@ export default function Home() {
     } catch (error) {
       const message = error instanceof Error ? error.message : "No se pudo conectar con el almacenamiento.";
       setLoadError(`${message} Revisa la conexión e inténtalo nuevamente.`);
-      showNotice("No se pudieron actualizar los datos.", "error");
+      if (!silencioso) showNotice("No se pudieron actualizar los datos.", "error");
       return null;
     }
-    finally { setLoading(false); }
+    finally { if (!silencioso) setLoading(false); }
   };
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), 0);
@@ -130,6 +138,11 @@ export default function Home() {
     // Initial fetch only; manual refreshes call load directly.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Con la ficha abierta no se refresca: `load` reescribe `stations`, y hacerlo
+  // debajo de alguien que está escribiendo cambiaría los datos con los que se
+  // comparan sus cambios sin guardar.
+  useRefrescoPeriodico(() => void load(true), CADA_MS, draft === null);
 
   const isDirty = useMemo(() => {
     if (!draft || !initialDraft) return false;

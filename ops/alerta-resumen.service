@@ -1,0 +1,15 @@
+[Unit]
+Description=Parte diario de salud de cabserver hacia ntfy
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/alerta-cabserver.sh --resumen
+TimeoutStartSec=60
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/alerta-cabserver

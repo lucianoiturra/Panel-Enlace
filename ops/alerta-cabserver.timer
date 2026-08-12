@@ -1,0 +1,12 @@
+[Unit]
+Description=Revisa la salud de cabserver cada 5 minutos y avisa los cambios
+
+[Timer]
+# Arranca despues del colector (que corre a los 3 min) para no evaluar la foto
+# vieja justo despues de un reinicio.
+OnBootSec=6min
+OnUnitActiveSec=5min
+Persistent=false
+
+[Install]
+WantedBy=timers.target

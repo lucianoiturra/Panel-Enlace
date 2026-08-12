@@ -1,0 +1,11 @@
+[Unit]
+Description=Parte diario de salud, antes de que empiece la jornada
+
+[Timer]
+OnCalendar=*-*-* 07:30:00
+# Si el servidor estaba apagado a las 07:30, el parte se manda al encender: es
+# justamente el dia en que interesa saber que paso durante la noche.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

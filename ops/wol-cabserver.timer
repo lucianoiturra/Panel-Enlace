@@ -1,0 +1,13 @@
+[Unit]
+Description=Revisa cada minuto si toca encender PC de la Sala de Enlace
+
+[Timer]
+OnBootSec=4min
+OnUnitActiveSec=1min
+# Un encendido programado que no ocurrio a su hora no sirve dos horas despues:
+# a las 09:30 la clase ya empezo. Si el servidor estaba apagado, se salta.
+Persistent=false
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target

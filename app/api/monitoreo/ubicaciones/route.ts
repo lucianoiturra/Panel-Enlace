@@ -26,10 +26,14 @@ export async function GET() {
       .map((dispositivo) => ({ mac: dispositivo.mac, ip: dispositivo.ip, name: dispositivo.name, vendor: dispositivo.vendor, present: dispositivo.present }))
       .sort((a, b) => Number(b.present) - Number(a.present) || a.ip.localeCompare(b.ip, undefined, { numeric: true }));
 
-    // Todas las filas se reescriben juntas en cada ciclo del sidecar, así que
-    // cualquiera sirve como marca de tiempo del volcado.
-    const refrescado = vivos.length ? vivos[0].refreshedAt : null;
-    return noStoreJson({ ubicaciones, resumen, candidatos, refrescado });
+    // Todas las filas se reescriben juntas en cada ciclo del sidecar, pero un
+    // SELECT sin ORDER BY no promete cuál viene primero, y de esta marca cuelga
+    // el guardia de frescura de RED. Se toma el máximo, que no depende de eso.
+    const refrescado = vivos.reduce<Date | null>(
+      (mayor, fila) => (mayor === null || fila.refreshedAt > mayor ? fila.refreshedAt : mayor),
+      null,
+    );
+    return noStoreJson({ ubicaciones, resumen, candidatos, refrescado, ahoraServidor: new Date().toISOString() });
   } catch (error) {
     return apiErrorResponse(error, "No fue posible cargar el estado por ubicación.");
   }
