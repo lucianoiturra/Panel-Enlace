@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import semilla from "../lib/red/semilla.json" with { type: "json" };
-import { CATEGORIAS_BASE, type EstadoRed } from "../lib/red/modelo.ts";
+import { CATEGORIAS_BASE, puertosDeEndpoint, type EstadoRed } from "../lib/red/modelo.ts";
 import { ANCHO_ABIERTA, anclasDeFlujo, CAPAS, capaDeEquipo, construirFlujo, cruces } from "../lib/red/flujo.ts";
 
 const real = (): EstadoRed => ({ ...semilla, bitacora: [], cubiculos: [], categorias: CATEGORIAS_BASE, orden: {} } as unknown as EstadoRed);
@@ -193,4 +193,47 @@ test("un estado sin ISP no lanza", () => {
   const estado = real();
   estado.equipos = estado.equipos.filter(equipo => equipo.tipo !== "isp");
   assert.doesNotThrow(() => construirFlujo(estado));
+});
+
+// El defecto que se vio en el despliegue: los grupos se recorrían en el orden de
+// inserción del Map, así que "Salas talleres" quedaba arriba alimentado desde
+// R3/PP1, que está abajo, y su cinta cruzaba el lienzo entero.
+test("los grupos de destino se ordenan por el baricentro de sus padres", () => {
+  const estado = real();
+  // Se abren todos los grupos: con el grupo cerrado sus miembros no se dibujan y
+  // el baricentro no se puede recalcular desde fuera para compararlo.
+  const cerrado = construirFlujo(estado);
+  const abiertas = new Set(cerrado.bloques.filter(bloque => bloque.capa === "destinos").map(bloque => bloque.id));
+  const flujo = construirFlujo(estado, abiertas);
+
+  const yDeNodo = new Map(flujo.nodos.map(nodo => [nodo.id, nodo.y]));
+  const padresDe = (destinoId: string) => puertosDeEndpoint(estado, destinoId).map(puerto => {
+    const equipo = estado.equipos.find(candidato => candidato.id === puerto.equipo);
+    return equipo && equipo.puertos > 0 ? `eq:${equipo.id}` : puerto.id;
+  });
+
+  const grupos = flujo.bloques.filter(bloque => bloque.capa === "destinos");
+  const baricentro = grupos.map(grupo => {
+    const alturas = flujo.nodos
+      .filter(nodo => nodo.bloque === grupo.id)
+      .flatMap(nodo => padresDe(nodo.id))
+      .map(padre => yDeNodo.get(padre))
+      .filter((y): y is number => y !== undefined);
+    return alturas.length ? alturas.reduce((suma, y) => suma + y, 0) / alturas.length : Infinity;
+  });
+
+  // La conducta que se quiere fijar, en positivo: los grupos salen en el orden de
+  // la media de las alturas de los equipos que los alimentan. Una aserción que
+  // solo negara «no es el orden de inserción del Map» no ancla nada y podría
+  // pasar por accidente.
+  assert.deepEqual(baricentro, [...baricentro].sort((a, b) => a - b),
+    `los grupos no siguen a sus padres — orden actual: ${grupos.map(grupo => grupo.id).join(", ")}`);
+});
+
+test("el orden manual manda sobre el baricentro de los grupos", () => {
+  const estado = real();
+  const ids = construirFlujo(estado).bloques.filter(bloque => bloque.capa === "destinos").map(bloque => bloque.id);
+  estado.orden = Object.fromEntries([...ids].reverse().map((id, indice) => [id, indice]));
+  const resultado = construirFlujo(estado).bloques.filter(bloque => bloque.capa === "destinos").map(bloque => bloque.id);
+  assert.deepEqual(resultado, [...ids].reverse());
 });

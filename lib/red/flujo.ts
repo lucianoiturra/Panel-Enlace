@@ -314,7 +314,25 @@ export const construirFlujo = (
       let y = ALTO_TITULO_COLUMNA;
 
       if (columna.capa === "destinos") {
+        // Los grupos se ordenan igual que los equipos: por la media de las y de
+        // quienes los alimentan. Sin esto el Map itera en orden de inserción y la
+        // columna con más cruces es justo la que queda sin ordenar.
+        const padresDeGrupo = new Map<string, string[]>();
         for (const [grupo, lista] of porGrupo) {
+          const padres = lista.flatMap(destino =>
+            puertosDeEndpoint(estado, destino.id).map(puerto => {
+              const equipo = estado.equipos.find(candidato => candidato.id === puerto.equipo);
+              return equipo && equipo.puertos > 0 ? `eq:${equipo.id}` : puerto.id;
+            }));
+          padresDeGrupo.set(grupo, padres);
+        }
+        const ordenGrupos = ordenarPor(
+          estado.orden,
+          ordenarPorBaricentro([...porGrupo.keys()], padresDeGrupo, posicionPrevia),
+        );
+
+        for (const grupo of ordenGrupos) {
+          const lista = porGrupo.get(grupo)!;
           const abierto = abiertas.has(grupo);
           const inicio = y;
           y += ALTO_CABECERA_GRUPO;
