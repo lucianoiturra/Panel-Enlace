@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import DiagramaLeyenda from "./diagrama-leyenda";
 import DiagramaNodos from "./diagrama-nodos";
-import { anclasDeLayout, construirLayout } from "../../lib/red/layout";
+import { anclasDeFlujo, construirFlujo, type CintaFlujo } from "../../lib/red/flujo";
 import { agruparCadenaPorEquipo, cadenaComoTexto, saltosDesdeIsp, trazarCircuito } from "../../lib/red/trazado";
 import { etiquetaEndpoint, validarEnlace, type EstadoRed } from "../../lib/red/modelo";
-import { claveDePar, nodoDeExtremo, puntasDelEnlace, type Arista } from "../../lib/red/aristas";
+import { claveDePar, nodoDeExtremo, puntasDelEnlace } from "../../lib/red/aristas";
 
 const MARGEN = 90;
 
@@ -67,8 +67,8 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
     if (!seleccionado || modo !== "consultar") return abiertas;
     return new Set([...abiertas, ...equiposDeRuta]);
   }, [abiertas, equiposDeRuta, modo, seleccionado]);
-  const layout = useMemo(() => construirLayout(estado, abiertasEfectivas), [estado, abiertasEfectivas]);
-  const anclas = useMemo(() => anclasDeLayout(layout), [layout]);
+  const layout = useMemo(() => construirFlujo(estado, abiertasEfectivas), [estado, abiertasEfectivas]);
+  const anclas = useMemo(() => anclasDeFlujo(layout), [layout]);
   const paresRuta = useMemo(() => {
     const pares = new Set<string>();
     for (const camino of cadena.caminos) {
@@ -140,7 +140,7 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
   const ajustar = useCallback(() => {
     const caja = contenedor.current?.getBoundingClientRect();
     if (!caja || !layout.ancho) return;
-    const escala = Math.min(Math.max(caja.width / (layout.ancho + MARGEN * 2), 0.55), 1.15);
+    const escala = Math.min(Math.max(caja.width / (layout.ancho + MARGEN * 2), 0.75), 1.4);
     const alto = layout.alto * escala;
     setVista({
       escala,
@@ -223,7 +223,7 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
     };
   };
 
-  const tomarPunta = (arista: Arista, fijo: string, evento: React.PointerEvent) => {
+  const tomarPunta = (arista: CintaFlujo, fijo: string, evento: React.PointerEvent) => {
     if (modo !== "conectar" || !arista.enlaceId) return;
     const enlace = estado.enlaces.find(candidato => candidato.id === arista.enlaceId);
     if (!enlace) return;
@@ -307,6 +307,22 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
                 : "Clic en un puerto o destino aísla su circuito completo. Los puertos de la ruta se abren automáticamente."}</p>
       </div>
 
+      {seleccionado && <div className="net-diagram-cadena encabezado">
+        <span className="net-label">{cadena.caminos.length > 1 ? `CIRCUITO · ${cadena.caminos.length} RAMALES` : cadena.completa ? "DEL ISP AL DESTINO" : sinTramo ? "SIN CONEXIONES REGISTRADAS" : "TRAMO DOCUMENTADO"}</span>
+        {!sinTramo && <div className="net-diagram-saltos" aria-label="Orden del circuito">
+          {gruposCadena.map((grupo, indice) => <div className="net-diagram-step" key={`${grupo.clave}:${indice}`}>
+            {indice > 0 && <i aria-hidden="true">→</i>}
+            <button type="button" onClick={() => { onSeleccionar(grupo.ids[0]); centrarNodo(grupo.ids[0]); }}>
+              <b>{grupo.etiqueta}</b>
+              {grupo.detalle && <small>{grupo.detalle}</small>}
+            </button>
+          </div>)}
+        </div>}
+        {!cadena.completa && <p className="net-diagram-motivo">{cadena.motivo}</p>}
+        {!sinTramo && <button className="secondary" type="button" onClick={() => onCopiar(cadenaComoTexto(cadena))}>Copiar</button>}
+        <button className="net-diagram-clear" type="button" onClick={() => onSeleccionar("")}>Limpiar selección</button>
+      </div>}
+
       {modo === "conectar" && <section className={`net-connect-panel ${origen ? "has-origin" : ""}`} aria-label="Administrar conexiones" aria-live="polite">
         <div className="net-connect-step">
           <span aria-hidden="true">{origen ? "2" : "1"}</span>
@@ -331,22 +347,6 @@ export default function Diagrama({ estado, seleccionado, centrarEn, onAbrir, onS
             : <p>Este punto todavía no tiene conexiones documentadas.</p>}
         </div>}
       </section>}
-
-      {seleccionado && <div className="net-diagram-cadena">
-        <span className="net-label">{cadena.caminos.length > 1 ? `CIRCUITO · ${cadena.caminos.length} RAMALES` : cadena.completa ? "DEL ISP AL DESTINO" : sinTramo ? "SIN CONEXIONES REGISTRADAS" : "TRAMO DOCUMENTADO"}</span>
-        {!sinTramo && <div className="net-diagram-saltos" aria-label="Orden del circuito">
-          {gruposCadena.map((grupo, indice) => <div className="net-diagram-step" key={`${grupo.clave}:${indice}`}>
-            {indice > 0 && <i aria-hidden="true">→</i>}
-            <button type="button" onClick={() => { onSeleccionar(grupo.ids[0]); centrarNodo(grupo.ids[0]); }}>
-              <b>{grupo.etiqueta}</b>
-              {grupo.detalle && <small>{grupo.detalle}</small>}
-            </button>
-          </div>)}
-        </div>}
-        {!cadena.completa && <p className="net-diagram-motivo">{cadena.motivo}</p>}
-        {!sinTramo && <button className="secondary" type="button" onClick={() => onCopiar(cadenaComoTexto(cadena))}>Copiar</button>}
-        <button className="net-diagram-clear" type="button" onClick={() => onSeleccionar("")}>Limpiar selección</button>
-      </div>}
 
       <div className={`net-diagram-canvas ${modo === "conectar" ? "conectando" : ""} ${reenlace ? "reenlazando" : ""}`} ref={contenedor} onWheel={alRodar} onPointerDown={alBajar} onPointerMove={alMover} onPointerUp={alSoltar} onPointerLeave={alSalir}>
         <svg role="img" aria-label="Diagrama de la red del colegio">

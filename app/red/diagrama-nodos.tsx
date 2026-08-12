@@ -1,15 +1,10 @@
 import { useMemo } from "react";
-import {
-  anclasDeLayout,
-  type Layout,
-  type Nodo,
-  type PuertoNodo,
-  type ResumenPuertos,
-} from "../../lib/red/layout";
-import { claveDePar, type Arista } from "../../lib/red/aristas";
+import { anclasDeFlujo, grosorDeCinta, type CintaFlujo, type Flujo, type NodoFlujo } from "../../lib/red/flujo";
+import { type PuertoNodo, type ResumenPuertos } from "../../lib/red/layout";
+import { claveDePar } from "../../lib/red/aristas";
 
 export type PropsNodos = {
-  layout: Layout;
+  layout: Flujo;
   ruta: Set<string>;
   ordenPuertosRuta: Map<string, number>;
   paresRuta: Set<string>;
@@ -23,29 +18,29 @@ export type PropsNodos = {
   onPunto: (id: string) => void;
   onFicha: (id: string) => void;
   onAlternar: (id: string) => void;
-  onTomarPunta: (arista: Arista, fijo: string, evento: React.PointerEvent) => void;
+  onTomarPunta: (arista: CintaFlujo, fijo: string, evento: React.PointerEvent) => void;
 };
 
 const COLOR_ENLACE = { patch: "#294f7c", uplink: "#a65330", roseta: "#237a52", borde: "#182334" } as const;
-const grosorDe = (cuenta: number) => Math.min(7, 2 + Math.log2(Math.max(cuenta, 1)));
 const ANCHO_FLECHA = 20;
 const ALTO_FLECHA = 18;
 const ALTO_FLECHA_V = 14;
 
 type Punto = { x: number; y: number };
 
-const curva = (a: Punto, b: Punto) => {
-  const medio = (a.y + b.y) / 2;
-  return `M ${a.x} ${a.y} C ${a.x} ${medio}, ${b.x} ${medio}, ${b.x} ${b.y}`;
+// Todas las cintas van de una columna a la siguiente o más allá, así que la
+// curva es horizontal. La única excepción es la intra-capa —los uplinks—, que
+// sale por un riel a la izquierda de su columna en vez de cruzar las tarjetas.
+const trazo = (cinta: CintaFlujo, a: Punto, b: Punto, xColumna: number) => {
+  if (cinta.intraCapa) {
+    const riel = xColumna - RIEL;
+    return `M ${a.x} ${a.y} L ${riel} ${a.y} L ${riel} ${b.y} L ${b.x} ${b.y}`;
+  }
+  const dx = (b.x - a.x) * 0.45;
+  return `M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}`;
 };
-
-// Un uplink entre racks une dos switches a la misma altura: una curva vertical
-// bajaría hasta la fila de paneles y volvería a subir, cruzando las tarjetas.
-const trazo = (arista: Arista, a: Punto, b: Punto) => {
-  if (arista.tipo !== "uplink" || Math.abs(a.y - b.y) > 8) return curva(a, b);
-  const medio = (a.x + b.x) / 2;
-  return `M ${a.x} ${a.y} C ${medio} ${a.y}, ${medio} ${b.y}, ${b.x} ${b.y}`;
-};
+const RIEL = 26;
+const ALTO_CABECERA = 26;
 
 // La manija no se dibuja sobre el ancla sino un poco adentro de la línea: en el
 // centro de una tarjeta cerrada se apilarían todas las de sus enlaces.
@@ -74,7 +69,7 @@ export default function DiagramaNodos({
   onAlternar,
   onTomarPunta,
 }: PropsNodos) {
-  const anclas = useMemo(() => anclasDeLayout(layout), [layout]);
+  const anclas = useMemo(() => anclasDeFlujo(layout), [layout]);
   const nodosPorId = useMemo(() => new Map(layout.nodos.map(nodo => [nodo.id, nodo])), [layout]);
   const posicion = useMemo(() => {
     const mapa = new Map<string, { grupo: string[]; indice: number }>();
@@ -85,12 +80,12 @@ export default function DiagramaNodos({
   const pertenece = (conjunto: Set<string>, id: string) =>
     conjunto.has(id) || nodosPorId.get(id)?.idsPuerto.some(puerto => conjunto.has(puerto)) === true;
   const nivel = (id: string) => pertenece(ruta, id) ? "ruta" : "";
-  const nivelArista = (arista: Arista) => paresRuta.has(claveDePar(arista.a, arista.b)) ? "ruta" : "";
-  const clasesNodo = (nodo: Nodo) => ["net-d-nodo", nodo.clase, nivel(nodo.id), nodo.estado === "dañado" ? "danado" : "", nodo.sinRuta ? "sin-ruta" : "", seleccionado === nodo.id ? "sel" : "", origen === nodo.id ? "origen" : ""].filter(Boolean).join(" ");
+  const nivelArista = (arista: CintaFlujo) => paresRuta.has(claveDePar(arista.a, arista.b)) ? "ruta" : "";
+  const clasesNodo = (nodo: NodoFlujo) => ["net-d-nodo", nodo.clase, nivel(nodo.id), nodo.estado === "dañado" ? "danado" : "", nodo.sinRuta ? "sin-ruta" : "", seleccionado === nodo.id ? "sel" : "", origen === nodo.id ? "origen" : ""].filter(Boolean).join(" ");
   const clasesPuerto = (puerto: PuertoNodo) => ["net-d-pt", puerto.estado, nivel(puerto.id),
     seleccionado === puerto.id ? "sel" : "", origen === puerto.id ? "origen" : ""].filter(Boolean).join(" ");
 
-  const alTeclado = (evento: React.KeyboardEvent<SVGRectElement>, nodo: Nodo) => {
+  const alTeclado = (evento: React.KeyboardEvent<SVGRectElement>, nodo: NodoFlujo) => {
     if (evento.key !== "Enter" && evento.key !== " ") return;
     evento.preventDefault();
     if (nodo.clase === "equipo") onAlternar(nodo.id);
@@ -111,7 +106,7 @@ export default function DiagramaNodos({
     return partes.join(" · ");
   };
 
-  const etiquetaAccesible = (nodo: Nodo) => nodo.clase === "equipo"
+  const etiquetaAccesible = (nodo: NodoFlujo) => nodo.clase === "equipo"
     ? `${nodo.etiqueta}. Enter para ${nodo.abierta ? "cerrar" : "abrir"} sus puertos; doble clic para abrir la ficha.`
     : `${nodo.etiqueta}. Enter para seleccionar; doble clic para abrir la ficha.`;
 
@@ -160,30 +155,48 @@ export default function DiagramaNodos({
 
   return (
     <>
-      {layout.zonas.map(zona => (
-        <g key={zona.id} className="net-d-zona">
-          <rect x={zona.x} y={zona.y} width={zona.w} height={zona.h} rx={10} />
-          <text x={zona.x + 12} y={zona.y + 16}>{zona.nombre}</text>
+      {layout.columnas.map(columna => (
+        <g key={columna.capa} className="net-d-columna">
+          <text x={columna.x} y={14}>{columna.titulo.toUpperCase()}</text>
         </g>
       ))}
 
-      {layout.aristas.map(arista => {
-        const a = anclas.get(arista.a);
-        const b = anclas.get(arista.b);
+      {layout.bloques.map(bloque => (
+        <g key={bloque.id} className={`net-d-bloque ${bloque.colapsable ? "grupo" : ""} ${bloque.abierto ? "abierto" : ""}`}>
+          {bloque.colapsable
+            ? <>
+                <rect
+                  x={bloque.x} y={bloque.y} width={bloque.w} height={ALTO_CABECERA}
+                  rx={4} role="button" tabIndex={0}
+                  aria-expanded={bloque.abierto}
+                  aria-label={`${bloque.titulo}, ${bloque.cuenta} destinos. Enter para ${bloque.abierto ? "cerrar" : "abrir"}.`}
+                  onKeyDown={evento => { if (evento.key === "Enter" || evento.key === " ") { evento.preventDefault(); onAlternar(bloque.id); } }}
+                  onClick={() => onAlternar(bloque.id)}
+                />
+                <text className="net-d-bloque-titulo" x={bloque.x + 10} y={bloque.y + 17}>{bloque.titulo}</text>
+                <text className="net-d-bloque-cuenta" x={bloque.x + bloque.w - 10} y={bloque.y + 17}>{bloque.cuenta} {bloque.abierto ? "▾" : "▸"}</text>
+              </>
+            : bloque.titulo && <text className="net-d-bloque-rotulo" x={bloque.x} y={bloque.y + 12}>{bloque.titulo.toUpperCase()}</text>}
+        </g>
+      ))}
+
+      {layout.cintas.map(cinta => {
+        const a = anclas.get(cinta.a);
+        const b = anclas.get(cinta.b);
         if (!a || !b) return null;
-        const nivelDeArista = nivelArista(arista);
+        const nivelDeArista = nivelArista(cinta);
         const medio = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-        // Una arista agregada resume varios enlaces: no hay uno solo que mover,
-        // así que se dibuja sin manijas hasta que el usuario abra las tarjetas.
-        const conManijas = editable && arista.enlaceId > 0 && !reenlazando;
-        return <g key={arista.clave} className={`net-d-link ${nivelDeArista} ${conManijas ? "editable" : ""}`}>
-          {/* Banda ancha invisible: una línea de 2px es casi imposible de apuntar,
-              y es la que enciende las manijas al pasar por encima. */}
-          {conManijas && <path className="net-d-zarpa" d={trazo(arista, a, b)} />}
-          {nivelDeArista === "ruta" && <path className="net-d-ruta-halo" d={trazo(arista, a, b)} />}
-          <path d={trazo(arista, a, b)} stroke={COLOR_ENLACE[arista.tipo] ?? "#68717e"} strokeWidth={grosorDe(arista.cuenta)} fill="none" />
-          {arista.cuenta > 1 && <text className="net-d-cuenta" x={medio.x} y={medio.y}>×{arista.cuenta}</text>}
-          {conManijas && ([[arista.a, arista.b, a, b], [arista.b, arista.a, b, a]] as [string, string, Punto, Punto][]).map(([suelto, fijo, desde, hacia]) => {
+        const conManijas = editable && cinta.enlaceId > 0 && !reenlazando;
+        // El riel de una cinta intra-capa sale del borde izquierdo de la columna
+        // donde vive: por eso hace falta la x de la columna y no basta el ancla.
+        const xColumna = layout.nodos.find(nodo => nodo.id === cinta.a)?.x ?? a.x;
+        const d = trazo(cinta, a, b, xColumna);
+        return <g key={cinta.clave} className={`net-d-link ${nivelDeArista} ${conManijas ? "editable" : ""}`}>
+          {conManijas && <path className="net-d-zarpa" d={d} />}
+          {nivelDeArista === "ruta" && <path className="net-d-ruta-halo" d={d} />}
+          <path d={d} stroke={COLOR_ENLACE[cinta.tipo] ?? "#68717e"} strokeWidth={grosorDeCinta(cinta.cuenta)} fill="none" />
+          {cinta.cuenta > 1 && <text className="net-d-cuenta" x={medio.x} y={medio.y}>×{cinta.cuenta}</text>}
+          {conManijas && ([[cinta.a, cinta.b, a, b], [cinta.b, cinta.a, b, a]] as [string, string, Punto, Punto][]).map(([suelto, fijo, desde, hacia]) => {
             const punto = manija(desde, hacia);
             return <circle
               key={suelto}
@@ -191,7 +204,7 @@ export default function DiagramaNodos({
               cx={punto.x}
               cy={punto.y}
               r={9}
-              onPointerDown={evento => { evento.stopPropagation(); onTomarPunta(arista, fijo, evento); }}
+              onPointerDown={evento => { evento.stopPropagation(); onTomarPunta(cinta, fijo, evento); }}
             ><title>Arrastra esta punta para reconectar el enlace</title></circle>;
           })}
         </g>;
@@ -246,10 +259,7 @@ export default function DiagramaNodos({
       </g>)}
 
       {ordenando && <g className="net-d-orden">
-        {layout.zonas.map(zona => flechasDe(zona.id, zona.nombre, zona.x + zona.w - 52, zona.y + 4, false))}
-        {layout.nodos.map(nodo => nodo.fila === 2
-          ? flechasDe(nodo.id, nodo.etiqueta, nodo.x + nodo.w + 4, nodo.y, true)
-          : flechasDe(nodo.id, nodo.etiqueta, nodo.x, nodo.y + nodo.h + 6, false))}
+        {layout.nodos.map(nodo => flechasDe(nodo.id, nodo.etiqueta, nodo.x + nodo.w + 4, nodo.y, true))}
       </g>}
     </>
   );

@@ -265,8 +265,13 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offs
 .net-d-lienzo.sel-activa .net-d-link.ruta{opacity:1}
 .net-d-link.ruta path{stroke-width:6}
 .net-d-link.ruta .net-d-ruta-halo{stroke:#fff;stroke-width:12;opacity:.96}
-.net-d-zona rect{fill:#eef1f4;stroke:#d7dce2;stroke-width:1}
-.net-d-zona text{fill:var(--muted);font:700 11px var(--font-mono);letter-spacing:.09em;text-transform:uppercase;pointer-events:none}
+.net-d-columna text{fill:var(--muted);font:700 10px var(--font-mono);letter-spacing:.12em;pointer-events:none}
+.net-d-bloque-rotulo{fill:var(--muted);font:700 9px var(--font-mono);letter-spacing:.1em;pointer-events:none}
+.net-d-bloque.grupo rect{fill:#eef1f4;stroke:#d7dce2;stroke-width:1;cursor:pointer}
+.net-d-bloque.grupo:hover rect{stroke:var(--ink)}
+.net-d-bloque-titulo{fill:var(--ink);font:700 12px var(--font-manrope);pointer-events:none}
+.net-d-bloque-cuenta{fill:var(--muted);font:700 10px var(--font-mono);text-anchor:end;pointer-events:none}
+.net-diagram-cadena.encabezado{border-top:0;border-bottom:1px solid var(--line)}
 .net-d-nodo{transition:opacity .18s ease}
 .net-d-lienzo.sel-activa .net-d-nodo:not(.ruta):not(.sel){opacity:.16}
 .net-d-lienzo.sel-activa .net-d-nodo.ruta .net-d-pt:not(.ruta):not(.sel){opacity:.14}
