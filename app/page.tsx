@@ -542,6 +542,25 @@ export default function Home() {
       <aside className={`drawer ${draft ? "open" : ""}`} aria-hidden={!draft} aria-busy={draft ? loadingPins : undefined} role="dialog" aria-modal={!!draft} aria-labelledby="drawer-title">
         {draft && <><div className="drawer-head"><div><span>FICHA DE EQUIPO</span><h2 id="drawer-title">Cubículo {String(draft.id).padStart(2, "0")}</h2>{isDirty && <small className="unsaved-label">Cambios sin guardar</small>}</div><button ref={closeButtonRef} onClick={requestCloseDrawer} aria-label="Cerrar">×</button></div><div className="drawer-body">
           {loadingPins && <div className="loading-note" role="status">Cargando credenciales protegidas…</div>}
+          {(() => {
+            const v = vivo.porCubiculo.get(draft.id);
+            if (!v) return null;
+            const difiere = v.estado === "ip-distinta";
+            return <section className="live-ficha" aria-label="Estado en la red viva">
+              <span className="net-label">RED VIVA</span>
+              <p className="live-ficha-estado">
+                <i aria-hidden="true" style={{ background: ETIQUETA_VIVO[v.estado].color }} />
+                <b>{ETIQUETA_VIVO[v.estado].texto}</b>
+                {v.ultimaConexion && <small>visto {v.ultimaConexion}</small>}
+              </p>
+              <div className="net-kv">
+                <div><span>IP DOCUMENTADA</span><b>{draft.ip || "sin registrar"}</b></div>
+                <div><span>IP REAL AHORA</span><b className={difiere ? "live-difiere" : ""}>{v.ipReal || "—"}</b></div>
+                <div><span>NOMBRE EN LA RED</span><b>{v.nombreVivo || "—"}</b></div>
+              </div>
+              {difiere && <p className="live-ficha-aviso">La IP real no coincide con la documentada. Corrígela en el campo de abajo si el cambio es el bueno.</p>}
+            </section>;
+          })()}
           {drawerError && <div className="inline-error" role="alert"><span>{drawerError}</span>{versionConflict && <button type="button" disabled={saving || loading} onClick={() => void reloadStation()}>{loading ? "Recargando…" : "Recargar ficha"}</button>}</div>}
           <label>Estado<select className={`status-select ${draft.status}`} value={draft.status} onChange={e => changeStatus(e.target.value as Status)}>{Object.entries(statusInfo).map(([value, info]) => <option key={value} value={value}>{info.label}</option>)}</select></label>
           <div className="two-cols"><label>Marca y modelo<input value={draft.brandModel} maxLength={160} onChange={e => setDraft({ ...draft, brandModel: e.target.value })} placeholder="Ej: Dell OptiPlex 7090" /></label><label>N.º de serie<input value={draft.serialNumber} maxLength={100} aria-invalid={!!fieldErrors.serialNumber} aria-describedby={fieldErrors.serialNumber ? "serial-error" : undefined} onChange={e => { setDraft({ ...draft, serialNumber: e.target.value }); setFieldErrors(current => ({ ...current, serialNumber: undefined })); }} placeholder="S/N del equipo" />{fieldErrors.serialNumber && <small id="serial-error" className="field-error">{fieldErrors.serialNumber}</small>}</label></div>

@@ -712,3 +712,9 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offs
 .station{position:relative}
 .live-dot{position:absolute;top:7px;right:44px;width:9px;height:9px;border-radius:50%}
 @media(max-width:600px){.live-rail{align-items:flex-start;flex-direction:column;gap:var(--esp-2)}.live-dot{top:9px;right:42px;width:11px;height:11px}}
+.live-ficha{display:flex;flex-direction:column;gap:var(--esp-2);padding:var(--esp-3) var(--esp-4);border:1px solid var(--line);border-left:3px solid var(--green);border-radius:6px;background:#f7f8f9}
+.live-ficha-estado{display:flex;align-items:center;gap:var(--esp-2);margin:0;font-size:13px}
+.live-ficha-estado i{width:10px;height:10px;flex:0 0 10px;border-radius:50%}
+.live-ficha-estado small{color:var(--muted);font-size:11px}
+.live-difiere{color:#9a5c14}
+.live-ficha-aviso{margin:0;color:#9a5c14;font-size:11px;line-height:1.45}
