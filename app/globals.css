@@ -691,6 +691,14 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offs
 .wol-fila-acciones button{color:var(--muted)}
 .wol-fila-acciones button:last-child{color:var(--red)}
 
+.adopcion-fila{display:flex;align-items:center;gap:var(--esp-3);padding:var(--esp-2) 0;border-bottom:1px solid #e8e9e5;font-size:12px;cursor:pointer}
+.adopcion-fila input{accent-color:var(--green);width:16px;height:16px;flex:0 0 16px}
+.adopcion-fila b{font:700 12px var(--font-mono);min-width:22px}
+.adopcion-ip{font:700 11px var(--font-mono);color:var(--muted)}
+.adopcion-ip.nueva{color:#9a5c14}
+.adopcion-fila i{color:var(--muted);font-style:normal}
+@media(max-width:600px){.adopcion-fila{flex-wrap:wrap;min-height:48px}}
+
 .wol-form{padding:18px 27px 22px;background:#f4f5f6;display:flex;flex-direction:column;gap:12px}
 .wol-dias{border:0;padding:0;margin:0;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .wol-dias legend{float:left;width:100%;font:700 9px var(--font-mono);letter-spacing:.1em;color:var(--muted);margin-bottom:6px}
@@ -709,6 +717,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offs
 .live-filters button.on{border-color:var(--line);background:#eef1f4;color:var(--ink)}
 .live-filters strong{font:700 13px var(--font-mono);color:var(--ink)}
 .live-filters i{width:9px;height:9px;flex:0 0 9px;border-radius:50%}
+.live-filters button.accionable{border-color:#d7b969;background:#fffaf0;color:var(--ink)}
 .live-sin-datos{color:var(--muted);font-size:12px}
 .station{position:relative}
 .live-dot{position:absolute;top:7px;right:44px;width:9px;height:9px;border-radius:50%}

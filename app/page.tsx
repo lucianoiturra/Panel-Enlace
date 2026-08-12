@@ -110,6 +110,9 @@ export default function Home() {
   const [redCadena, setRedCadena] = useState<{ texto: string; completa: boolean } | null>(null);
   const [vivo, setVivo] = useState<{ porCubiculo: Map<number, VivoCubiculo>; resumen: ResumenVivo | null; refrescado: string | null }>({ porCubiculo: new Map(), resumen: null, refrescado: null });
   const [filtroVivo, setFiltroVivo] = useState<EstadoReconciliacion | "">("");
+  const [adopcionAbierta, setAdopcionAbierta] = useState(false);
+  const [marcados, setMarcados] = useState<Set<number>>(new Set());
+  const [adoptando, setAdoptando] = useState(false);
   const [ahora, anclarReloj] = useAhora();
 
   const cargarVivo = useCallback(async () => {
@@ -183,6 +186,44 @@ export default function Home() {
   // debajo de alguien que está escribiendo cambiaría los datos con los que se
   // comparan sus cambios sin guardar.
   useRefrescoPeriodico(() => void load(true), CADA_MS, draft === null);
+
+  const enDrift = useMemo(
+    () => stations
+      .filter(station => vivo.porCubiculo.get(station.id)?.estado === "ip-distinta")
+      .map(station => ({ id: station.id, documentada: station.ip, real: vivo.porCubiculo.get(station.id)!.ipReal })),
+    [stations, vivo],
+  );
+
+  const abrirAdopcion = () => {
+    setMarcados(new Set(enDrift.map(fila => fila.id)));
+    setAdopcionAbierta(true);
+  };
+
+  const adoptar = async () => {
+    setAdoptando(true);
+    try {
+      const respuesta = await fetch("/api/room/adoptar-ip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cambios: enDrift.filter(fila => marcados.has(fila.id)).map(fila => ({ id: fila.id, ipEsperada: fila.documentada })) }),
+      });
+      const datos = await respuesta.json() as { actualizados?: number[]; omitidos?: { id: number; motivo: string }[]; error?: string };
+      if (!respuesta.ok) throw new Error(datos.error || "No fue posible adoptar las IP.");
+      setAdopcionAbierta(false);
+      await load();
+      await cargarVivo();
+      // Se informa lo omitido con sus números: un "listo" genérico escondería
+      // que dos cubículos no se tocaron y nadie se enteraría.
+      const omitidos = datos.omitidos ?? [];
+      showNotice(omitidos.length
+        ? `${datos.actualizados?.length ?? 0} IP adoptadas. Sin tocar: ${omitidos.map(item => item.id).join(", ")}.`
+        : `${datos.actualizados?.length ?? 0} IP adoptadas.`);
+    } catch (error) {
+      showNotice(error instanceof Error ? error.message : "No fue posible adoptar las IP.", "error");
+    } finally {
+      setAdoptando(false);
+    }
+  };
 
   const isDirty = useMemo(() => {
     if (!draft || !initialDraft) return false;
@@ -513,9 +554,9 @@ export default function Home() {
                   {ORDEN_VIVO.map(clave => <button
                     key={clave}
                     type="button"
-                    className={filtroVivo === clave ? "on" : ""}
+                    className={`${filtroVivo === clave ? "on" : ""} ${clave === "ip-distinta" && vivo.resumen![clave] > 0 ? "accionable" : ""}`}
                     aria-pressed={filtroVivo === clave}
-                    onClick={() => setFiltroVivo(filtroVivo === clave ? "" : clave)}
+                    onClick={() => { if (clave === "ip-distinta" && vivo.resumen!["ip-distinta"] > 0) { abrirAdopcion(); return; } setFiltroVivo(filtroVivo === clave ? "" : clave); }}
                   ><i aria-hidden="true" style={{ background: ETIQUETA_VIVO[clave].color }} /><strong>{vivo.resumen![clave]}</strong> {ETIQUETA_VIVO[clave].texto}</button>)}
                 </div>
               </>
@@ -579,6 +620,43 @@ export default function Home() {
 
       <dialog id="checklist-admin" className="modal"><div className="modal-head"><div><span>CONFIGURACIÓN POR LOTE</span><h2>Checklist de la sala</h2><p>Cada nueva verificación se aplicará a los cubículos que tengan computador.</p></div><button onClick={() => (document.getElementById("checklist-admin") as HTMLDialogElement)?.close()} aria-label="Cerrar checklist">×</button></div>{checklistError && <div className="modal-error" role="alert">{checklistError}</div>}<div className="modal-list">{items.length ? items.map(item => <div key={item.id}><span>{item.label}</span><button disabled={!!busyAction} onClick={() => removeChecklist(item.id)} aria-label={`Eliminar ${item.label}`}>{busyAction === `delete-checklist-${item.id}` ? "Eliminando…" : "Eliminar"}</button></div>) : <p className="empty-state">Aún no hay verificaciones. Agrega la primera para comenzar.</p>}</div><div className="add-row"><input value={newCheck} maxLength={120} aria-label="Nueva verificación del checklist" aria-invalid={!!checklistError} onChange={e => { setNewCheck(e.target.value); setChecklistError(""); }} onKeyDown={e => e.key === "Enter" && void addChecklist()} placeholder="Nueva verificación (ej: Cámara web)" /><button className="primary" disabled={!!busyAction} onClick={addChecklist}>{busyAction === "add-checklist" ? "Agregando…" : "Agregar"}</button></div></dialog>
       {pendingTaskDeletion && <div className="undo-toast" role="status"><span>Tarea eliminada.</span><button type="button" onClick={undoTaskDeletion}>Deshacer</button></div>}
+      {adopcionAbierta && <div className="modal-fondo">
+        <button className="backdrop" onClick={() => setAdopcionAbierta(false)} aria-label="Cerrar" />
+        <div className="modal" role="dialog" aria-modal="true" aria-labelledby="adopcion-titulo">
+          <div className="modal-head">
+            <div>
+              <span>RED VIVA</span>
+              <h2 id="adopcion-titulo">Adoptar IP reales</h2>
+              <p>La IP documentada de estos cubículos no coincide con la que tienen ahora en la red. Revisa y aplica lo que corresponda.</p>
+            </div>
+            <button onClick={() => setAdopcionAbierta(false)} aria-label="Cerrar">×</button>
+          </div>
+          <div className="modal-list">
+            {enDrift.map(fila => <label className="adopcion-fila" key={fila.id}>
+              <input
+                type="checkbox"
+                checked={marcados.has(fila.id)}
+                onChange={evento => setMarcados(actual => {
+                  const siguiente = new Set(actual);
+                  if (evento.target.checked) siguiente.add(fila.id);
+                  else siguiente.delete(fila.id);
+                  return siguiente;
+                })}
+              />
+              <b>{String(fila.id).padStart(2, "0")}</b>
+              <span className="adopcion-ip">{fila.documentada || "sin registrar"}</span>
+              <i aria-hidden="true">→</i>
+              <span className="adopcion-ip nueva">{fila.real}</span>
+            </label>)}
+          </div>
+          <div className="net-resource-foot">
+            <button className="secondary" onClick={() => setAdopcionAbierta(false)} disabled={adoptando}>Cancelar</button>
+            <button className="primary" onClick={() => void adoptar()} disabled={adoptando || !marcados.size}>
+              {adoptando ? "Adoptando…" : `Adoptar ${marcados.size} IP`}
+            </button>
+          </div>
+        </div>
+      </div>}
       {notice && <div className={`toast ${noticeKind}`} role={noticeKind === "error" ? "alert" : "status"} aria-live="polite">{notice}</div>}
     </main>
   );
