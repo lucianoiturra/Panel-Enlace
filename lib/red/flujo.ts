@@ -192,13 +192,25 @@ const ordenarPorBaricentro = (
   posicionPrevia: Map<string, number>,
 ): string[] => {
   const base = new Map(ids.map((id, indice) => [id, indice]));
-  const media = (id: string) => {
+  // `undefined` y no el índice de entrada: un nodo sin vecinos no tiene una `y`
+  // de la capa anterior con la que compararse, y el índice (0, 1, 2…) siempre
+  // gana contra una media real de coordenadas, que valen cientos. Eso los
+  // mandaba siempre primero — justo lo contrario de "sin vecinos, al final".
+  const media = (id: string): number | undefined => {
     const lista = (vecinos.get(id) ?? []).map(vecino => posicionPrevia.get(vecino)).filter((valor): valor is number => valor !== undefined);
-    return lista.length ? lista.reduce((suma, valor) => suma + valor, 0) / lista.length : base.get(id)!;
+    return lista.length ? lista.reduce((suma, valor) => suma + valor, 0) / lista.length : undefined;
   };
   // El desempate por el índice original es lo que hace determinista al orden:
-  // sin él, dos nodos con la misma media quedarían a merced del sort.
-  return [...ids].sort((a, b) => media(a) - media(b) || base.get(a)! - base.get(b)!);
+  // sin él, dos nodos con la misma media (o dos sin vecinos) quedarían a
+  // merced del sort. Los sin vecinos se agrupan al final, también en ese orden.
+  return [...ids].sort((a, b) => {
+    const mediaA = media(a);
+    const mediaB = media(b);
+    if (mediaA === undefined && mediaB === undefined) return base.get(a)! - base.get(b)!;
+    if (mediaA === undefined) return 1;
+    if (mediaB === undefined) return -1;
+    return mediaA - mediaB || base.get(a)! - base.get(b)!;
+  });
 };
 
 export const cruces = (flujo: Flujo): number => {
@@ -399,7 +411,15 @@ export const construirFlujo = (
           if (conTitulo) y += ALTO_TITULO_BLOQUE;
           // Los vacíos al final: un 0/24 no es lo que alguien viene a mirar, y arriba
           // empuja hacia abajo a los que sí tienen cableado.
-          const vacio = (id: string) => ((lista.find(nodo => nodo.id === id)?.resumen?.ocupados ?? 0) === 0 ? 1 : 0);
+          //
+          // `resumen === null` (el ISP, el router: equipos sin rejilla de puertos) no
+          // es lo mismo que "0 ocupados" y no cuenta como vacío. No tienen puertos que
+          // contar, y son justo los nodos que nunca deberían caer al fondo de su
+          // columna — son la columna entera.
+          const vacio = (id: string) => {
+            const resumen = lista.find(nodo => nodo.id === id)?.resumen;
+            return resumen && resumen.ocupados === 0 ? 1 : 0;
+          };
           const alfabetico = lista.map(nodo => nodo.id).sort()
             .sort((a, b) => vacio(a) - vacio(b));
           const automatico = opciones.baricentro === false

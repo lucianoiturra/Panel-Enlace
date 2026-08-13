@@ -199,13 +199,19 @@ export default function Home() {
     setAdopcionAbierta(true);
   };
 
+  // `enDrift` puede achicarse mientras el modal está abierto: `cargarVivo()`
+  // sigue refrescando cada 90 s y una IP marcada puede dejar de estar en drift.
+  // El botón tiene que contar y habilitarse sobre esta misma lista filtrada,
+  // no sobre `marcados.size`, o puede anunciar «Adoptar 3 IP» y mandar menos.
+  const paraAdoptar = useMemo(() => enDrift.filter(fila => marcados.has(fila.id)), [enDrift, marcados]);
+
   const adoptar = async () => {
     setAdoptando(true);
     try {
       const respuesta = await fetch("/api/room/adoptar-ip", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cambios: enDrift.filter(fila => marcados.has(fila.id)).map(fila => ({ id: fila.id, ipEsperada: fila.documentada })) }),
+        body: JSON.stringify({ cambios: paraAdoptar.map(fila => ({ id: fila.id, ipEsperada: fila.documentada })) }),
       });
       const datos = await respuesta.json() as { actualizados?: number[]; omitidos?: { id: number; motivo: string }[]; error?: string };
       if (!respuesta.ok) throw new Error(datos.error || "No fue posible adoptar las IP.");
@@ -651,8 +657,8 @@ export default function Home() {
           </div>
           <div className="net-resource-foot">
             <button className="secondary" onClick={() => setAdopcionAbierta(false)} disabled={adoptando}>Cancelar</button>
-            <button className="primary" onClick={() => void adoptar()} disabled={adoptando || !marcados.size}>
-              {adoptando ? "Adoptando…" : `Adoptar ${marcados.size} IP`}
+            <button className="primary" onClick={() => void adoptar()} disabled={adoptando || !paraAdoptar.length}>
+              {adoptando ? "Adoptando…" : `Adoptar ${paraAdoptar.length} IP`}
             </button>
           </div>
         </div>

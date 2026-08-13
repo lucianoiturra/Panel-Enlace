@@ -254,10 +254,16 @@ test("el rótulo del borde ya no invade la columna vecina", () => {
 
 // Los equipos con 0/24 estaban arriba empujando hacia abajo a los que sí tienen
 // cableado, que es lo que la gente viene a mirar.
+//
+// R3 y no R2: en R2 los tres patch panels tienen 11, 19 y 24 puertos ocupados
+// —ninguno vacío—, así que la aserción de abajo comparaba [true,true,true]
+// contra su propio orden descendente, algo trivialmente cierto pase lo que
+// pase. R3 sí tiene un equipo vacío (R3-PP2, 0 ocupados) mezclado con dos que
+// no lo están: es el único bloque que de verdad ejerce este camino.
 test("un equipo sin puertos ocupados va al final de su bloque", () => {
   const flujo = construirFlujo(real());
-  const enR2 = flujo.nodos.filter(nodo => nodo.capa === "patch" && nodo.bloque === "R2").sort((a, b) => a.y - b.y);
-  const ocupados = enR2.map(nodo => (nodo.resumen?.ocupados ?? 0) > 0);
+  const enR3 = flujo.nodos.filter(nodo => nodo.capa === "patch" && nodo.bloque === "R3").sort((a, b) => a.y - b.y);
+  const ocupados = enR3.map(nodo => (nodo.resumen?.ocupados ?? 0) > 0);
   assert.deepEqual(ocupados, [...ocupados].sort((a, b) => Number(b) - Number(a)),
     "los que tienen puertos ocupados van primero");
 });
