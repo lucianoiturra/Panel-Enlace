@@ -4,13 +4,13 @@
 # o "falla" -- vive en lib/salud/evaluar.ts, no aqui.
 set -u
 
-ESPERADOS="vaultwarden netalertx adguard panel-enlace panel-db panel-backup panel-mon-export"
+ESPERADOS="vaultwarden netalertx adguard panel-enlace panel-db panel-backup panel-mon-export ntfy lab-scripts"
 DIR_PG=/srv/apps/backups/panel-enlace
 DIR_USB=/mnt/respaldo
 # Cuantas filas debe traer una foto completa. Si agregas o quitas un emit,
 # actualiza este numero: es lo que impide commitear una foto a medias con
 # fecha fresca, que se leeria como "el colector murio" siendo mentira.
-FILAS_ESPERADAS=21
+FILAS_ESPERADAS=24
 AHORA=$(date +%s)
 TMP=$(mktemp) || exit 1
 trap 'rm -f "$TMP"' EXIT
@@ -79,6 +79,11 @@ sonda_http() {
 }
 sonda_http servicio.netalertx http://127.0.0.1:20211/
 sonda_http servicio.vaultwarden http://127.0.0.1:8081/alive
+# El canal de avisos es el unico que no puede denunciar su propia muerte: si
+# ntfy no publica, el aviso de que ntfy no publica tampoco sale. Por eso se
+# mide desde aca. El 2026-08-12 quedo sin publicar puertos al recrearse y
+# estuvo 30 horas mudo sin que nadie lo notara.
+sonda_http servicio.ntfy http://127.0.0.1:8084/v1/health
 
 if tailscale status --json 2>/dev/null | grep -q '"BackendState": *"Running"'; then
   emit servicio.tailscale ok

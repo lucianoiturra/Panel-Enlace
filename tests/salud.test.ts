@@ -8,7 +8,7 @@ const RECIEN = new Date(AHORA - 60_000).toISOString();
 const hecho = (clave: string, valor = "", numero: number | null = null, medidoAt = RECIEN): HechoSalud =>
   ({ clave, valor, numero, medidoAt });
 
-// Los 7 contenedores esperados, todos arriba.
+// Los 9 contenedores esperados, todos arriba.
 const contenedoresSanos = (): HechoSalud[] => [
   hecho("docker.vaultwarden", "running/healthy"),
   hecho("docker.netalertx", "running/healthy"),
@@ -17,6 +17,8 @@ const contenedoresSanos = (): HechoSalud[] => [
   hecho("docker.panel-db", "running"),
   hecho("docker.panel-backup", "running"),
   hecho("docker.panel-mon-export", "running"),
+  hecho("docker.ntfy", "running/healthy"),
+  hecho("docker.lab-scripts", "running"),
 ];
 
 const stackSano = (): HechoSalud[] => [
@@ -34,6 +36,7 @@ const stackSano = (): HechoSalud[] => [
   hecho("servicio.adguard_dns", "ok"),
   hecho("servicio.netalertx", "ok"),
   hecho("servicio.vaultwarden", "ok"),
+  hecho("servicio.ntfy", "ok"),
   hecho("servicio.tailscale", "ok"),
 ];
 
