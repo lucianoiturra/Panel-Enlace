@@ -1,0 +1,14 @@
+[Unit]
+Description=Volcado diario de la base de Panel-Enlace (02:45)
+
+[Timer]
+# 02:45 y no 03:15: media hora despues, respaldo-cabserver.timer copia todo
+# /srv/apps al disco USB, y asi se lleva el volcado de esta misma noche.
+OnCalendar=*-*-* 02:45:00
+# El servidor no corre de noche si hubo corte de luz. Persistent lo recupera al
+# arrancar en vez de saltarse el dia entero.
+Persistent=true
+RandomizedDelaySec=5m
+
+[Install]
+WantedBy=timers.target

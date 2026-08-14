@@ -8,14 +8,14 @@ const RECIEN = new Date(AHORA - 60_000).toISOString();
 const hecho = (clave: string, valor = "", numero: number | null = null, medidoAt = RECIEN): HechoSalud =>
   ({ clave, valor, numero, medidoAt });
 
-// Los 8 contenedores esperados, todos arriba.
+// Los 7 contenedores esperados, todos arriba. panel-backup ya no está: el
+// volcado de la base lo hace un timer del host, como el respaldo al USB.
 const contenedoresSanos = (): HechoSalud[] => [
   hecho("docker.vaultwarden", "running/healthy"),
   hecho("docker.netalertx", "running/healthy"),
   hecho("docker.adguard", "running"),
   hecho("docker.panel-enlace", "running"),
   hecho("docker.panel-db", "running"),
-  hecho("docker.panel-backup", "running"),
   hecho("docker.panel-mon-export", "running"),
   hecho("docker.lab-scripts", "running"),
 ];
@@ -32,6 +32,8 @@ const stackSano = (): HechoSalud[] => [
   hecho("backup.usb_copias", "", 3),
   hecho("backup.timer_estado", "active"),
   hecho("backup.servicio_fallido", "inactive"),
+  hecho("backup.pg_timer_estado", "active"),
+  hecho("backup.pg_servicio_fallido", "inactive"),
   hecho("servicio.adguard_dns", "ok"),
   hecho("servicio.netalertx", "ok"),
   hecho("servicio.vaultwarden", "ok"),
@@ -112,6 +114,29 @@ test("el timer de respaldo en failed es falla", () => {
   const hechos = stackSano().map((h) =>
     h.clave === "backup.servicio_fallido" ? { ...h, valor: "failed" } : h);
   assert.equal(fila(evaluarSalud(hechos, RECIEN, 21, AHORA), "backup.servicio_fallido").estado, "falla");
+});
+
+// El volcado de la base lo hacía un contenedor, así que un respaldo muerto se
+// veía al toque como contenedor ausente. Ahora es un timer del host: sin esta
+// fila, la única señal sería la antigüedad del volcado, que tarda 26 horas en
+// ponerse amarilla.
+test("el timer del volcado de la base en failed es falla", () => {
+  const hechos = stackSano().map((h) =>
+    h.clave === "backup.pg_servicio_fallido" ? { ...h, valor: "failed" } : h);
+  assert.equal(fila(evaluarSalud(hechos, RECIEN, 21, AHORA), "backup.pg_servicio_fallido").estado, "falla");
+});
+
+test("el timer del volcado de la base detenido es falla, aunque el servicio no haya fallado", () => {
+  const hechos = stackSano().map((h) =>
+    h.clave === "backup.pg_timer_estado" ? { ...h, valor: "inactive" } : h);
+  assert.equal(fila(evaluarSalud(hechos, RECIEN, 21, AHORA), "backup.pg_servicio_fallido").estado, "falla");
+});
+
+test("panel-backup ya no se espera: su ausencia no ensucia la salud", () => {
+  const salud = evaluarSalud(stackSano(), RECIEN, 21, AHORA);
+  const claves = salud.bloques.flatMap((b) => b.filas).map((f) => f.clave);
+  assert.equal(claves.includes("docker.panel-backup"), false);
+  assert.equal(salud.peor, "ok");
 });
 
 test("AdGuard que no resuelve es falla", () => {

@@ -24,7 +24,7 @@ export const UMBRALES = {
 
 export const CONTENEDORES_ESPERADOS = [
   "vaultwarden", "netalertx", "adguard",
-  "panel-enlace", "panel-db", "panel-backup", "panel-mon-export",
+  "panel-enlace", "panel-db", "panel-mon-export",
   "lab-scripts",
 ] as const;
 
@@ -165,6 +165,19 @@ export function evaluarSalud(
   ];
 
   // --- respaldos ------------------------------------------------------------
+  // Las dos tareas de respaldo —el volcado de la base y la copia al USB— se
+  // juzgan igual, así que comparten juicio en vez de tener dos copias que
+  // discrepen el día que alguien toque una sola.
+  const estadoTarea = (fallido: string, timer: string): { estado: EstadoSalud; detalle: string } => {
+    if (fallido === "failed") return { estado: "falla", detalle: "la última ejecución falló" };
+    // `is-active` de una unidad inexistente tambien dice "inactive": un timer
+    // borrado y uno detenido se ven igual, y ambos significan que no hay respaldo.
+    if (timer !== "active") {
+      return { estado: "falla", detalle: timer ? `el timer está ${timer}` : "el timer no existe" };
+    }
+    return { estado: "ok", detalle: "programada a diario" };
+  };
+
   const respaldos: FilaSalud[] = [
     delHost("backup.pgdump_edad_seg", "Copia de la base (diaria)", (hecho) => {
       if (hecho.numero === null) {
@@ -190,16 +203,16 @@ export function evaluarSalud(
       const copias = porClave.get("backup.usb_copias")?.numero ?? 0;
       return { estado, detalle: `${hace(hecho.numero)} · ${copias} copias` };
     }),
-    delHost("backup.servicio_fallido", "Tarea de respaldo", (hecho) => {
-      if (hecho.valor === "failed") return { estado: "falla", detalle: "la última ejecución falló" };
-      // `is-active` de una unidad inexistente tambien dice "inactive": un timer
-      // borrado y uno detenido se ven igual, y ambos significan que no hay respaldo.
-      const timer = porClave.get("backup.timer_estado")?.valor ?? "";
-      if (timer !== "active") {
-        return { estado: "falla", detalle: timer ? `el timer está ${timer}` : "el timer no existe" };
-      }
-      return { estado: "ok", detalle: "programada a diario" };
-    }),
+    delHost("backup.servicio_fallido", "Tarea de respaldo", (hecho) => (
+      estadoTarea(hecho.valor, porClave.get("backup.timer_estado")?.valor ?? "")
+    )),
+    // El volcado de la base lo hacía el contenedor panel-backup, así que un
+    // respaldo muerto se veía al instante como contenedor ausente. Al pasar a
+    // un timer del host hay que vigilar el timer: la antigüedad del volcado
+    // sola tarda 26 horas en ponerse amarilla.
+    delHost("backup.pg_servicio_fallido", "Tarea del volcado de la base", (hecho) => (
+      estadoTarea(hecho.valor, porClave.get("backup.pg_timer_estado")?.valor ?? "")
+    )),
   ];
 
   // --- servicios ------------------------------------------------------------

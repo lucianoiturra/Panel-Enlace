@@ -4,13 +4,13 @@
 # o "falla" -- vive en lib/salud/evaluar.ts, no aqui.
 set -u
 
-ESPERADOS="vaultwarden netalertx adguard panel-enlace panel-db panel-backup panel-mon-export lab-scripts"
+ESPERADOS="vaultwarden netalertx adguard panel-enlace panel-db panel-mon-export lab-scripts"
 DIR_PG=/srv/apps/backups/panel-enlace
 DIR_USB=/mnt/respaldo
 # Cuantas filas debe traer una foto completa. Si agregas o quitas un emit,
 # actualiza este numero: es lo que impide commitear una foto a medias con
 # fecha fresca, que se leeria como "el colector murio" siendo mentira.
-FILAS_ESPERADAS=23
+FILAS_ESPERADAS=24
 AHORA=$(date +%s)
 TMP=$(mktemp) || exit 1
 trap 'rm -f "$TMP"' EXIT
@@ -31,7 +31,7 @@ emit host.ram_disponible_mb "" "$((ram_kb / 1024))"
 emit host.disco_uso_pct "" "$(df --output=pcent / | tail -1 | tr -dc '0-9')"
 emit host.disco_libre_gb "" "$(df --output=avail -BG / | tail -1 | tr -dc '0-9')"
 
-# --- respaldo local (pg_dump del sidecar panel-backup) ----------------------
+# --- respaldo local (pg_dump del timer respaldo-panel) ----------------------
 ultimo_pg=$(ls -1t "$DIR_PG"/panel-*.sql.gz 2>/dev/null | head -1)
 if [ -n "$ultimo_pg" ]; then
   emit backup.pgdump_edad_seg "$(basename "$ultimo_pg")" "$((AHORA - $(stat -c %Y "$ultimo_pg")))"
@@ -64,6 +64,12 @@ fi
 
 emit backup.timer_estado "$(systemctl is-active respaldo-cabserver.timer 2>/dev/null || true)"
 emit backup.servicio_fallido "$(systemctl is-failed respaldo-cabserver.service 2>/dev/null || true)"
+
+# El volcado de la base salio del contenedor panel-backup a su propio timer, asi
+# que su muerte ya no se ve como contenedor ausente. Sin estas dos filas la
+# unica senal seria la antiguedad del volcado, que tarda 26 h en ponerse amarilla.
+emit backup.pg_timer_estado "$(systemctl is-active respaldo-panel.timer 2>/dev/null || true)"
+emit backup.pg_servicio_fallido "$(systemctl is-failed respaldo-panel.service 2>/dev/null || true)"
 
 # --- servicios vecinos ------------------------------------------------------
 # AdGuard se prueba RESOLVIENDO, no respondiendo la web: su panel escucha en la
