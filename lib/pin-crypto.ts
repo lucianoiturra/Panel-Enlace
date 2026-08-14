@@ -29,13 +29,19 @@ export async function encryptPin(pin: string) {
   return encode(result);
 }
 
-export async function decryptPin(value: string) {
-  if (!value) return "";
+// Devolver "" ante un fallo hacía que un PIN ilegible se viera igual que un
+// cubículo sin PIN: la ficha decía "Configurado" con el campo en blanco, sin
+// aviso, y la validación de 4-64 caracteres impedía guardarlo. El resultado va
+// discriminado para que quien lo lea tenga que decidir qué hacer con el fallo.
+export type PinDescifrado = { ok: true; pin: string } | { ok: false };
+
+export async function decryptPin(value: string): Promise<PinDescifrado> {
+  if (!value) return { ok: true, pin: "" };
   try {
     const data = decode(value);
     const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: data.slice(0, 12) }, await getKey(), data.slice(12));
-    return new TextDecoder().decode(decrypted);
+    return { ok: true, pin: new TextDecoder().decode(decrypted) };
   } catch {
-    return "";
+    return { ok: false };
   }
 }

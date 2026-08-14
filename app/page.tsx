@@ -310,10 +310,17 @@ export default function Home() {
       try {
         const response = await fetch(`/api/room?pinFor=${id}`, { cache: "no-store" });
         if (!response.ok) throw new Error(await readApiError(response, "No fue posible cargar los PIN."));
-        const pins = await response.json() as { adminPin: string; studentPin: string };
+        const { ilegibles = [], ...pins } = await response.json() as { adminPin: string; studentPin: string; ilegibles?: string[] };
         if (drawerSessionRef.current !== session) return;
         setDraft(current => current?.id === id ? { ...current, ...pins } : current);
         setInitialDraft(current => current?.id === id ? { ...current, ...pins } : current);
+        // El campo llega en blanco pero el estado sigue diciendo "Configurado":
+        // sin este aviso el blanco se lee como "nadie lo cargó todavía", y la
+        // validación de 4-64 caracteres impide guardar sin explicar por qué.
+        if (ilegibles.length) {
+          const cuales = ilegibles.map(cual => cual === "admin" ? "de administrador" : "de estudiante").join(" y el ");
+          setDrawerError(`El PIN ${cuales} está guardado pero no se puede descifrar: la clave PIN_ENCRYPTION_KEY no es la que lo cifró. Escribe uno nuevo para reemplazarlo, o restaura la clave anterior antes de guardar.`);
+        }
       } catch (error) {
         if (drawerSessionRef.current === session) setDrawerError(`${error instanceof Error ? error.message : "No fue posible cargar los PIN."} Cierra y vuelve a abrir la ficha antes de guardar.`);
       } finally {

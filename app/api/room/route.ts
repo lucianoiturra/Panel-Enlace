@@ -63,9 +63,19 @@ export async function GET(request: Request) {
         studentPinEncrypted: cubicles.studentPinEncrypted,
       }).from(cubicles).where(eq(cubicles.id, id)).limit(1);
       if (!station) return noStoreJson({ error: "No existe ese cubículo." }, { status: 404 });
+      const admin = await decryptPin(station.adminPinEncrypted);
+      const estudiante = await decryptPin(station.studentPinEncrypted);
+      // Un PIN ilegible no es un error de la petición —el resto de la ficha se
+      // carga igual—, pero tampoco es un campo vacío: va nombrado aparte para
+      // que el cajón pueda decir qué pasó en vez de mostrar un blanco mudo.
+      const ilegibles = [
+        ...(admin.ok ? [] : ["admin"]),
+        ...(estudiante.ok ? [] : ["estudiante"]),
+      ];
       return noStoreJson({
-        adminPin: await decryptPin(station.adminPinEncrypted),
-        studentPin: await decryptPin(station.studentPinEncrypted),
+        adminPin: admin.ok ? admin.pin : "",
+        studentPin: estudiante.ok ? estudiante.pin : "",
+        ilegibles,
       });
     }
 
