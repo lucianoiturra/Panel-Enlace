@@ -62,7 +62,9 @@ export default function VistaEspacios({ espacios, categorias, orden, agrupar, fo
         className={`net-space-origin ${espacio.origen}`}
         title={espacio.origen === "auto"
           ? `Automático: el testigo ${espacio.testigoMac} está ${espacio.testigoPresente ? "presente" : "ausente"} en la red.`
-          : "Manual: lo escribiste en la ficha. Asígnale un testigo para que se actualice solo."}
+          : espacio.estadoVivo === "testigo-desconocido"
+            ? `Manual: el testigo ${espacio.testigoMac} ya no figura en NetAlertX, así que no hay noticias de este espacio.`
+            : "Manual: lo escribiste en la ficha. Asígnale un testigo para que se actualice solo."}
       >{espacio.origen === "auto" ? "auto" : "manual"}</small>
     </span>
   );

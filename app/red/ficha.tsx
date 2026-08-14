@@ -181,9 +181,11 @@ export default function Ficha({ estado, endpointId, cadena, guardando, candidato
           </label>
           {espacio.origen === "auto"
             ? <p className="net-pista">Lo decide el testigo <b>{espacio.testigoMac}</b>, ahora {espacio.testigoPresente ? "presente" : "ausente"} en la red. Para escribirlo a mano, quítale el testigo.</p>
-            : espacio.testigoMac
-              ? <p className="net-pista">Tiene testigo asignado, pero los datos de red no están frescos: manda el estado manual.</p>
-              : <p className="net-pista">Sin testigo: este estado lo escribes tú y no se actualiza solo.</p>}
+            : espacio.estadoVivo === "testigo-desconocido"
+              ? <p className="net-pista">El testigo <b>{espacio.testigoMac}</b> ya no figura en NetAlertX: puede haberse retirado, archivado o cambiado de MAC. <b>No quiere decir que el espacio esté caído</b> — manda el estado manual hasta que le asignes un testigo que exista.</p>
+              : espacio.testigoMac
+                ? <p className="net-pista">Tiene testigo asignado, pero los datos de red no están frescos: manda el estado manual.</p>
+                : <p className="net-pista">Sin testigo: este estado lo escribes tú y no se actualiza solo.</p>}
           <label>Dispositivo testigo
             <select value={testigoElegido} disabled={guardando} onChange={event => setTestigoElegido(event.target.value)}>
               <option value="">— sin testigo (estado manual) —</option>

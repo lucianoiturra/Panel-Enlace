@@ -40,6 +40,29 @@ test("con datos viejos no se inventa nada: vuelve al manual", () => {
   assert.equal(salida.origen, "manual");
 });
 
+// Un testigo que desapareció de NetAlertX no prueba que el espacio esté caído:
+// prueba que perdimos el sensor. Pintarlo "sin internet" manda a alguien a
+// buscar una falla que no existe.
+test("un testigo desconocido no pinta caída: vuelve al manual", () => {
+  const salida = estadoEfectivo(espacio("esp:1", "operativo", "1c:83:41:aa:bb:cc"), vivo("esp:1", "testigo-desconocido", "1c:83:41:aa:bb:cc"), true);
+  assert.equal(salida.estado, "operativo");
+  assert.equal(salida.origen, "manual");
+  assert.equal(salida.testigoPresente, false);
+});
+
+// La ficha tiene que poder decir POR QUÉ manda el manual: no es lo mismo
+// "los datos están viejos" que "este testigo ya no existe".
+test("estadoEfectivo expone el estado vivo que lo llevó a manual", () => {
+  const desconocido = estadoEfectivo(espacio("esp:1", "operativo", "1c:83:41:aa:bb:cc"), vivo("esp:1", "testigo-desconocido", "1c:83:41:aa:bb:cc"), true);
+  assert.equal(desconocido.estadoVivo, "testigo-desconocido");
+
+  const viejo = estadoEfectivo(espacio("esp:1", "operativo", "1c:83:41:aa:bb:cc"), vivo("esp:1", "sin-internet", "1c:83:41:aa:bb:cc"), false);
+  assert.equal(viejo.estadoVivo, null);
+
+  const sinFila = estadoEfectivo(espacio("esp:1", "operativo", "1c:83:41:aa:bb:cc"), undefined, true);
+  assert.equal(sinFila.estadoVivo, null);
+});
+
 test("un espacio sin fila viva se queda manual", () => {
   const salida = estadoEfectivo(espacio("esp:1", "sin-verificar", "1c:83:41:aa:bb:cc"), undefined, true);
   assert.equal(salida.estado, "sin-verificar");

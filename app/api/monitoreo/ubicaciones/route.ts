@@ -20,7 +20,11 @@ export async function GET() {
       testigoMac: espacio.testigoMac,
     }));
     const presentes = vivos.filter((dispositivo) => dispositivo.present).map((dispositivo) => dispositivo.mac);
-    const { ubicaciones, resumen } = estadoUbicaciones(espaciosDoc, presentes);
+    // Las conocidas van aparte de las presentes porque separan dos noticias
+    // distintas: un testigo que figura y no responde está caído; uno que ya no
+    // figura se retiró, se archivó o cambió de MAC.
+    const conocidas = vivos.map((dispositivo) => dispositivo.mac);
+    const { ubicaciones, resumen } = estadoUbicaciones(espaciosDoc, presentes, conocidas);
 
     const candidatos = vivos
       .map((dispositivo) => ({ mac: dispositivo.mac, ip: dispositivo.ip, name: dispositivo.name, vendor: dispositivo.vendor, present: dispositivo.present }))
