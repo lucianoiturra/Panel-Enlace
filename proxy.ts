@@ -1,27 +1,30 @@
-import { timingSafeEqual } from "node:crypto";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { decidirAcceso } from "./lib/auth-basic";
 
-function matches(actual: string, expected: string) {
-  const actualBytes = Buffer.from(actual);
-  const expectedBytes = Buffer.from(expected);
-  return actualBytes.length === expectedBytes.length && timingSafeEqual(actualBytes, expectedBytes);
-}
+// Se avisa una vez por proceso: repetirlo en cada petición enterraría el resto
+// del log justo cuando hay algo que leer.
+let avisado = false;
 
 export function proxy(request: NextRequest) {
-  const username = process.env.APP_USERNAME;
-  const password = process.env.APP_PASSWORD;
+  const decision = decidirAcceso(request.headers.get("authorization"), process.env.APP_USERNAME, process.env.APP_PASSWORD);
+  if (decision === "adelante") return NextResponse.next();
 
-  if (!username || !password) {
-    if (!process.env.VERCEL) return NextResponse.next();
+  // Antes, faltando las credenciales fuera de Vercel, esto devolvía
+  // NextResponse.next(): el panel y todas sus API quedaban sin autenticación,
+  // sin aviso y sin log. Y fuera de Vercel es el camino normal, no el raro. Un
+  // guardia que falla abierto no es un guardia: sin credenciales no pasa nadie,
+  // corra donde corra.
+  if (decision === "sin-configurar") {
+    if (!avisado) {
+      avisado = true;
+      console.error("proxy: faltan APP_USERNAME o APP_PASSWORD, así que se rechaza todo el tráfico con 503.");
+    }
     return new NextResponse("Falta configurar el acceso privado de la aplicación.", {
       status: 503,
       headers: { "Cache-Control": "no-store" },
     });
   }
-
-  const expected = `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;
-  if (matches(request.headers.get("authorization") ?? "", expected)) return NextResponse.next();
 
   return new NextResponse("Autenticación requerida.", {
     status: 401,
