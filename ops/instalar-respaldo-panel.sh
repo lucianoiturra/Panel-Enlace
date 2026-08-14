@@ -4,14 +4,21 @@
 #
 #   sudo /srv/apps/panel-enlace/ops/instalar-respaldo-panel.sh
 #
-# Deja el script en /usr/local/sbin, el timer a las 02:45, retira el contenedor
-# panel-backup y corre un volcado de prueba para no quedarse esperando a manana
-# para descubrir que algo no anda.
+# Deja el script en /usr/local/sbin, el timer a las 02:45, actualiza el colector
+# de salud, retira el contenedor panel-backup y corre un volcado de prueba para
+# no quedarse esperando a manana para descubrir que algo no anda.
 set -eu
 
 [ "$(id -u)" = 0 ] || { echo "Corre esto con sudo."; exit 1; }
 ORIGEN=$(cd "$(dirname "$0")" && pwd)
 COMPOSE=/srv/apps/compose/panel-enlace
+
+# El colector que CORRE es el de /usr/local/sbin, no el del repo. Si este paso
+# se salta, SALUD pide backup.pg_timer_estado a un script que no lo emite y las
+# dos filas nuevas quedan en "sin datos" para siempre.
+echo "==> 0/5  colector de salud (deja de emitir docker.panel-backup)"
+install -m 700 "$ORIGEN/salud-cabserver.sh" /usr/local/sbin/salud-cabserver.sh
+echo "    actualizado"
 
 echo "==> 1/5  script y timer"
 install -m 700 "$ORIGEN/respaldo-panel.sh" /usr/local/sbin/respaldo-panel.sh
