@@ -1,8 +1,7 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import { getDb } from "../../../db";
-import { appMetadata, checklistItems, checklistResults, cubicles, stationTasks } from "../../../db/schema";
+import { checklistItems, checklistResults, cubicles, stationTasks } from "../../../db/schema";
 import { decryptPin, encryptPin } from "../../../lib/pin-crypto";
-import { loadReferenceStations } from "../../../lib/reference-stations";
 import { apiErrorResponse, noStoreJson, readJson } from "../../../lib/api-response";
 import {
   ACCESSORY_STATUSES,
@@ -18,40 +17,9 @@ import {
   ROOM_STATUSES,
 } from "../../../lib/room-validation";
 
-type RoomDb = Awaited<ReturnType<typeof getDb>>;
-
-async function syncReferenceEquipment(db: RoomDb) {
-  const reference = await loadReferenceStations();
-  if (!reference.stations.length) return;
-  await db.transaction(async (tx) => {
-    const markerKey = "equipment_reference_version";
-    const [marker] = await tx.select().from(appMetadata).where(eq(appMetadata.key, markerKey)).limit(1);
-    if (marker?.value === reference.version) return;
-
-    for (const station of reference.stations) {
-      const studentPinStatus = station.noComputer ? "not_applicable" : station.studentPin ? "configured" : "no_pin";
-      const adminPinStatus = station.noComputer ? "not_applicable" : station.adminPin ? "configured" : "unreviewed";
-      await tx.update(cubicles).set({
-        ip: station.ip,
-        mac: station.mac,
-        studentPinStatus,
-        adminPinStatus,
-        studentPinEncrypted: station.studentPin ? await encryptPin(station.studentPin) : "",
-        adminPinEncrypted: station.adminPin ? await encryptPin(station.adminPin) : "",
-        ...(station.noComputer ? { status: "no_computer" } : {}),
-        updatedAt: new Date().toISOString(),
-      }).where(eq(cubicles.id, station.id));
-    }
-
-    await tx.insert(appMetadata).values({ key: markerKey, value: reference.version })
-      .onConflictDoUpdate({ target: appMetadata.key, set: { value: reference.version } });
-  });
-}
-
 export async function GET(request: Request) {
   try {
     const db = await getDb();
-    await syncReferenceEquipment(db);
     const pinFor = new URL(request.url).searchParams.get("pinFor");
     if (pinFor !== null) {
       const id = Number(pinFor);
