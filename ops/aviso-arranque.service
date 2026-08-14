@@ -1,0 +1,18 @@
+[Unit]
+Description=Aviso de como arranco cabserver (corte de luz vs reinicio ordenado)
+# Necesita red para que el aviso salga; si igual no hay, el transporte lo
+# encola y se manda solo cuando vuelva.
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# RemainAfterExit es lo que hace que systemd ejecute ExecStop al apagar: sin
+# eso la unidad se considera terminada y nunca se dejaria la marca de apagado
+# limpio, y todo reinicio se reportaria como corte de luz.
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/aviso-arranque.sh --arranque
+ExecStop=/usr/local/sbin/aviso-arranque.sh --apagado
+
+[Install]
+WantedBy=multi-user.target

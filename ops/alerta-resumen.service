@@ -1,5 +1,5 @@
 [Unit]
-Description=Parte diario de salud de cabserver hacia ntfy
+Description=Parte diario de salud de cabserver hacia Telegram
 After=docker.service
 Requires=docker.service
 

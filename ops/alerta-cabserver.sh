@@ -1,6 +1,6 @@
 #!/bin/sh
-# Avisos de cabserver -> ntfy. Convierte /salud, que hay que ir a mirar, en algo
-# que llega solo.
+# Avisos de cabserver -> Telegram. Convierte /salud, que hay que ir a mirar,
+# en algo que llega solo.
 #
 # NO reimplementa umbrales. El juicio de que es "ok", "atencion" o "falla" vive
 # en lib/salud/evaluar.ts y se consulta por /api/salud: dos copias de esa tabla
@@ -35,9 +35,17 @@ SILENCIO_SEG=1800
 
 [ -r "$CONF" ] || { echo "alerta-cabserver: falta $CONF" >&2; exit 1; }
 . "$CONF"
-: "${NTFY_URL:?}" "${NTFY_TOPIC:?}" "${NTFY_USER:?}" "${NTFY_PASS:?}"
 HEARTBEAT_URL="${HEARTBEAT_URL:-}"
 PANEL_URL="${PANEL_URL:-http://127.0.0.1:8083/api/salud}"
+MON_URL="${MON_URL:-http://127.0.0.1:8083/api/monitoreo}"
+MACS_VISTAS="$DIR_ESTADO/macs-vistas.txt"
+# El transporte -- incluida la cola que retiene los avisos mientras no hay
+# internet -- vive aparte porque el aviso del encendido usa el mismo.
+AVISAR="${ALERTA_AVISAR:-/usr/local/sbin/avisar-telegram.sh}"
+# Un transporte que no existe convierte todos los avisos en silencio, que es
+# la forma mas cara de fallar: por fuera se ve igual que "no pasa nada".
+# Mejor no arrancar y que systemd marque la unidad como fallida.
+[ -x "$AVISAR" ] || { echo "alerta-cabserver: falta o no ejecuta $AVISAR" >&2; exit 1; }
 
 mkdir -p "$DIR_ESTADO"
 [ -f "$ESTADO" ] || : > "$ESTADO"
@@ -51,19 +59,68 @@ trap 'rm -f "$NUEVO" "$FALLAS" "$CURAS"' EXIT
 # unico lugar donde ya viven.
 leer_env() { sed -n "s/^$1=//p" "$ENV_PANEL" 2>/dev/null | head -1; }
 
-# Los titulos van en ASCII a proposito: ntfy manda el titulo en una cabecera
-# HTTP y los acentos llegan rotos a algunos clientes. El cuerpo si lleva tildes.
-avisar() { # titulo prioridad tags cuerpo
-  # Con ALERTA_SIMULACRO el aviso se escribe en un archivo en vez de salir a la
-  # red: es lo que permite probar las transiciones sin mandarle quince
-  # notificaciones de mentira al telefono. Ver ops/prueba-alertas.sh.
-  if [ -n "${ALERTA_SIMULACRO:-}" ]; then
-    printf '[%s] %s\n%s\n' "$2" "$1" "$4" >> "$ALERTA_SIMULACRO"
-    return 0
+# El titulo ya no viaja en una cabecera HTTP como en ntfy, asi que puede
+# llevar tildes y emoji. El simulacro y la cola de reintento (los avisos que
+# no salieron por falta de internet) viven en el transporte, no aca.
+avisar() { # titulo prioridad cuerpo
+  "$AVISAR" "$1" "$2" "$3" || true
+}
+
+# Segundos -> "42 min" / "2 h 15 min". Un aviso de recuperacion que no dice
+# cuanto duro obliga a ir a buscar la hora de la caida a otra parte, y quien
+# lo lee a las siete de la manana no la va a ir a buscar.
+duracion() {
+  if [ "$1" -lt 3600 ]; then
+    printf '%d min' $(( ($1 + 30) / 60 ))
+  else
+    printf '%d h %d min' $(( $1 / 3600 )) $(( ($1 % 3600) / 60 ))
   fi
-  curl -s -m 10 -u "$NTFY_USER:$NTFY_PASS" \
-    -H "Title: $1" -H "Priority: $2" -H "Tags: $3" \
-    --data-binary "$4" "$NTFY_URL/$NTFY_TOPIC" >/dev/null 2>&1
+}
+
+# Bloque de red del parte diario. Sale de /api/monitoreo, que ya cruza los 40
+# cubiculos documentados contra la red viva: rehacer ese cruce aca daria dos
+# verdades distintas del mismo dato el dia que una de las dos cambie.
+bloque_red() {
+  MON=$(curl -s -m 15 -u "$(leer_env APP_USERNAME):$(leer_env APP_PASSWORD)" "$MON_URL" 2>/dev/null)
+  if ! printf '%s' "$MON" | jq -e '.resumen' >/dev/null 2>&1; then
+    echo 'Red: sin datos (el panel no respondio)'
+    return
+  fi
+
+  CIFRAS=$(printf '%s' "$MON" | jq -r '[.resumen.enLinea, (.resumen.total - .resumen.sinComputador), .resumen.sinVerse, .resumen.ipDistinta] | @tsv')
+  AJENOS=$(printf '%s' "$MON" | jq -r '.sinDocumentar[] | select(.presente) | [.mac, .fabricante, .ip] | @tsv')
+  echo "Red: $(echo "$CIFRAS" | cut -f1) de $(echo "$CIFRAS" | cut -f2) cubiculos en linea, $(echo "$CIFRAS" | cut -f3) sin verse, $(echo "$CIFRAS" | cut -f4) con IP distinta"
+  echo "Otros equipos vivos en la red: $(echo "$AJENOS" | grep -c .)"
+
+  # Las MAC nuevas van SOLO en el parte, nunca como aviso suelto. Hay ~77
+  # equipos sin documentar, casi todos celulares, y iOS rota su MAC de WiFi
+  # sola: avisar en el momento de cada MAC nueva seria un chorro permanente, y
+  # un canal con chorro permanente termina silenciado. Una vez al dia se lee.
+  VIVAS=$(echo "$AJENOS" | cut -f1 | grep -v '^$' | sort -u)
+  if [ ! -f "$MACS_VISTAS" ]; then
+    # Primera corrida: se siembra. Si no, el primer parte listaria los 77
+    # equipos de siempre como si acabaran de aparecer.
+    echo "$VIVAS" > "$MACS_VISTAS"
+    echo "MAC nuevas: primera medicion, se anotan las $(echo "$VIVAS" | grep -c .) actuales como conocidas"
+    return
+  fi
+
+  NUEVAS=$(echo "$VIVAS" | grep -vxF -f "$MACS_VISTAS")
+  CUANTAS=$(echo "$NUEVAS" | grep -c .)
+  if [ "$CUANTAS" -eq 0 ]; then
+    echo 'MAC nuevas desde ayer: ninguna'
+  else
+    echo "MAC nuevas desde ayer: $CUANTAS"
+    for mac in $NUEVAS; do
+      fila=$(echo "$AJENOS" | grep -F "$mac" | head -1)
+      echo "- $(echo "$fila" | cut -f1) ($(echo "$fila" | cut -f2)) en $(echo "$fila" | cut -f3)"
+    done | head -8
+    if [ "$CUANTAS" -gt 8 ]; then
+      echo "  (y $((CUANTAS - 8)) mas)"
+    fi
+  fi
+  echo "$VIVAS" >> "$MACS_VISTAS"
+  sort -u "$MACS_VISTAS" -o "$MACS_VISTAS"
 }
 
 previo()   { awk -F'\t' -v k="$1" '$1==k {print $2; exit}' "$ESTADO"; }
@@ -105,7 +162,14 @@ printf '%s\n' "$FILAS" | while IFS="$(printf '\t')" read -r clave estado etiquet
       sello=$desde   # dentro del silencio: se anota el cambio, no se grita
     fi
   elif [ "$antes" = "falla" ] && [ "$estado" != "falla" ]; then
-    printf -- '- %s: %s\n' "$etiqueta" "$detalle" >> "$CURAS"
+    # $desde es la epoca en que empezo la falla: el sello se conserva mientras
+    # el estado no cambia, asi que restarlo da la duracion del incidente.
+    if [ -n "$desde" ] && [ "$desde" -gt 0 ]; then
+      printf -- '- %s: %s (estuvo mal %s)\n' "$etiqueta" "$detalle" \
+        "$(duracion $((AHORA - desde)))" >> "$CURAS"
+    else
+      printf -- '- %s: %s\n' "$etiqueta" "$detalle" >> "$CURAS"
+    fi
   else
     [ -n "$desde" ] && sello=$desde
   fi
@@ -119,10 +183,10 @@ done
 
 # --- notificar ---------------------------------------------------------------
 if [ -s "$FALLAS" ]; then
-  avisar "cabserver: falla" urgent "rotating_light" "$(cat "$FALLAS")"
+  avisar "🔴 cabserver: falla" urgent "$(cat "$FALLAS")"
 fi
 if [ -s "$CURAS" ]; then
-  avisar "cabserver: recuperado" default "white_check_mark" "$(cat "$CURAS")"
+  avisar "🟢 cabserver: recuperado" default "$(cat "$CURAS")"
 fi
 
 if [ "$RESUMEN" = 1 ]; then
@@ -139,8 +203,15 @@ if [ "$RESUMEN" = 1 ]; then
     CUERPO="$MAL de $TOTAL comprobaciones fuera de verde:
 $PENDIENTES"
   fi
-  avisar "cabserver: parte del dia" low "sunny" "$CUERPO"
+  avisar "🌞 Parte del dia - cabserver" low "$CUERPO
+
+$(bloque_red)"
 fi
+
+# --- desagote de la cola ----------------------------------------------------
+# Los avisos que no salieron por falta de internet se mandan apenas vuelve,
+# aunque en esta corrida no haya nada nuevo que contar.
+"$AVISAR" --cola || true
 
 # --- latido hacia afuera -----------------------------------------------------
 # Lo unico que puede avisar de que cabserver murio, porque no lo manda cabserver

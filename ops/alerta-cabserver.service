@@ -1,5 +1,5 @@
 [Unit]
-Description=Avisos de salud de cabserver hacia ntfy
+Description=Avisos de salud de cabserver hacia Telegram
 After=docker.service
 Requires=docker.service
 
@@ -8,7 +8,7 @@ Type=oneshot
 ExecStart=/usr/local/sbin/alerta-cabserver.sh
 TimeoutStartSec=60
 
-# Es un lector: consulta /api/salud y publica en ntfy. No escribe fuera de su
+# Es un lector: consulta /api/salud y publica en Telegram. No escribe fuera de su
 # propio directorio de estado, asi que no tiene por que poder hacerlo.
 NoNewPrivileges=true
 ProtectSystem=strict

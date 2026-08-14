@@ -8,7 +8,7 @@ const RECIEN = new Date(AHORA - 60_000).toISOString();
 const hecho = (clave: string, valor = "", numero: number | null = null, medidoAt = RECIEN): HechoSalud =>
   ({ clave, valor, numero, medidoAt });
 
-// Los 9 contenedores esperados, todos arriba.
+// Los 8 contenedores esperados, todos arriba.
 const contenedoresSanos = (): HechoSalud[] => [
   hecho("docker.vaultwarden", "running/healthy"),
   hecho("docker.netalertx", "running/healthy"),
@@ -17,7 +17,6 @@ const contenedoresSanos = (): HechoSalud[] => [
   hecho("docker.panel-db", "running"),
   hecho("docker.panel-backup", "running"),
   hecho("docker.panel-mon-export", "running"),
-  hecho("docker.ntfy", "running/healthy"),
   hecho("docker.lab-scripts", "running"),
 ];
 
@@ -36,7 +35,7 @@ const stackSano = (): HechoSalud[] => [
   hecho("servicio.adguard_dns", "ok"),
   hecho("servicio.netalertx", "ok"),
   hecho("servicio.vaultwarden", "ok"),
-  hecho("servicio.ntfy", "ok"),
+  hecho("servicio.internet", "ok"),
   hecho("servicio.tailscale", "ok"),
 ];
 
@@ -119,6 +118,16 @@ test("AdGuard que no resuelve es falla", () => {
   const hechos = stackSano().map((h) =>
     h.clave === "servicio.adguard_dns" ? { ...h, valor: "falla" } : h);
   assert.equal(fila(evaluarSalud(hechos, RECIEN, 21, AHORA), "servicio.adguard_dns").estado, "falla");
+});
+
+test("sin salida a internet es falla, y se distingue de AdGuard", () => {
+  // Son dos filas separadas a proposito: "no hay internet" y "AdGuard no
+  // resuelve" se ven igual desde un navegador y se arreglan de forma distinta.
+  const sinInternet = stackSano().map((h) =>
+    h.clave === "servicio.internet" ? { ...h, valor: "falla" } : h);
+  const salud = evaluarSalud(sinInternet, RECIEN, 21, AHORA);
+  assert.equal(fila(salud, "servicio.internet").estado, "falla");
+  assert.equal(fila(salud, "servicio.adguard_dns").estado, "ok");
 });
 
 test("frescura del monitoreo: 8 min es atencion, 20 min es falla", () => {

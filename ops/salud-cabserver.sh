@@ -4,13 +4,13 @@
 # o "falla" -- vive en lib/salud/evaluar.ts, no aqui.
 set -u
 
-ESPERADOS="vaultwarden netalertx adguard panel-enlace panel-db panel-backup panel-mon-export ntfy lab-scripts"
+ESPERADOS="vaultwarden netalertx adguard panel-enlace panel-db panel-backup panel-mon-export lab-scripts"
 DIR_PG=/srv/apps/backups/panel-enlace
 DIR_USB=/mnt/respaldo
 # Cuantas filas debe traer una foto completa. Si agregas o quitas un emit,
 # actualiza este numero: es lo que impide commitear una foto a medias con
 # fecha fresca, que se leeria como "el colector murio" siendo mentira.
-FILAS_ESPERADAS=24
+FILAS_ESPERADAS=23
 AHORA=$(date +%s)
 TMP=$(mktemp) || exit 1
 trap 'rm -f "$TMP"' EXIT
@@ -79,11 +79,18 @@ sonda_http() {
 }
 sonda_http servicio.netalertx http://127.0.0.1:20211/
 sonda_http servicio.vaultwarden http://127.0.0.1:8081/alive
-# El canal de avisos es el unico que no puede denunciar su propia muerte: si
-# ntfy no publica, el aviso de que ntfy no publica tampoco sale. Por eso se
-# mide desde aca. El 2026-08-12 quedo sin publicar puertos al recrearse y
-# estuvo 30 horas mudo sin que nadie lo notara.
-sonda_http servicio.ntfy http://127.0.0.1:8084/v1/health
+# Internet, medido SIN DNS y por dos caminos distintos. Se separa de
+# servicio.adguard_dns porque desde un navegador las dos fallas se ven
+# igual y se arreglan de forma muy distinta: una es llamar al ISP.
+#
+# Dos mecanismos y dos proveedores: TCP a Cloudflare (que si contesta en el
+# 80, con un 301) e ICMP a Google. Uno solo daria falsos positivos cada vez
+# que el FortiGate filtre ese protocolo o ese destino en particular.
+if curl -s -m 5 -o /dev/null http://1.1.1.1 2>/dev/null \n   || ping -c1 -W3 8.8.8.8 >/dev/null 2>&1; then
+  emit servicio.internet ok
+else
+  emit servicio.internet falla
+fi
 
 if tailscale status --json 2>/dev/null | grep -q '"BackendState": *"Running"'; then
   emit servicio.tailscale ok

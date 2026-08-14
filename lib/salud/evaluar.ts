@@ -25,7 +25,7 @@ export const UMBRALES = {
 export const CONTENEDORES_ESPERADOS = [
   "vaultwarden", "netalertx", "adguard",
   "panel-enlace", "panel-db", "panel-backup", "panel-mon-export",
-  "ntfy", "lab-scripts",
+  "lab-scripts",
 ] as const;
 
 // sin-datos empata con atencion: que muera el mensajero importa, pero no es lo
@@ -211,10 +211,14 @@ export function evaluarSalud(
     ));
 
   const servicios: FilaSalud[] = [
+    // Internet va primero y separado de AdGuard: desde un navegador las dos
+    // fallas se ven igual, pero una se arregla llamando al ISP y la otra
+    // reiniciando un contenedor. La sonda pega a una IP directa, sin DNS,
+    // justamente para no confundirlas.
+    sonda("servicio.internet", "Internet", "hay salida", "sin salida a internet — el colegio quedó aislado"),
     sonda("servicio.adguard_dns", "AdGuard (DNS)", "resuelve consultas", "no resuelve — los PCs se quedan sin navegar"),
     sonda("servicio.netalertx", "NetAlertX", "responde", "no responde"),
     sonda("servicio.vaultwarden", "Vaultwarden", "responde", "no responde"),
-    sonda("servicio.ntfy", "ntfy (avisos)", "acepta publicaciones", "no publica — los avisos no salen"),
     sonda("servicio.tailscale", "Tailscale", "conectado al tailnet", "desconectado — no hay acceso remoto"),
   ];
 

@@ -14,7 +14,9 @@
 #   wol-cabserver.sh --estado        que paso en los ultimos encendidos
 set -u
 
-CONF_AVISOS=/etc/alerta-cabserver.conf
+# El transporte de avisos es el mismo que usa alerta-cabserver.sh: incluye la
+# cola que retiene los mensajes mientras no hay internet.
+AVISAR="${WOL_AVISAR:-/usr/local/sbin/avisar-telegram.sh}"
 IFACE="${WOL_IFACE:-enp2s0}"
 BROADCAST="${WOL_BROADCAST:-192.168.1.255}"
 # Tres paquetes espaciados: cuestan nada y suben mucho la tasa de exito cuando
@@ -122,19 +124,27 @@ verificar() {
       AND e.resultado = 'enviado'
       AND e.enviado_at < now() - interval '$MINUTOS_VERIFICAR minutes'" >/dev/null
 
-  # ¿Quedo alguno sin despertar en el ultimo cuarto de hora? Se avisa una vez.
+  # Lo util no es "mande 38 paquetes", es cuantos contestaron. El numero va
+  # adelante en el titulo para que se lea sin abrir la notificacion.
+  cifras=$(psql_ -c "
+    SELECT count(*) FILTER (WHERE desperto) || '/' || count(*)
+    FROM wol_eventos
+    WHERE resultado = 'enviado' AND verificado_at > now() - interval '15 minutes'")
   dormidos=$(psql_ -c "
     SELECT string_agg(cubiculo::text, ', ' ORDER BY cubiculo)
     FROM wol_eventos
     WHERE desperto = false AND resultado = 'enviado'
       AND verificado_at > now() - interval '15 minutes'")
+
   # En simulacro no se avisa: una prueba no tiene por que sonarle a nadie.
-  if [ -n "$dormidos" ] && [ -z "${WOL_SIMULACRO:-}" ] && [ -r "$CONF_AVISOS" ]; then
-    . "$CONF_AVISOS"
-    curl -s -m 10 -u "$NTFY_USER:$NTFY_PASS" \
-      -H "Title: cabserver: PC que no despertaron" -H "Priority: default" -H "Tags: electric_plug" \
-      --data-binary "No respondieron al encendido programado: $dormidos" \
-      "$NTFY_URL/$NTFY_TOPIC" >/dev/null 2>&1
+  total=${cifras#*/}
+  if [ -n "$cifras" ] && [ "$total" != '0' ] && [ -z "${WOL_SIMULACRO:-}" ] && [ -x "$AVISAR" ]; then
+    if [ -n "$dormidos" ]; then
+      "$AVISAR" "🔌 Encendido: despertaron $cifras" default "No respondieron los cubiculos: $dormidos"
+    else
+      # Todo bien no despierta a nadie: llega sin sonido, para leerlo despues.
+      "$AVISAR" "🔌 Encendido: despertaron $cifras" low "Respondieron todos los que estaban apagados."
+    fi
   fi
 }
 

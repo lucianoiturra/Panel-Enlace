@@ -16,10 +16,8 @@ GUION=$(cd "$(dirname "$0")" && pwd)/alerta-cabserver.sh
 FALLOS=0
 
 cat > "$DIR/conf" <<'CONFIG'
-NTFY_URL=http://127.0.0.1:9
-NTFY_TOPIC=prueba
-NTFY_USER=x
-NTFY_PASS=x
+TELEGRAM_TOKEN=000:token-de-mentira
+TELEGRAM_CHAT_ID=0
 HEARTBEAT_URL=
 CONFIG
 
@@ -42,6 +40,8 @@ correr() { # archivo-json  -> deja los avisos en $DIR/avisos
   ALERTA_ENV_PANEL="$DIR/env-inexistente" \
   ALERTA_DIR_ESTADO="$DIR/estado" \
   ALERTA_SIMULACRO="$DIR/avisos" \
+  ALERTA_AVISAR="$(dirname "$GUION")/avisar-telegram.sh" \
+  MON_URL="file://$DIR/monitoreo-inexistente" \
   PANEL_URL="file://$1" \
   sh "$GUION" ${2:-}
 }
@@ -75,6 +75,7 @@ salud "docker.adguard|ok|adguard|running" "host.ram_disponible_mb|ok|RAM|1,9 GB 
 correr "$DIR/s2.json"
 comprobar "volver de falla a ok avisa la recuperacion" "1" "$(avisos)"
 comprobar "  con el titulo de recuperado" "1" "$(cuenta 'recuperado')"
+comprobar "  y dice cuanto estuvo mal" "1" "$(cuenta 'estuvo mal')"
 
 # --- 4. atencion no despierta a nadie ---------------------------------------
 salud "docker.adguard|atencion|adguard|arrancando" "host.ram_disponible_mb|ok|RAM|1,9 GB" > "$DIR/s3.json"
