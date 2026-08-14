@@ -4,9 +4,21 @@ import { cubicles, netBitacora, netCategorias, netEnlaces, netEquipos, netEspaci
 import { limpiarNotasRacks, sembrarRed } from "../../../lib/red/siembra";
 import { estadosEspacio, estadosPuerto, prefijoDe, type EstadoRed } from "../../../lib/red/modelo";
 import { apiErrorResponse, noStoreJson, readJson } from "../../../lib/api-response";
+import { unaVezPorClave } from "../../../lib/una-vez";
 
 type Db = Awaited<ReturnType<typeof getDb>>;
 type ReadDb = { select: Db["select"] };
+
+// Las dos funciones cortan solas por su marca en app_metadata, pero leer esa
+// marca son dos transacciones que cada GET /api/red pagaba para enterarse de
+// que no había nada que hacer. La clave es el DATABASE_URL, igual que el DDL de
+// getDb: apuntar a otra base es la única razón para volver a sembrar. Un fallo
+// no queda memorizado, así que el GET siguiente reintenta.
+const prepararRed = unaVezPorClave(async () => {
+  const db = await getDb();
+  await sembrarRed(db);
+  await limpiarNotasRacks(db);
+});
 
 export async function leerEstado(db: ReadDb): Promise<EstadoRed> {
   const racks = await db.select().from(netRacks).orderBy(asc(netRacks.id));
@@ -25,8 +37,7 @@ export async function leerEstado(db: ReadDb): Promise<EstadoRed> {
 export async function GET() {
   try {
     const db = await getDb();
-    await sembrarRed(db);
-    await limpiarNotasRacks(db);
+    await prepararRed(process.env.DATABASE_URL?.trim() ?? "");
     return noStoreJson(await leerEstado(db));
   } catch (error) {
     return apiErrorResponse(error, "No fue posible cargar la red.");
